@@ -217,7 +217,14 @@
 
 <div class="app">
   <aside>
-    <!-- MODE TABS -->
+    <!-- 1. FAVORITES (raccourci) -->
+    <div>
+      <div class="sec-label">⭐ WODs favoris</div>
+      <div class="fav-list" id="favList"></div>
+      <button class="btn-save-fav" onclick="saveFavorite()">💾 SAUVEGARDER CE WOD</button>
+    </div>
+
+    <!-- 2. MODE TABS -->
     <div>
       <div class="sec-label">Mode d'entraînement</div>
       <div class="mode-tabs">
@@ -228,33 +235,7 @@
       </div>
     </div>
 
-    <div>
-      <div class="sec-label">🎵 Track</div>
-      <div class="tracks">
-        <button class="track-btn active" onclick="selectTrack(this,'pogo')">
-          <span class="track-emoji">🔥</span>
-          <div><div class="track-title">Pogo dans la Nuit</div><div class="track-sub">RAP · Dark · Trap</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'pleinfeu')">
-          <span class="track-emoji">⚡</span>
-          <div><div class="track-title">Plein Feu Dans La Boîte</div><div class="track-sub">RAP · Hype · Energy</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'techno')">
-          <span class="track-emoji">🖤</span>
-          <div><div class="track-title">Berghain Box</div><div class="track-sub">TECHNO · Hard · Berlin</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'house')">
-          <span class="track-emoji">🌅</span>
-          <div><div class="track-title">Sunset Drop</div><div class="track-sub">HOUSE · Club · 128 BPM</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'hymne')">
-          <span class="track-emoji">🏆</span>
-          <div><div class="track-title">Arena Entrance</div><div class="track-sub">HYMNE · NBA · Sport</div></div>
-        </button>
-      </div>
-    </div>
-
-    <!-- WOD / AMRAP / EMOM : durée totale -->
+    <!-- 3a. WOD / AMRAP / EMOM : durée totale -->
     <div id="durSection">
       <div class="sec-label" id="durLabel">Durée WOD</div>
       <div class="durations" id="durButtons">
@@ -277,7 +258,7 @@
       </div>
     </div>
 
-    <!-- EMOM INTERVAL -->
+    <!-- 3b. EMOM INTERVAL -->
     <div id="emomSection" style="display:none">
       <div class="sec-label">⏱ Intervalle EMOM</div>
       <div class="emom-interval">
@@ -304,7 +285,7 @@
       </div>
     </div>
 
-    <!-- TABATA CONFIG -->
+    <!-- 3c. TABATA CONFIG -->
     <div id="tabataSection" style="display:none">
       <div class="sec-label">⚙️ Config Tabata</div>
       <div class="tabata-config">
@@ -314,6 +295,34 @@
       </div>
     </div>
 
+    <!-- 4. TRACK -->
+    <div>
+      <div class="sec-label">🎵 Track</div>
+      <div class="tracks">
+        <button class="track-btn active" onclick="selectTrack(this,'pogo')">
+          <span class="track-emoji">🔥</span>
+          <div><div class="track-title">Pogo dans la Nuit</div><div class="track-sub">RAP · Dark · Trap</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'pleinfeu')">
+          <span class="track-emoji">⚡</span>
+          <div><div class="track-title">Plein Feu Dans La Boîte</div><div class="track-sub">RAP · Hype · Energy</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'techno')">
+          <span class="track-emoji">🖤</span>
+          <div><div class="track-title">Berghain Box</div><div class="track-sub">TECHNO · Hard · Berlin</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'house')">
+          <span class="track-emoji">🌅</span>
+          <div><div class="track-title">Sunset Drop</div><div class="track-sub">HOUSE · Club · 128 BPM</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'hymne')">
+          <span class="track-emoji">🏆</span>
+          <div><div class="track-title">Arena Entrance</div><div class="track-sub">HYMNE · NBA · Sport</div></div>
+        </button>
+      </div>
+    </div>
+
+    <!-- 5. MIX AUDIO -->
     <div>
       <div class="sec-label">🎚️ Mix Audio</div>
       <div class="vol-section">
@@ -330,13 +339,6 @@
           <span class="vol-lbl" id="volVoiceVal">100%</span>
         </div>
       </div>
-    </div>
-
-    <!-- FAVORITES -->
-    <div>
-      <div class="sec-label">⭐ WODs favoris</div>
-      <div class="fav-list" id="favList"></div>
-      <button class="btn-save-fav" onclick="saveFavorite()">💾 SAUVEGARDER CE WOD</button>
     </div>
   </aside>
 
@@ -535,25 +537,22 @@ function customStep(delta){
 
 function emomStep(part,delta){
   if(S.state!=='idle')return;
-  let mins=Math.floor(S.emomIntervalSec/60);
-  let secs=S.emomIntervalSec%60;
+  // On travaille directement sur le total en secondes
+  let total=S.emomIntervalSec||60;
   if(part==='min'){
-    mins=Math.max(0,Math.min(10,mins+delta));
+    total=total+delta*60;
   } else {
-    secs=secs+delta;
-    if(secs>=60){secs-=60;mins=Math.min(10,mins+1);}
-    if(secs<0){if(mins>0){mins--;secs+=60;}else{secs=0;}}
+    total=total+delta;
   }
-  // Limite minimale: 5 secondes
-  let total=mins*60+secs;
-  if(total<5){total=5;mins=0;secs=5;}
+  // Limites : min 5 sec, max 10:00 (600 sec)
+  total=Math.max(5,Math.min(600,total));
   S.emomIntervalSec=total;
+  // Mise à jour affichage
+  const mins=Math.floor(total/60);
+  const secs=total%60;
   document.getElementById('emomMin').textContent=mins;
   document.getElementById('emomSec').textContent=String(secs).padStart(2,'0');
-  // Affichage résumé
-  const mm=Math.floor(total/60);
-  const ss=total%60;
-  document.getElementById('emomSummary').textContent=`→ Top toutes les ${mm}:${String(ss).padStart(2,'0')}`;
+  document.getElementById('emomSummary').textContent=`→ Top toutes les ${mins}:${String(secs).padStart(2,'0')}`;
   renderSched();
 }
 
@@ -910,11 +909,14 @@ function checkAnnounce(){
     const totalRounds=Math.floor(S.total/interval);
     const currentRound=Math.floor(elapsed/interval)+1;
 
-    // Top exact (début de nouveau round)
+    // Top exact (début de nouveau round) : tick aigu + voix tonique
     if(r>10 && elapsed>0 && inInterval===0){
       const roundN=currentRound;
-      playBeep();
       showAnnounce(`🔔 ROUND ${roundN}`);
+      playTick();
+      // Voix en mode CRUNCH (tonique, perce la musique avec ducking fort)
+      const txt=S.lang==='fr'?`Round ${roundN} !`:`Round ${roundN} !`;
+      speak(txt, {emomCrunch:true});
       return;
     }
 
