@@ -210,6 +210,18 @@
           <span class="track-emoji">⚡</span>
           <div><div class="track-title">Plein Feu Dans La Boîte</div><div class="track-sub">RAP · Hype · Energy</div></div>
         </button>
+        <button class="track-btn" onclick="selectTrack(this,'techno')">
+          <span class="track-emoji">🖤</span>
+          <div><div class="track-title">Berghain Box</div><div class="track-sub">TECHNO · Hard · Berlin</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'house')">
+          <span class="track-emoji">🌅</span>
+          <div><div class="track-title">Sunset Drop</div><div class="track-sub">HOUSE · Club · 128 BPM</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'hymne')">
+          <span class="track-emoji">🏆</span>
+          <div><div class="track-title">Arena Entrance</div><div class="track-sub">HYMNE · NBA · Sport</div></div>
+        </button>
       </div>
     </div>
 
@@ -308,7 +320,7 @@
 </div>
 
 <script>
-const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3'};
+const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'house.mp3',hymne:'hymne.mp3'};
 const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
 const BEEP_AUDIO='beep.mp3';
 
@@ -344,7 +356,7 @@ const TXT={
   }
 };
 
-const TRACK_INFO={pogo:{name:'Pogo dans la Nuit',emoji:'🔥'},pleinfeu:{name:'Plein Feu Dans La Boîte',emoji:'⚡'}};
+const TRACK_INFO={pogo:{name:'Pogo dans la Nuit',emoji:'🔥',sub:'RAP · Dark · Trap'},pleinfeu:{name:'Plein Feu Dans La Boîte',emoji:'⚡',sub:'RAP · Hype · Energy'},techno:{name:'Berghain Box',emoji:'🖤',sub:'TECHNO · Hard · Berlin'},house:{name:'Sunset Drop',emoji:'🌅',sub:'HOUSE · Club · 128 BPM'},hymne:{name:'Arena Entrance',emoji:'🏆',sub:'HYMNE · NBA · Sport'}};
 
 const S={
   lang:'fr',track:'pogo',
@@ -863,8 +875,9 @@ function loadFavorite(idx){
   // Set track
   document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active'));
   const trackBtns=document.querySelectorAll('.track-btn');
-  if(f.track==='pogo') trackBtns[0].classList.add('active');
-  else trackBtns[1].classList.add('active');
+  const trackOrder={pogo:0,pleinfeu:1,techno:2,house:3,hymne:4};
+  const trackIdx=trackOrder[f.track]||0;
+  if(trackBtns[trackIdx]) trackBtns[trackIdx].classList.add('active');
   S.track=f.track;
   const info=TRACK_INFO[S.track];
   document.getElementById('npBadge').textContent='🎵 '+info.name.toUpperCase();
