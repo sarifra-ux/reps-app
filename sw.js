@@ -14,7 +14,8 @@ const ASSETS = [
   '/hymne.mp3',
   '/brian-fr.mp3',
   '/brian-en.mp3',
-  '/beep.mp3'
+  '/beep.mp3',
+  '/tick.mp3'
 ];
 
 // Installation : on précharge tous les fichiers

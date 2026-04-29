@@ -294,9 +294,9 @@
           <div class="emom-picker">
             <div class="emom-picker-label">SEC</div>
             <div class="emom-picker-row">
-              <button class="emom-picker-btn" onclick="emomStep('sec',-15)">−</button>
+              <button class="emom-picker-btn" onclick="emomStep('sec',-1)">−</button>
               <div class="emom-picker-val" id="emomSec">00</div>
-              <button class="emom-picker-btn" onclick="emomStep('sec',15)">+</button>
+              <button class="emom-picker-btn" onclick="emomStep('sec',1)">+</button>
             </div>
           </div>
         </div>
@@ -387,6 +387,7 @@
 const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'house.mp3',hymne:'hymne.mp3'};
 const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
 const BEEP_AUDIO='beep.mp3';
+const TICK_AUDIO='tick.mp3';
 
 const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:867},{n:'8',t:1806},{n:'7',t:2735},{n:'6',t:3760},{n:'5',t:4845},{n:'4',t:6056},{n:'3',t:7123},{n:'2',t:7886},{n:'1',t:8675},{n:'GO',t:9380}],
@@ -714,6 +715,15 @@ function playBeep(){
   beepAudio.play().catch(()=>{});
 }
 
+let tickAudio=null;
+function playTick(){
+  // Bip aigu tranchant pour le décompte EMOM (volume forcé à 100% pour être audible par-dessus la musique)
+  tickAudio=getCachedAudio('tick', TICK_AUDIO);
+  tickAudio.currentTime=0;
+  tickAudio.volume=1.0;
+  tickAudio.play().catch(()=>{});
+}
+
 function speak(text, opts){
   opts=opts||{};
   if(!window.speechSynthesis)return;
@@ -908,13 +918,12 @@ function checkAnnounce(){
       return;
     }
 
-    // Décompte 5-4-3-2-1 avant le prochain round avec un mode "EMOM CRUNCH" plus audible
+    // Décompte 5-4-3-2-1 avant le prochain round
     if(secsToNext>=1 && secsToNext<=5 && r>10 && currentRound<totalRounds){
       const num=secsToNext;
       showAnnounce('⏰ '+num);
-      // Bip court + voix : la combinaison est bien plus perceptible par-dessus la musique
-      playBeep();
-      // On force l'EMOM crunch sur cet appel (volume voix max + ducking musique fort)
+      // TICK aigu volume max (perce la musique) + voix synthétique en mode crunch
+      playTick();
       speak(t['s'+num], {emomCrunch:true});
       return;
     }
