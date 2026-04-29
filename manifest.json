@@ -1,0 +1,24 @@
+{
+  "name": "R.E.P.S — Rhythm Engine Performance Sound",
+  "short_name": "R.E.P.S",
+  "description": "Music + voice WOD timer for functional training coaches",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080810",
+  "theme_color": "#080810",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

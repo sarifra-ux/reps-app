@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>R.E.P.S — Rhythm Engine Performance Sound</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#080810">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="R.E.P.S">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@300;400;600;800;900&display=swap" rel="stylesheet">
 <style>
   :root{--bg:#080810;--surface:#0e0e18;--card:#13131f;--border:#1e1e30;--accent:#e63fff;--accent2:#00e5ff;--gold:#ffd600;--green:#00e676;--text:#eeeef8;--muted:#44445a;--glow-a:rgba(230,63,255,0.22);--glow-b:rgba(0,229,255,0.18);}
@@ -381,8 +389,8 @@ const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
 const BEEP_AUDIO='beep.mp3';
 
 const CD_TIMINGS={
-  fr:[{n:'10',t:0},{n:'9',t:867},{n:'8',t:1804},{n:'7',t:2732},{n:'6',t:3759},{n:'5',t:4840},{n:'4',t:6055},{n:'3',t:7123},{n:'2',t:7883},{n:'1',t:8675},{n:'GO',t:10372}],
-  en:[{n:'10',t:0},{n:'9',t:762},{n:'8',t:1641},{n:'7',t:2297},{n:'6',t:3104},{n:'5',t:3899},{n:'4',t:4715},{n:'3',t:5503},{n:'2',t:6315},{n:'1',t:7058},{n:'GO',t:8751}]
+  fr:[{n:'10',t:0},{n:'9',t:867},{n:'8',t:1806},{n:'7',t:2735},{n:'6',t:3760},{n:'5',t:4845},{n:'4',t:6056},{n:'3',t:7123},{n:'2',t:7886},{n:'1',t:8675},{n:'GO',t:9380}],
+  en:[{n:'10',t:0},{n:'9',t:764},{n:'8',t:1642},{n:'7',t:2298},{n:'6',t:3104},{n:'5',t:3899},{n:'4',t:4722},{n:'3',t:5523},{n:'2',t:6315},{n:'1',t:7089},{n:'GO',t:7760}]
 };
 
 const TXT={
@@ -454,7 +462,7 @@ function setMode(btn,mode){
 
   if(mode==='wod'){lbl.textContent='Durée WOD';eyebrow.textContent='// TEMPS RESTANT';schedLbl.textContent='Programme des annonces';}
   else if(mode==='amrap'){lbl.textContent='Durée AMRAP';eyebrow.textContent='// AMRAP — TEMPS RESTANT';schedLbl.textContent='Annonces chaque minute';}
-  else if(mode==='emom'){lbl.textContent='Durée EMOM';eyebrow.textContent='// EMOM — TEMPS RESTANT';schedLbl.textContent='Top à chaque intervalle';document.getElementById('emomSection').style.display='';}
+  else if(mode==='emom'){lbl.textContent='Durée EMOM';eyebrow.textContent='// EMOM — TEMPS ÉCOULÉ';schedLbl.textContent='Top à chaque intervalle';document.getElementById('emomSection').style.display='';}
   else if(mode==='tabata'){
     document.getElementById('durSection').style.display='none';
     document.getElementById('tabataSection').style.display='';
@@ -644,12 +652,18 @@ function pad(n){return n.toString().padStart(2,'0');}
 function updateClock(){
   const r=S.remain;
   const clock=document.getElementById('timerClock');
-  clock.textContent=pad(Math.floor(r/60))+':'+pad(r%60);
+  // En EMOM le chrono monte (elapsed). Sinon il descend (remain).
+  if(S.mode==='emom'){
+    const elapsed=S.total-r;
+    clock.textContent=pad(Math.floor(elapsed/60))+':'+pad(elapsed%60);
+  } else {
+    clock.textContent=pad(Math.floor(r/60))+':'+pad(r%60);
+  }
 
   let cls='timer-clock';
   if(S.mode==='tabata' && S.tabPhase==='rest'){cls+=' rest';}
   else if(r<=10) cls+=' danger';
-  else if(r<=60) cls+=' warn';
+  else if(r<=60 && S.mode!=='emom') cls+=' warn';
   clock.className=cls;
 
   const progFill=document.getElementById('progFill');
@@ -700,7 +714,8 @@ function playBeep(){
   beepAudio.play().catch(()=>{});
 }
 
-function speak(text){
+function speak(text, opts){
+  opts=opts||{};
   if(!window.speechSynthesis)return;
   window.speechSynthesis.cancel();
   const useFR=S.lang==='fr';
@@ -721,11 +736,16 @@ function speak(text){
   u.lang=useFR?'fr-FR':'en-US';
   const isShortNum=['5 !','4 !','3 !','2 !','1 !'].includes(text);
   const isTime=text.includes('TIME')||text.includes('fini');
-  if(isShortNum){u.rate=1.6;u.pitch=1.8;u.volume=1.0;}
+  if(opts.emomCrunch){
+    // Mode "CRUNCH" pour le décompte avant chaque round EMOM : voix tranchante, claire, forte
+    u.rate=1.4;u.pitch=2.0;u.volume=1.0;
+  } else if(isShortNum){u.rate=1.6;u.pitch=1.8;u.volume=1.0;}
   else if(isTime){u.rate=0.9;u.pitch=0.8;u.volume=1.0;}
   else{u.rate=1.3;u.pitch=1.3;u.volume=1.0;}
   const vMus=parseInt(document.getElementById('volMusic').value)/100;
-  if(musicAudio) musicAudio.volume=vMus*0.25;
+  // Ducking plus fort en mode EMOM crunch (musique tombe à 8% au lieu de 25%)
+  const duckLevel=opts.emomCrunch?0.08:0.25;
+  if(musicAudio) musicAudio.volume=vMus*duckLevel;
   u.onend=()=>{if(musicAudio) musicAudio.volume=vMus;};
   window.speechSynthesis.speak(u);
 }
@@ -888,12 +908,14 @@ function checkAnnounce(){
       return;
     }
 
-    // Décompte 5-4-3-2-1 avant le prochain round (mais pas si on est dans les 10 dernières secondes du WOD, déjà géré au-dessus, et pas si c'est le dernier round)
+    // Décompte 5-4-3-2-1 avant le prochain round avec un mode "EMOM CRUNCH" plus audible
     if(secsToNext>=1 && secsToNext<=5 && r>10 && currentRound<totalRounds){
-      // On dit juste le chiffre, sans le "!" pour aller plus vite
       const num=secsToNext;
-      showAnnounce(''+num);
-      speak(t['s'+num]);
+      showAnnounce('⏰ '+num);
+      // Bip court + voix : la combinaison est bien plus perceptible par-dessus la musique
+      playBeep();
+      // On force l'EMOM crunch sur cet appel (volume voix max + ducking musique fort)
+      speak(t['s'+num], {emomCrunch:true});
       return;
     }
 
@@ -1058,6 +1080,16 @@ function renderFavs(){
 // INIT
 renderFavs();
 updateClock();renderSched();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      console.log('SW registered:', reg.scope);
+    }).catch(err => console.warn('SW failed:', err));
+  });
+}
 </script>
 </body>
 </html>
