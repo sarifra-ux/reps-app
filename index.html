@@ -51,6 +51,17 @@
   .dur-btn small{font-family:'DM Mono',monospace;font-size:0.42rem;letter-spacing:2px;display:block;margin-top:1px;}
   .dur-btn:hover{border-color:var(--accent2);color:var(--text);}
   .dur-btn.active{border-color:var(--accent2);background:rgba(0,229,255,0.08);color:var(--accent2);box-shadow:0 0 14px var(--glow-b);}
+  .emom-interval{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px;margin-top:6px;}
+  .emom-interval-label{font-family:'DM Mono',monospace;font-size:0.55rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;text-align:center;}
+  .emom-pickers{display:flex;gap:14px;align-items:center;justify-content:center;}
+  .emom-picker{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .emom-picker-label{font-family:'DM Mono',monospace;font-size:0.5rem;letter-spacing:2px;color:var(--muted);}
+  .emom-picker-row{display:flex;align-items:center;gap:6px;}
+  .emom-picker-val{font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:2px;color:var(--accent2);min-width:42px;text-align:center;line-height:1;}
+  .emom-picker-btn{background:var(--surface);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;color:var(--text);cursor:pointer;font-size:1.1rem;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+  .emom-picker-btn:active{transform:scale(0.92);}
+  .emom-picker-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+  .emom-summary{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--accent2);text-align:center;letter-spacing:1px;}
   .custom-dur{margin-top:10px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px;}
   .custom-dur.active{border-color:var(--accent2);background:rgba(0,229,255,0.08);box-shadow:0 0 14px var(--glow-b);}
   .custom-label{font-family:'DM Mono',monospace;font-size:0.55rem;letter-spacing:2px;color:var(--muted);text-align:center;text-transform:uppercase;}
@@ -258,6 +269,33 @@
       </div>
     </div>
 
+    <!-- EMOM INTERVAL -->
+    <div id="emomSection" style="display:none">
+      <div class="sec-label">⏱ Intervalle EMOM</div>
+      <div class="emom-interval">
+        <div class="emom-interval-label">Top à chaque</div>
+        <div class="emom-pickers">
+          <div class="emom-picker">
+            <div class="emom-picker-label">MIN</div>
+            <div class="emom-picker-row">
+              <button class="emom-picker-btn" onclick="emomStep('min',-1)">−</button>
+              <div class="emom-picker-val" id="emomMin">1</div>
+              <button class="emom-picker-btn" onclick="emomStep('min',1)">+</button>
+            </div>
+          </div>
+          <div class="emom-picker">
+            <div class="emom-picker-label">SEC</div>
+            <div class="emom-picker-row">
+              <button class="emom-picker-btn" onclick="emomStep('sec',-15)">−</button>
+              <div class="emom-picker-val" id="emomSec">00</div>
+              <button class="emom-picker-btn" onclick="emomStep('sec',15)">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="emom-summary" id="emomSummary">→ Top toutes les 1:00</div>
+      </div>
+    </div>
+
     <!-- TABATA CONFIG -->
     <div id="tabataSection" style="display:none">
       <div class="sec-label">⚙️ Config Tabata</div>
@@ -408,6 +446,7 @@ function setMode(btn,mode){
 
   document.getElementById('durSection').style.display='';
   document.getElementById('tabataSection').style.display='none';
+  document.getElementById('emomSection').style.display='none';
 
   const lbl=document.getElementById('durLabel');
   const eyebrow=document.getElementById('timerEyebrow');
@@ -415,7 +454,7 @@ function setMode(btn,mode){
 
   if(mode==='wod'){lbl.textContent='Durée WOD';eyebrow.textContent='// TEMPS RESTANT';schedLbl.textContent='Programme des annonces';}
   else if(mode==='amrap'){lbl.textContent='Durée AMRAP';eyebrow.textContent='// AMRAP — TEMPS RESTANT';schedLbl.textContent='Annonces chaque minute';}
-  else if(mode==='emom'){lbl.textContent='Durée EMOM';eyebrow.textContent='// EMOM — TEMPS RESTANT';schedLbl.textContent='Top chaque minute';}
+  else if(mode==='emom'){lbl.textContent='Durée EMOM';eyebrow.textContent='// EMOM — TEMPS RESTANT';schedLbl.textContent='Top à chaque intervalle';document.getElementById('emomSection').style.display='';}
   else if(mode==='tabata'){
     document.getElementById('durSection').style.display='none';
     document.getElementById('tabataSection').style.display='';
@@ -468,6 +507,7 @@ function selectDur(btn,m){
 }
 
 S.customMin=10;S.customActive=false;
+S.emomIntervalSec=60; // intervalle EMOM en secondes (défaut 60s)
 function activateCustom(){
   if(S.state!=='idle')return;
   document.querySelectorAll('.dur-btn').forEach(b=>b.classList.remove('active'));
@@ -482,6 +522,30 @@ function customStep(delta){
   document.getElementById('customDisplay').textContent=S.customMin+' MIN';
   if(!S.customActive)activateCustom();
   else{S.dur=S.customMin;S.total=S.customMin*60;S.remain=S.total;updateClock();renderSched();}
+}
+
+function emomStep(part,delta){
+  if(S.state!=='idle')return;
+  let mins=Math.floor(S.emomIntervalSec/60);
+  let secs=S.emomIntervalSec%60;
+  if(part==='min'){
+    mins=Math.max(0,Math.min(10,mins+delta));
+  } else {
+    secs=secs+delta;
+    if(secs>=60){secs-=60;mins=Math.min(10,mins+1);}
+    if(secs<0){if(mins>0){mins--;secs+=60;}else{secs=0;}}
+  }
+  // Limite minimale: 5 secondes
+  let total=mins*60+secs;
+  if(total<5){total=5;mins=0;secs=5;}
+  S.emomIntervalSec=total;
+  document.getElementById('emomMin').textContent=mins;
+  document.getElementById('emomSec').textContent=String(secs).padStart(2,'0');
+  // Affichage résumé
+  const mm=Math.floor(total/60);
+  const ss=total%60;
+  document.getElementById('emomSummary').textContent=`→ Top toutes les ${mm}:${String(ss).padStart(2,'0')}`;
+  renderSched();
 }
 
 // ===== SCHEDULE =====
@@ -514,11 +578,17 @@ function buildAnnouncesAMRAP(totalSec){
 
 function buildAnnouncesEMOM(totalSec){
   const a=[];
-  const totalMin=Math.floor(totalSec/60);
-  // Top à chaque début de minute (beep)
-  for(let m=1;m<totalMin;m++){
-    const at=totalSec-m*60; // temps restant quand on entame la minute m+1
-    a.push({at:at,label:`TOP MIN ${m+1}`,icon:'🔔',beep:true});
+  const interval=S.emomIntervalSec||60;
+  // Top à chaque intervalle
+  let elapsed=interval;
+  let roundN=2;
+  while(elapsed<totalSec){
+    const at=totalSec-elapsed;
+    if(at>10){
+      a.push({at:at,label:`TOP ${roundN}`,icon:'🔔',beep:true});
+    }
+    elapsed+=interval;
+    roundN++;
   }
   a.push({at:10,label:'10 SECONDES',icon:'🎯',tts:'s10'});
   [5,4,3,2,1].forEach(n=>a.push({at:n,label:''+n,icon:'🔔',tts:'s'+n}));
@@ -792,16 +862,36 @@ function checkAnnounce(){
     return;
   }
 
-  // EMOM : bip à chaque début de minute
+  // EMOM : bip à chaque intervalle custom + décompte 5-4-3-2-1 avant chaque round
   if(S.mode==='emom'){
-    if(r>10 && r%60===0){
-      const totalMin=Math.floor(S.total/60);
-      const nextMin=totalMin - (r/60) + 1;
+    const interval=S.emomIntervalSec||60;
+    const elapsed=S.total-r;
+    // Position dans l'intervalle courant (combien de secondes depuis le dernier top)
+    const inInterval=elapsed%interval;
+    // Combien de secondes restent avant le prochain top
+    const secsToNext=interval-inInterval;
+    // Combien de rounds complets seront faits sur la durée totale
+    const totalRounds=Math.floor(S.total/interval);
+    const currentRound=Math.floor(elapsed/interval)+1;
+
+    // Top exact (début de nouveau round)
+    if(r>10 && elapsed>0 && inInterval===0){
+      const roundN=currentRound;
       playBeep();
-      showAnnounce(`🔔 MIN ${nextMin+1}`);
+      showAnnounce(`🔔 ROUND ${roundN}`);
       return;
     }
-    if(r===60){showAnnounce('DERNIÈRE MIN');speak(t.min1);return;}
+
+    // Décompte 5-4-3-2-1 avant le prochain round (mais pas si on est dans les 10 dernières secondes du WOD, déjà géré au-dessus, et pas si c'est le dernier round)
+    if(secsToNext>=1 && secsToNext<=5 && r>10 && currentRound<totalRounds){
+      // On dit juste le chiffre, sans le "!" pour aller plus vite
+      const num=secsToNext;
+      showAnnounce(''+num);
+      speak(t['s'+num]);
+      return;
+    }
+
+    if(r===60 && S.total>120){showAnnounce('DERNIÈRE MIN');speak(t.min1);return;}
     return;
   }
 }
