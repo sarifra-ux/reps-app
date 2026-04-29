@@ -656,10 +656,16 @@ function updateClock(){
   progFill.style.width=((S.total-r)/S.total*100)+'%';
   progFill.className='prog-fill'+(S.mode==='tabata' && S.tabPhase==='rest'?' rest':'');
 
-  // Round badge for tabata
+  // Round badge pour Tabata et EMOM
   const rb=document.getElementById('roundBadge');
   if(S.mode==='tabata' && S.state!=='idle'){
     rb.textContent=`ROUND ${S.tabRound}/${S.tabTotalRounds}`;
+  } else if(S.mode==='emom' && S.state!=='idle'){
+    const interval=S.emomIntervalSec||60;
+    const totalRounds=Math.floor(S.total/interval);
+    const elapsed=S.total-r;
+    const currentRound=Math.min(totalRounds, Math.floor(elapsed/interval)+1);
+    rb.textContent=`ROUND ${currentRound}/${totalRounds}`;
   } else rb.textContent='';
 
   // Phase indicator
