@@ -390,6 +390,11 @@ const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'
 const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
 const BEEP_AUDIO='beep.mp3';
 const TICK_AUDIO='tick.mp3';
+// Voix Brian découpée pour le décompte 5-4-3-2-1 par langue
+const COUNT_AUDIO={
+  fr:{1:'fr-1.mp3',2:'fr-2.mp3',3:'fr-3.mp3',4:'fr-4.mp3',5:'fr-5.mp3'},
+  en:{1:'en-1.mp3',2:'en-2.mp3',3:'en-3.mp3',4:'en-4.mp3',5:'en-5.mp3'}
+};
 
 const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:867},{n:'8',t:1806},{n:'7',t:2735},{n:'6',t:3760},{n:'5',t:4845},{n:'4',t:6056},{n:'3',t:7123},{n:'2',t:7886},{n:'1',t:8675},{n:'GO',t:9380}],
@@ -723,6 +728,21 @@ function playTick(){
   tickAudio.play().catch(()=>{});
 }
 
+let countAudio=null;
+function playCount(num){
+  // Joue le chiffre depuis la voix Brian pré-enregistrée + baisse la musique
+  const src=COUNT_AUDIO[S.lang]&&COUNT_AUDIO[S.lang][num];
+  if(!src) return;
+  countAudio=getCachedAudio('count_'+S.lang+'_'+num, src);
+  countAudio.currentTime=0;
+  countAudio.volume=1.0;
+  // Ducking fort de la musique pendant la lecture
+  const vMus=parseInt(document.getElementById('volMusic').value)/100;
+  if(musicAudio) musicAudio.volume=vMus*0.08;
+  countAudio.onended=()=>{if(musicAudio) musicAudio.volume=vMus;};
+  countAudio.play().catch(()=>{if(musicAudio) musicAudio.volume=vMus;});
+}
+
 function speak(text, opts){
   opts=opts||{};
   if(!window.speechSynthesis)return;
@@ -920,13 +940,12 @@ function checkAnnounce(){
       return;
     }
 
-    // Décompte 5-4-3-2-1 avant le prochain round
+    // Décompte 5-4-3-2-1 avant le prochain round : voix Brian pré-enregistrée
     if(secsToNext>=1 && secsToNext<=5 && r>10 && currentRound<totalRounds){
       const num=secsToNext;
       showAnnounce('⏰ '+num);
-      // TICK aigu volume max (perce la musique) + voix synthétique en mode crunch
-      playTick();
-      speak(t['s'+num], {emomCrunch:true});
+      // Voix Brian découpée (claire, forte, perce la musique)
+      playCount(num);
       return;
     }
 
