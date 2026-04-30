@@ -729,18 +729,33 @@ function playTick(){
 }
 
 let countAudio=null;
+let musicWasPlaying=false;
 function playCount(num){
-  // Joue le chiffre depuis la voix Brian pré-enregistrée + baisse la musique
+  // Joue le chiffre depuis la voix Brian pré-enregistrée
+  // Sur haut-parleur Android le ducking ne suffit pas : on PAUSE la musique pendant la voix
   const src=COUNT_AUDIO[S.lang]&&COUNT_AUDIO[S.lang][num];
   if(!src) return;
   countAudio=getCachedAudio('count_'+S.lang+'_'+num, src);
   countAudio.currentTime=0;
   countAudio.volume=1.0;
-  // Ducking fort de la musique pendant la lecture
-  const vMus=parseInt(document.getElementById('volMusic').value)/100;
-  if(musicAudio) musicAudio.volume=vMus*0.08;
-  countAudio.onended=()=>{if(musicAudio) musicAudio.volume=vMus;};
-  countAudio.play().catch(()=>{if(musicAudio) musicAudio.volume=vMus;});
+  // Pause la musique seulement sur le 5 (pour éviter de la pause/play à chaque seconde)
+  if(num===5 && musicAudio && !musicAudio.paused){
+    musicWasPlaying=true;
+    try{musicAudio.pause();}catch(e){}
+  }
+  // Reprendre la musique uniquement à la fin du "1"
+  countAudio.onended=()=>{
+    if(num===1 && musicWasPlaying && musicAudio){
+      try{musicAudio.play();}catch(e){}
+      musicWasPlaying=false;
+    }
+  };
+  countAudio.play().catch(()=>{
+    if(num===1 && musicWasPlaying && musicAudio){
+      try{musicAudio.play();}catch(e){}
+      musicWasPlaying=false;
+    }
+  });
 }
 
 function speak(text, opts){
@@ -955,7 +970,7 @@ function checkAnnounce(){
 }
 
 function pause(){
-  S.state='paused';clearInterval(S.iv);stopMusic();
+  S.state='paused';clearInterval(S.iv);stopMusic();musicWasPlaying=false;
   document.getElementById('btnPlay').textContent='▶';
   document.getElementById('timerCard').classList.remove('playing');
   document.getElementById('waveform').classList.remove('active');
@@ -965,8 +980,9 @@ function pause(){
 function resume(){startMusic();document.getElementById('waveform').classList.add('active');startChrono();}
 
 function resetTimer(){
-  clearInterval(S.iv);clearCd();stopMusic();
+  clearInterval(S.iv);clearCd();stopMusic();musicWasPlaying=false;
   if(voiceAudio){voiceAudio.pause();voiceAudio=null;}
+  if(countAudio){try{countAudio.pause();}catch(e){}countAudio=null;}
   window.speechSynthesis&&window.speechSynthesis.cancel();
   S.state='idle';
   if(S.mode==='tabata'){S.tabPhase='work';S.tabRound=1;updateTotalFromMode();}
