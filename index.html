@@ -728,34 +728,84 @@ function playTick(){
   tickAudio.play().catch(()=>{});
 }
 
-let countAudio=null;
+// === Web Audio API pour le décompte (haute fiabilité Android) ===
+let audioCtx=null;
+let countBuffers={}; // cache des AudioBuffer par clé "lang_num"
 let musicWasPlaying=false;
+
+function ensureAudioCtx(){
+  if(!audioCtx){
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(Ctx) audioCtx=new Ctx();
+  }
+  if(audioCtx && audioCtx.state==='suspended'){
+    audioCtx.resume().catch(()=>{});
+  }
+  return audioCtx;
+}
+
+async function loadCountBuffer(lang, num){
+  const key=lang+'_'+num;
+  if(countBuffers[key]) return countBuffers[key];
+  const src=COUNT_AUDIO[lang] && COUNT_AUDIO[lang][num];
+  if(!src) return null;
+  try{
+    const resp=await fetch(src);
+    const arr=await resp.arrayBuffer();
+    const buf=await audioCtx.decodeAudioData(arr);
+    countBuffers[key]=buf;
+    return buf;
+  }catch(e){
+    console.warn('loadCountBuffer fail',e);
+    return null;
+  }
+}
+
+// Précharge les buffers au démarrage du WOD
+async function preloadCountBuffers(){
+  const ctx=ensureAudioCtx();
+  if(!ctx) return;
+  const lang=S.lang;
+  for(let n=1;n<=5;n++){
+    await loadCountBuffer(lang, n);
+  }
+}
+
 function playCount(num){
-  // Joue le chiffre depuis la voix Brian pré-enregistrée
-  // Sur haut-parleur Android le ducking ne suffit pas : on PAUSE la musique pendant la voix
-  const src=COUNT_AUDIO[S.lang]&&COUNT_AUDIO[S.lang][num];
-  if(!src) return;
-  countAudio=getCachedAudio('count_'+S.lang+'_'+num, src);
-  countAudio.currentTime=0;
-  countAudio.volume=1.0;
-  // Pause la musique seulement sur le 5 (pour éviter de la pause/play à chaque seconde)
+  const ctx=ensureAudioCtx();
+  if(!ctx) return;
+  const key=S.lang+'_'+num;
+  let buf=countBuffers[key];
+  if(!buf){
+    // Pas encore chargé : on charge à la volée
+    loadCountBuffer(S.lang, num).then(b=>{
+      if(b) playBufferNow(b, num);
+    });
+    return;
+  }
+  playBufferNow(buf, num);
+}
+
+function playBufferNow(buf, num){
+  const ctx=audioCtx;
+  // Pause la musique sur le 5 (début du décompte)
   if(num===5 && musicAudio && !musicAudio.paused){
     musicWasPlaying=true;
     try{musicAudio.pause();}catch(e){}
   }
-  // Reprendre la musique uniquement à la fin du "1"
-  countAudio.onended=()=>{
+  const source=ctx.createBufferSource();
+  source.buffer=buf;
+  const gain=ctx.createGain();
+  gain.gain.value=1.0;
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  source.onended=()=>{
     if(num===1 && musicWasPlaying && musicAudio){
       try{musicAudio.play();}catch(e){}
       musicWasPlaying=false;
     }
   };
-  countAudio.play().catch(()=>{
-    if(num===1 && musicWasPlaying && musicAudio){
-      try{musicAudio.play();}catch(e){}
-      musicWasPlaying=false;
-    }
-  });
+  source.start(0);
 }
 
 function speak(text, opts){
@@ -835,6 +885,9 @@ function togglePlay(){
 function launch(){
   updateTotalFromMode();
   updateClock();
+  // Précharger les buffers de décompte (Web Audio API) pendant le 10-9-8...
+  ensureAudioCtx();
+  preloadCountBuffers();
   S.state='launching';
   document.getElementById('btnPlay').textContent='⏳';
   setStatus('launching','10·9·8…');
