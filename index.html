@@ -1021,13 +1021,13 @@ function tabataPhaseEnd(){
 function checkAnnounce(){
   const r=S.remain;const t=TXT[S.lang];
 
-  // Annonces communes: 10s, 5..1, 0
+  // Annonces communes: 10s, 5..1, 0 — décompte 5-4-3-2-1 en voix Brian Web Audio
   if(r===10){showAnnounce('10 SECONDES !');speak(t.s10);return;}
-  if(r===5){showAnnounce('5');speak(t.s5);return;}
-  if(r===4){showAnnounce('4');speak(t.s4);return;}
-  if(r===3){showAnnounce('3');speak(t.s3);return;}
-  if(r===2){showAnnounce('2');speak(t.s2);return;}
-  if(r===1){showAnnounce('1');speak(t.s1);return;}
+  if(r===5){showAnnounce('5');playCount(5);return;}
+  if(r===4){showAnnounce('4');playCount(4);return;}
+  if(r===3){showAnnounce('3');playCount(3);return;}
+  if(r===2){showAnnounce('2');playCount(2);return;}
+  if(r===1){showAnnounce('1');playCount(1);return;}
   if(r===0 && S.mode!=='tabata'){showAnnounce('🏁 TIME !');speak(t.time);return;}
 
   // Tabata : pas d'annonces horaires (trop court)
