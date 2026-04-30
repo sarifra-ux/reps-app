@@ -395,6 +395,11 @@ const COUNT_AUDIO={
   fr:{1:'fr-1.mp3',2:'fr-2.mp3',3:'fr-3.mp3',4:'fr-4.mp3',5:'fr-5.mp3'},
   en:{1:'en-1.mp3',2:'en-2.mp3',3:'en-3.mp3',4:'en-4.mp3',5:'en-5.mp3'}
 };
+// Annonces "Round X" en voix Brian (anglais uniquement, valable pour FR et EN)
+const ROUND_AUDIO={
+  2:'round-2.mp3',3:'round-3.mp3',4:'round-4.mp3',5:'round-5.mp3',
+  6:'round-6.mp3',7:'round-7.mp3',8:'round-8.mp3',9:'round-9.mp3',10:'round-10.mp3'
+};
 
 const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:867},{n:'8',t:1806},{n:'7',t:2735},{n:'6',t:3760},{n:'5',t:4845},{n:'4',t:6056},{n:'3',t:7123},{n:'2',t:7886},{n:'1',t:8675},{n:'GO',t:9380}],
@@ -808,6 +813,68 @@ function playBufferNow(buf, num){
   source.start(0);
 }
 
+// === Annonce vocale "Round X" via Web Audio API ===
+let roundBuffers={};
+async function loadRoundBuffer(num){
+  if(roundBuffers[num]) return roundBuffers[num];
+  const src=ROUND_AUDIO[num];
+  if(!src) return null;
+  try{
+    const resp=await fetch(src);
+    const arr=await resp.arrayBuffer();
+    const buf=await audioCtx.decodeAudioData(arr);
+    roundBuffers[num]=buf;
+    return buf;
+  }catch(e){
+    console.warn('loadRoundBuffer fail',e);
+    return null;
+  }
+}
+
+async function preloadRoundBuffers(){
+  const ctx=ensureAudioCtx();
+  if(!ctx) return;
+  // Précharger les rounds 2 à 10 (les plus probables)
+  for(let n=2;n<=10;n++){
+    await loadRoundBuffer(n);
+  }
+}
+
+function playRound(num){
+  const ctx=ensureAudioCtx();
+  if(!ctx) return;
+  let buf=roundBuffers[num];
+  if(!buf){
+    loadRoundBuffer(num).then(b=>{
+      if(b) playRoundBufferNow(b);
+    });
+    return;
+  }
+  playRoundBufferNow(buf);
+}
+
+function playRoundBufferNow(buf){
+  const ctx=audioCtx;
+  // Couper la musique pendant l'annonce du round (~2 sec)
+  let wasPlaying=false;
+  if(musicAudio && !musicAudio.paused){
+    wasPlaying=true;
+    try{musicAudio.pause();}catch(e){}
+  }
+  const source=ctx.createBufferSource();
+  source.buffer=buf;
+  const gain=ctx.createGain();
+  gain.gain.value=1.0;
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  source.onended=()=>{
+    if(wasPlaying && musicAudio){
+      try{musicAudio.play();}catch(e){}
+    }
+  };
+  source.start(0);
+}
+
 function speak(text, opts){
   opts=opts||{};
   if(!window.speechSynthesis)return;
@@ -885,9 +952,10 @@ function togglePlay(){
 function launch(){
   updateTotalFromMode();
   updateClock();
-  // Précharger les buffers de décompte (Web Audio API) pendant le 10-9-8...
+  // Précharger les buffers (décompte + rounds) pendant le 10-9-8...
   ensureAudioCtx();
   preloadCountBuffers();
+  preloadRoundBuffers();
   S.state='launching';
   document.getElementById('btnPlay').textContent='⏳';
   setStatus('launching','10·9·8…');
@@ -997,14 +1065,18 @@ function checkAnnounce(){
     const totalRounds=Math.floor(S.total/interval);
     const currentRound=Math.floor(elapsed/interval)+1;
 
-    // Top exact (début de nouveau round) : tick aigu + voix tonique
+    // Top exact (début de nouveau round) : voix Brian "Round X" via Web Audio
     if(r>10 && elapsed>0 && inInterval===0){
       const roundN=currentRound;
       showAnnounce(`🔔 ROUND ${roundN}`);
-      playTick();
-      // Voix en mode CRUNCH (tonique, perce la musique avec ducking fort)
-      const txt=S.lang==='fr'?`Round ${roundN} !`:`Round ${roundN} !`;
-      speak(txt, {emomCrunch:true});
+      // Si on a un fichier audio pour ce round, on l'utilise (round 2 à 10)
+      if(ROUND_AUDIO[roundN]){
+        playRound(roundN);
+      } else {
+        // Fallback pour rounds > 10 : tick + voix synthétique
+        playTick();
+        speak(`Round ${roundN} !`, {emomCrunch:true});
+      }
       return;
     }
 
