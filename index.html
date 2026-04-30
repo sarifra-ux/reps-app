@@ -347,6 +347,30 @@
           <span class="track-emoji">🏆</span>
           <div><div class="track-title">Arena Entrance</div><div class="track-sub">HYMNE · NBA · Sport</div></div>
         </button>
+        <button class="track-btn" onclick="selectTrack(this,'censured')">
+          <span class="track-emoji">🗡️</span>
+          <div><div class="track-title">Censured</div><div class="track-sub">HIP-HOP · Drill · Arabic</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'cartier')">
+          <span class="track-emoji">💎</span>
+          <div><div class="track-title">Cartier</div><div class="track-sub">HIP-HOP · Drill · Street</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'crime')">
+          <span class="track-emoji">🔫</span>
+          <div><div class="track-title">Crime</div><div class="track-sub">HIP-HOP · Dark · Heavy</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'cyrilgane')">
+          <span class="track-emoji">🥊</span>
+          <div><div class="track-title">Cyril Gane</div><div class="track-sub">HIP-HOP · Fight · Hymne</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'introduction')">
+          <span class="track-emoji">🎬</span>
+          <div><div class="track-title">Introduction</div><div class="track-sub">HIP-HOP · Intro · Atmospheric</div></div>
+        </button>
+        <button class="track-btn" onclick="selectTrack(this,'vibes')">
+          <span class="track-emoji">🌊</span>
+          <div><div class="track-title">Vibes</div><div class="track-sub">HIP-HOP · Chill · Smooth</div></div>
+        </button>
       </div>
     </div>
 
@@ -421,7 +445,7 @@
 </div>
 
 <script>
-const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'house.mp3',hymne:'hymne.mp3'};
+const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'house.mp3',hymne:'hymne.mp3',censured:'censured.mp3',cartier:'cartier.mp3',crime:'crime.mp3',cyrilgane:'cyrilgane.mp3',introduction:'introduction.mp3',vibes:'vibes.mp3'};
 const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
 const BEEP_AUDIO='beep.mp3';
 const TICK_AUDIO='tick.mp3';
@@ -468,7 +492,19 @@ const TXT={
   }
 };
 
-const TRACK_INFO={pogo:{name:'Pogo dans la Nuit',emoji:'🔥',sub:'RAP · Dark · Trap'},pleinfeu:{name:'Plein Feu Dans La Boîte',emoji:'⚡',sub:'RAP · Hype · Energy'},techno:{name:'Berghain Box',emoji:'🖤',sub:'TECHNO · Hard · Berlin'},house:{name:'Sunset Drop',emoji:'🌅',sub:'HOUSE · Club · 128 BPM'},hymne:{name:'Arena Entrance',emoji:'🏆',sub:'HYMNE · NBA · Sport'}};
+const TRACK_INFO={
+  pogo:{name:'Pogo dans la Nuit',emoji:'🔥',sub:'RAP · Dark · Trap'},
+  pleinfeu:{name:'Plein Feu Dans La Boîte',emoji:'⚡',sub:'RAP · Hype · Energy'},
+  techno:{name:'Berghain Box',emoji:'🖤',sub:'TECHNO · Hard · Berlin'},
+  house:{name:'Sunset Drop',emoji:'🌅',sub:'HOUSE · Club · 128 BPM'},
+  hymne:{name:'Arena Entrance',emoji:'🏆',sub:'HYMNE · NBA · Sport'},
+  censured:{name:'Censured',emoji:'🗡️',sub:'HIP-HOP · Drill · Arabic'},
+  cartier:{name:'Cartier',emoji:'💎',sub:'HIP-HOP · Drill · Street'},
+  crime:{name:'Crime',emoji:'🔫',sub:'HIP-HOP · Dark · Heavy'},
+  cyrilgane:{name:'Cyril Gane',emoji:'🥊',sub:'HIP-HOP · Fight · Hymne'},
+  introduction:{name:'Introduction',emoji:'🎬',sub:'HIP-HOP · Intro · Atmospheric'},
+  vibes:{name:'Vibes',emoji:'🌊',sub:'HIP-HOP · Chill · Smooth'}
+};
 
 const S={
   lang:'fr',track:'pogo',

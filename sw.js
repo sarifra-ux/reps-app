@@ -1,5 +1,5 @@
 // R.E.P.S Service Worker — mode hors-ligne
-const CACHE_NAME = 'reps-v3';
+const CACHE_NAME = 'reps-v4';
 const ASSETS = [
   '/',
   '/index.html',
@@ -12,6 +12,7 @@ const ASSETS = [
   '/techno.mp3',
   '/house.mp3',
   '/hymne.mp3',
+  '/censured.mp3','/cartier.mp3','/crime.mp3','/cyrilgane.mp3','/introduction.mp3','/vibes.mp3',
   '/brian-fr.mp3',
   '/brian-en.mp3',
   '/beep.mp3',
