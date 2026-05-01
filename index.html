@@ -95,6 +95,8 @@
   .dur-btn:hover{border-color:var(--accent2);color:var(--text);transform:translateY(-1px);}
   .dur-btn.active{border-color:var(--accent2);background:linear-gradient(135deg,rgba(0,229,255,0.18),rgba(0,229,255,0.05));color:var(--accent2);box-shadow:0 0 22px var(--glow-b),inset 0 0 10px rgba(0,229,255,0.08);}
   .emom-interval{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-top:6px;box-shadow:0 0 14px var(--glow-emom);}
+  .emom-divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:4px 0;}
+  .emom-rounds-row{display:flex;align-items:center;justify-content:center;gap:14px;}
   .emom-interval-label{font-family:'DM Mono',monospace;font-size:0.55rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;text-align:center;}
   .emom-pickers{display:flex;gap:14px;align-items:center;justify-content:center;}
   .emom-picker{display:flex;flex-direction:column;align-items:center;gap:6px;}
@@ -288,9 +290,9 @@
 
     <!-- 3b. EMOM INTERVAL -->
     <div id="emomSection" style="display:none">
-      <div class="sec-label">⏱ Intervalle EMOM</div>
+      <div class="sec-label">⏱ Config EMOM</div>
       <div class="emom-interval">
-        <div class="emom-interval-label">Top à chaque</div>
+        <div class="emom-interval-label">⚡ Work (effort)</div>
         <div class="emom-pickers">
           <div class="emom-picker">
             <div class="emom-picker-label">MIN</div>
@@ -309,7 +311,34 @@
             </div>
           </div>
         </div>
-        <div class="emom-summary" id="emomSummary">→ Top toutes les 1:00</div>
+        <div class="emom-divider"></div>
+        <div class="emom-interval-label">😮‍💨 Rest (récup)</div>
+        <div class="emom-pickers">
+          <div class="emom-picker">
+            <div class="emom-picker-label">MIN</div>
+            <div class="emom-picker-row">
+              <button class="emom-picker-btn" onclick="emomRestStep('min',-1)">−</button>
+              <div class="emom-picker-val" id="emomRestMin">0</div>
+              <button class="emom-picker-btn" onclick="emomRestStep('min',1)">+</button>
+            </div>
+          </div>
+          <div class="emom-picker">
+            <div class="emom-picker-label">SEC</div>
+            <div class="emom-picker-row">
+              <button class="emom-picker-btn" onclick="emomRestStep('sec',-1)">−</button>
+              <div class="emom-picker-val" id="emomRestSec">00</div>
+              <button class="emom-picker-btn" onclick="emomRestStep('sec',1)">+</button>
+            </div>
+          </div>
+        </div>
+        <div class="emom-divider"></div>
+        <div class="emom-interval-label">🔁 Nombre de tours</div>
+        <div class="emom-rounds-row">
+          <button class="emom-picker-btn" onclick="emomRoundsStep(-1)">−</button>
+          <div class="emom-picker-val" id="emomRounds">5</div>
+          <button class="emom-picker-btn" onclick="emomRoundsStep(1)">+</button>
+        </div>
+        <div class="emom-summary" id="emomSummary">→ 5 × (1:00 + 0:00) = 5:00</div>
       </div>
     </div>
 
@@ -567,6 +596,15 @@ function updateTotalFromMode(){
     S.tabWorkSec=w;S.tabRestSec=r;S.tabTotalRounds=rounds;
     S.tabPhase='work';S.tabRound=1;
     S.total=w; S.remain=w;
+  } else if(S.mode==='emom'){
+    // Total EMOM = rounds × (work + rest)
+    const work=S.emomIntervalSec||60;
+    const rest=S.emomRestSec||0;
+    const rounds=S.emomRounds||5;
+    S.total=rounds*(work+rest);
+    S.remain=S.total;
+    S.emomPhase='work';
+    S.emomCurrentRound=1;
   } else {
     S.total=S.dur*60;
     S.remain=S.total;
@@ -599,7 +637,11 @@ function selectDur(btn,m){
 }
 
 S.customMin=10;S.customActive=false;
-S.emomIntervalSec=60; // intervalle EMOM en secondes (défaut 60s)
+S.emomIntervalSec=60; // durée WORK en secondes (défaut 60s)
+S.emomRestSec=0; // durée REST en secondes (défaut 0)
+S.emomRounds=5; // nombre de tours (défaut 5)
+S.emomPhase='work'; // phase courante en mode EMOM : 'work' ou 'rest'
+S.emomCurrentRound=1; // tour courant
 function activateCustom(){
   if(S.state!=='idle')return;
   document.querySelectorAll('.dur-btn').forEach(b=>b.classList.remove('active'));
@@ -618,23 +660,57 @@ function customStep(delta){
 
 function emomStep(part,delta){
   if(S.state!=='idle')return;
-  // On travaille directement sur le total en secondes
   let total=S.emomIntervalSec||60;
-  if(part==='min'){
-    total=total+delta*60;
-  } else {
-    total=total+delta;
-  }
-  // Limites : min 5 sec, max 10:00 (600 sec)
+  if(part==='min'){total=total+delta*60;} else {total=total+delta;}
   total=Math.max(5,Math.min(600,total));
   S.emomIntervalSec=total;
-  // Mise à jour affichage
   const mins=Math.floor(total/60);
   const secs=total%60;
   document.getElementById('emomMin').textContent=mins;
   document.getElementById('emomSec').textContent=String(secs).padStart(2,'0');
-  document.getElementById('emomSummary').textContent=`→ Top toutes les ${mins}:${String(secs).padStart(2,'0')}`;
+  refreshEmomSummary();
   renderSched();
+}
+
+function emomRestStep(part,delta){
+  if(S.state!=='idle')return;
+  let total=S.emomRestSec||0;
+  if(part==='min'){total=total+delta*60;} else {total=total+delta;}
+  // Rest peut être 0 (pas de rest) ou min 5s, max 5:00 (300s)
+  if(total<0) total=0;
+  if(total>0 && total<5) total=delta>0?5:0;
+  if(total>300) total=300;
+  S.emomRestSec=total;
+  const mins=Math.floor(total/60);
+  const secs=total%60;
+  document.getElementById('emomRestMin').textContent=mins;
+  document.getElementById('emomRestSec').textContent=String(secs).padStart(2,'0');
+  refreshEmomSummary();
+  renderSched();
+}
+
+function emomRoundsStep(delta){
+  if(S.state!=='idle')return;
+  let r=(S.emomRounds||5)+delta;
+  r=Math.max(1,Math.min(30,r));
+  S.emomRounds=r;
+  document.getElementById('emomRounds').textContent=r;
+  refreshEmomSummary();
+  renderSched();
+}
+
+function refreshEmomSummary(){
+  const work=S.emomIntervalSec||60;
+  const rest=S.emomRestSec||0;
+  const rounds=S.emomRounds||5;
+  const totalSec=rounds*(work+rest);
+  const wm=Math.floor(work/60), ws=work%60;
+  const rm=Math.floor(rest/60), rs=rest%60;
+  const tm=Math.floor(totalSec/60), ts=totalSec%60;
+  const workStr=`${wm}:${String(ws).padStart(2,'0')}`;
+  const restStr=`${rm}:${String(rs).padStart(2,'0')}`;
+  const totalStr=`${tm}:${String(ts).padStart(2,'0')}`;
+  document.getElementById('emomSummary').textContent=`→ ${rounds} × (${workStr} + ${restStr}) = ${totalStr}`;
 }
 
 // ===== SCHEDULE =====
@@ -733,7 +809,6 @@ function pad(n){return n.toString().padStart(2,'0');}
 function updateClock(){
   const r=S.remain;
   const clock=document.getElementById('timerClock');
-  // En EMOM le chrono monte (elapsed). Sinon il descend (remain).
   if(S.mode==='emom'){
     const elapsed=S.total-r;
     clock.textContent=pad(Math.floor(elapsed/60))+':'+pad(elapsed%60);
@@ -743,9 +818,18 @@ function updateClock(){
 
   let cls='timer-clock';
   if(S.mode==='tabata' && S.tabPhase==='rest'){cls+=' rest';}
+  else if(S.mode==='emom' && S.emomPhase==='rest' && S.state==='playing'){cls+=' rest';}
   else if(r<=10) cls+=' danger';
   else if(r<=60 && S.mode!=='emom') cls+=' warn';
   clock.className=cls;
+  
+  // En EMOM, mettre à jour l'eyebrow avec WORK/REST + ROUND X/Y
+  if(S.mode==='emom' && S.state==='playing'){
+    const phaseLabel=S.emomPhase==='rest'?'😮‍💨 REST':'⚡ WORK';
+    const totalRounds=S.emomRounds||5;
+    const eb=document.getElementById('timerEyebrow');
+    if(eb) eb.textContent=`// EMOM ${phaseLabel} — ROUND ${S.emomCurrentRound}/${totalRounds}`;
+  }
 
   const progFill=document.getElementById('progFill');
   progFill.style.width=((S.total-r)/S.total*100)+'%';
@@ -905,10 +989,56 @@ async function loadRoundBuffer(num){
 async function preloadRoundBuffers(){
   const ctx=ensureAudioCtx();
   if(!ctx) return;
-  // Précharger les rounds 2 à 10 (les plus probables)
   for(let n=2;n<=10;n++){
     await loadRoundBuffer(n);
   }
+  // Précharger aussi le rest
+  await loadRestBuffer();
+}
+
+let restBuffer=null;
+async function loadRestBuffer(){
+  if(restBuffer) return restBuffer;
+  try{
+    const resp=await fetch('rest.mp3');
+    const arr=await resp.arrayBuffer();
+    restBuffer=await audioCtx.decodeAudioData(arr);
+    return restBuffer;
+  }catch(e){
+    console.warn('loadRestBuffer fail',e);
+    return null;
+  }
+}
+
+function playRest(){
+  const ctx=ensureAudioCtx();
+  if(!ctx) return;
+  if(!restBuffer){
+    loadRestBuffer().then(b=>{if(b) playRestBufferNow(b);});
+    return;
+  }
+  playRestBufferNow(restBuffer);
+}
+
+function playRestBufferNow(buf){
+  const ctx=audioCtx;
+  let wasPlaying=false;
+  if(musicAudio && !musicAudio.paused){
+    wasPlaying=true;
+    try{musicAudio.pause();}catch(e){}
+  }
+  const source=ctx.createBufferSource();
+  source.buffer=buf;
+  const gain=ctx.createGain();
+  gain.gain.value=1.0;
+  source.connect(gain);
+  gain.connect(ctx.destination);
+  source.onended=()=>{
+    if(wasPlaying && musicAudio){
+      try{musicAudio.play();}catch(e){}
+    }
+  };
+  source.start(0);
 }
 
 function playRound(num){
@@ -1124,40 +1254,73 @@ function checkAnnounce(){
     return;
   }
 
-  // EMOM : bip à chaque intervalle custom + décompte 5-4-3-2-1 avant chaque round
+  // EMOM : gestion work/rest avec décompte vocal
   if(S.mode==='emom'){
-    const interval=S.emomIntervalSec||60;
+    const work=S.emomIntervalSec||60;
+    const rest=S.emomRestSec||0;
+    const rounds=S.emomRounds||5;
+    const cycleSec=work+rest; // durée d'un tour complet (work + rest)
     const elapsed=S.total-r;
-    // Position dans l'intervalle courant (combien de secondes depuis le dernier top)
-    const inInterval=elapsed%interval;
-    // Combien de secondes restent avant le prochain top
-    const secsToNext=interval-inInterval;
-    // Combien de rounds complets seront faits sur la durée totale
-    const totalRounds=Math.floor(S.total/interval);
-    const currentRound=Math.floor(elapsed/interval)+1;
-
-    // Top exact (début de nouveau round) : voix Brian "Round X" via Web Audio
-    if(r>10 && elapsed>0 && inInterval===0){
+    // Position dans le cycle courant
+    const inCycle=elapsed%cycleSec;
+    // Round courant (1-indexé)
+    const currentRound=Math.floor(elapsed/cycleSec)+1;
+    // Phase courante
+    const inWork=inCycle<work;
+    const phase=inWork?'work':'rest';
+    // Position dans la phase actuelle
+    const inPhase=inWork?inCycle:(inCycle-work);
+    const phaseLen=inWork?work:rest;
+    const secsToNext=phaseLen-inPhase; // sec avant fin de la phase
+    
+    // Détecter changement de phase pour déclencher l'audio
+    if(S.emomPhase!==phase){
+      S.emomPhase=phase;
+      if(phase==='rest'){
+        // Début du REST : voix "Rest!"
+        showAnnounce('😮‍💨 REST');
+        playRest();
+        return;
+      } else {
+        // Début d'un nouveau WORK (= nouveau round, sauf le tout 1er)
+        if(currentRound>1){
+          showAnnounce(`🔔 ROUND ${currentRound}`);
+          if(ROUND_AUDIO[currentRound]){
+            playRound(currentRound);
+          } else {
+            playTick();
+            speak(`Round ${currentRound} !`, {emomCrunch:true});
+          }
+          return;
+        }
+      }
+    }
+    S.emomCurrentRound=currentRound;
+    
+    // Top exact début de round (cas où il n'y a pas de rest, sinon géré par changement de phase au-dessus)
+    if(rest===0 && r>10 && elapsed>0 && inCycle===0){
       const roundN=currentRound;
       showAnnounce(`🔔 ROUND ${roundN}`);
-      // Si on a un fichier audio pour ce round, on l'utilise (round 2 à 10)
       if(ROUND_AUDIO[roundN]){
         playRound(roundN);
       } else {
-        // Fallback pour rounds > 10 : tick + voix synthétique
         playTick();
         speak(`Round ${roundN} !`, {emomCrunch:true});
       }
       return;
     }
-
-    // Décompte 5-4-3-2-1 avant le prochain round : voix Brian pré-enregistrée
-    if(secsToNext>=1 && secsToNext<=5 && r>10 && currentRound<totalRounds){
-      const num=secsToNext;
-      showAnnounce('⏰ '+num);
-      // Voix Brian découpée (claire, forte, perce la musique)
-      playCount(num);
-      return;
+    
+    // Décompte 5-4-3-2-1 avant la fin de la phase (work ou rest), sauf sur les 10 dernières sec du WOD complet
+    if(secsToNext>=1 && secsToNext<=5 && r>10){
+      // Pour ne pas décompter à la fin du dernier rest si c'est aussi la fin du WOD
+      const isLastPhase=(currentRound===rounds && !inWork);
+      const isLastWork=(currentRound===rounds && inWork);
+      if(!isLastWork && !isLastPhase){
+        const num=secsToNext;
+        showAnnounce('⏰ '+num);
+        playCount(num);
+        return;
+      }
     }
 
     if(r===60 && S.total>120){showAnnounce('DERNIÈRE MIN');speak(t.min1);return;}
@@ -1182,6 +1345,7 @@ function resetTimer(){
   window.speechSynthesis&&window.speechSynthesis.cancel();
   S.state='idle';
   if(S.mode==='tabata'){S.tabPhase='work';S.tabRound=1;updateTotalFromMode();}
+  if(S.mode==='emom'){S.emomPhase='work';S.emomCurrentRound=1;updateTotalFromMode();}
   else{S.remain=S.total;}
   updateClock();
   document.getElementById('btnPlay').textContent='▶';
