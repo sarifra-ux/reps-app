@@ -68,7 +68,7 @@
 
   /* MODE TABS */
   .mode-tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;margin:14px 0;box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);}
-  .mode-tab{flex:1;background:none;border:1.5px solid transparent;border-radius:10px;padding:10px 6px;font-family:'Bebas Neue',sans-serif;font-size:0.95rem;letter-spacing:2px;color:var(--muted);cursor:pointer;transition:all 0.25s;}
+  .mode-tab{flex:1;background:none;border:1.5px solid transparent;border-radius:10px;padding:13px 8px;font-family:'Bebas Neue',sans-serif;font-size:1.25rem;letter-spacing:2px;color:var(--muted);cursor:pointer;transition:all 0.25s;}
   /* Couleur par mode pour le bouton actif */
   .mode-tab[onclick*="'wod'"].active{background:linear-gradient(135deg,rgba(230,63,255,0.18),rgba(230,63,255,0.05));border-color:var(--accent-fortime);color:var(--accent-fortime);box-shadow:0 0 18px var(--glow-a),inset 0 0 12px rgba(230,63,255,0.1);}
   .mode-tab[onclick*="'amrap'"].active{background:linear-gradient(135deg,rgba(0,229,255,0.18),rgba(0,229,255,0.05));border-color:var(--accent-amrap);color:var(--accent-amrap);box-shadow:0 0 18px var(--glow-b),inset 0 0 12px rgba(0,229,255,0.1);}
@@ -81,7 +81,7 @@
   .sec-label{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:3px;color:#9090b0;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
   .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
   .tracks{display:flex;flex-direction:column;gap:7px;}
-  .track-btn{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:14px;padding:14px 16px;cursor:pointer;display:flex;align-items:center;gap:12px;color:var(--text);transition:all 0.25s;}
+  .track-btn{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:14px;color:var(--text);transition:all 0.25s;font-size:1.05rem;}
   .track-btn:hover{border-color:var(--accent);transform:translateX(3px);box-shadow:0 0 12px rgba(230,63,255,0.2);}
   .track-btn.active{border-color:var(--accent);background:linear-gradient(135deg,rgba(230,63,255,0.18),rgba(0,229,255,0.08));box-shadow:0 0 24px var(--glow-a),inset 0 0 12px rgba(230,63,255,0.05);}
   .track-emoji{font-size:1.4rem;flex-shrink:0;}
@@ -90,20 +90,23 @@
   .track-btn.active .track-sub{color:var(--accent);}
 
   .durations{display:flex;flex-wrap:wrap;gap:7px;}
-  .dur-btn{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:10px;padding:9px 11px;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:2px;cursor:pointer;color:var(--muted);line-height:1;display:flex;flex-direction:column;align-items:center;transition:all 0.2s;}
+  .dur-btn{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-family:'Bebas Neue',sans-serif;font-size:1.85rem;letter-spacing:2px;cursor:pointer;color:var(--muted);line-height:1;display:flex;flex-direction:column;align-items:center;transition:all 0.2s;}
   .dur-btn small{font-family:'DM Mono',monospace;font-size:0.42rem;letter-spacing:2px;display:block;margin-top:2px;}
   .dur-btn:hover{border-color:var(--accent2);color:var(--text);transform:translateY(-1px);}
   .dur-btn.active{border-color:var(--accent2);background:linear-gradient(135deg,rgba(0,229,255,0.18),rgba(0,229,255,0.05));color:var(--accent2);box-shadow:0 0 22px var(--glow-b),inset 0 0 10px rgba(0,229,255,0.08);}
   .emom-interval{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;margin-top:6px;box-shadow:0 0 14px var(--glow-emom);}
   .emom-divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:4px 0;}
-  .emom-rounds-row{display:flex;align-items:center;justify-content:center;gap:14px;}
+  .emom-rounds-info{display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .emom-rounds-display{display:flex;align-items:baseline;gap:8px;}
+  .emom-rounds-num{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;color:var(--accent-emom);text-shadow:0 0 12px var(--glow-emom);letter-spacing:2px;}
+  .emom-rounds-hint{font-family:'DM Mono',monospace;font-size:0.55rem;color:var(--muted);letter-spacing:1px;}
   .emom-interval-label{font-family:'DM Mono',monospace;font-size:0.55rem;letter-spacing:2px;color:var(--muted);text-transform:uppercase;text-align:center;}
   .emom-pickers{display:flex;gap:14px;align-items:center;justify-content:center;}
   .emom-picker{display:flex;flex-direction:column;align-items:center;gap:6px;}
   .emom-picker-label{font-family:'DM Mono',monospace;font-size:0.5rem;letter-spacing:2px;color:var(--muted);}
   .emom-picker-row{display:flex;align-items:center;gap:6px;}
-  .emom-picker-val{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:2px;color:var(--accent-emom);min-width:42px;text-align:center;line-height:1;text-shadow:0 0 10px var(--glow-emom);}
-  .emom-picker-btn{background:var(--surface);border:1px solid var(--border);border-radius:50%;width:30px;height:30px;color:var(--text);cursor:pointer;font-size:1.1rem;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+  .emom-picker-val{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;letter-spacing:2px;color:var(--accent-emom);min-width:56px;text-align:center;line-height:1;text-shadow:0 0 10px var(--glow-emom);}
+  .emom-picker-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:50%;width:40px;height:40px;color:var(--text);cursor:pointer;font-size:1.4rem;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
   .emom-picker-btn:active{transform:scale(0.92);}
   .emom-picker-btn:hover{border-color:var(--accent-emom);color:var(--accent-emom);}
   .emom-summary{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--accent2);text-align:center;letter-spacing:1px;}
@@ -111,18 +114,18 @@
   .custom-dur.active{border-color:var(--accent2);background:rgba(0,229,255,0.08);box-shadow:0 0 14px var(--glow-b);}
   .custom-label{font-family:'DM Mono',monospace;font-size:0.55rem;letter-spacing:2px;color:var(--muted);text-align:center;text-transform:uppercase;}
   .custom-row{display:flex;align-items:center;justify-content:center;gap:14px;}
-  .custom-btn{background:var(--surface);border:1px solid var(--border);border-radius:50%;width:36px;height:36px;color:var(--text);cursor:pointer;font-size:1.4rem;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+  .custom-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:50%;width:48px;height:48px;color:var(--text);cursor:pointer;font-size:1.8rem;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
   .custom-btn:active{transform:scale(0.92);}
   .custom-btn:hover{border-color:var(--accent2);color:var(--accent2);}
   .custom-btn:disabled{opacity:0.3;cursor:not-allowed;}
-  .custom-display{font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:3px;color:var(--accent2);min-width:90px;text-align:center;line-height:1;}
+  .custom-display{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:3px;color:var(--accent2);min-width:120px;text-align:center;line-height:1;}
   .custom-dur:not(.active) .custom-display{color:var(--muted);}
 
   /* TABATA CONFIG */
   .tabata-config{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 14px var(--glow-tabata);}
   .tab-row{display:flex;align-items:center;gap:10px;}
   .tab-row label{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:1px;min-width:70px;}
-  .tab-row input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;outline:none;text-align:center;}
+  .tab-row input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;outline:none;text-align:center;}
   .tab-row input:focus{border-color:var(--accent);}
 
   .vol-section{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;}
@@ -135,13 +138,13 @@
 
   /* FAVORITES */
   .fav-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;}
-  .fav-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .fav-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 13px;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:1.05rem;}
   .fav-item:hover{border-color:var(--accent);}
   .fav-name{flex:1;font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .fav-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;padding:2px 6px;}
   .fav-del:hover{color:var(--accent);}
   .fav-empty{font-family:'DM Mono',monospace;font-size:0.55rem;color:var(--muted);text-align:center;padding:10px;font-style:italic;}
-  .btn-save-fav{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px dashed var(--border);border-radius:10px;padding:10px 12px;color:var(--muted);cursor:pointer;font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:1px;transition:all 0.2s;margin-top:8px;}
+  .btn-save-fav{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px dashed var(--border);border-radius:10px;padding:13px 16px;color:var(--muted);cursor:pointer;font-family:'DM Mono',monospace;font-size:0.78rem;letter-spacing:1px;transition:all 0.2s;margin-top:8px;}
   .btn-save-fav:hover{border-color:var(--accent);color:var(--accent);border-style:solid;background:linear-gradient(135deg,rgba(230,63,255,0.1),rgba(230,63,255,0.02));box-shadow:0 0 14px rgba(230,63,255,0.2);}
 
   main{padding:24px 28px;display:flex;flex-direction:column;gap:18px;}
@@ -332,11 +335,12 @@
           </div>
         </div>
         <div class="emom-divider"></div>
-        <div class="emom-interval-label">🔁 Nombre de tours</div>
-        <div class="emom-rounds-row">
-          <button class="emom-picker-btn" onclick="emomRoundsStep(-1)">−</button>
-          <div class="emom-picker-val" id="emomRounds">5</div>
-          <button class="emom-picker-btn" onclick="emomRoundsStep(1)">+</button>
+        <div class="emom-rounds-info">
+          <div class="emom-interval-label" style="margin-bottom:4px">🔁 Tours calculés</div>
+          <div class="emom-rounds-display">
+            <span class="emom-rounds-num" id="emomRounds">5</span>
+            <span class="emom-rounds-hint">tours (auto-calculés depuis la durée)</span>
+          </div>
         </div>
         <div class="emom-summary" id="emomSummary">→ 5 × (1:00 + 0:00) = 5:00</div>
       </div>
@@ -575,7 +579,7 @@ function setMode(btn,mode){
 
   if(mode==='wod'){lbl.textContent='Durée WOD';eyebrow.textContent='// TEMPS RESTANT';schedLbl.textContent='Programme des annonces';}
   else if(mode==='amrap'){lbl.textContent='Durée AMRAP';eyebrow.textContent='// AMRAP — TEMPS RESTANT';schedLbl.textContent='Annonces chaque minute';}
-  else if(mode==='emom'){lbl.textContent='Durée EMOM';eyebrow.textContent='// EMOM — TEMPS ÉCOULÉ';schedLbl.textContent='Top à chaque intervalle';document.getElementById('emomSection').style.display='';}
+  else if(mode==='emom'){lbl.textContent='Durée EMOM';eyebrow.textContent='// EMOM — TEMPS ÉCOULÉ';schedLbl.textContent='Top à chaque intervalle';document.getElementById('emomSection').style.display='';emomRecomputeRounds();}
   else if(mode==='tabata'){
     document.getElementById('durSection').style.display='none';
     document.getElementById('tabataSection').style.display='';
@@ -632,6 +636,7 @@ function selectDur(btn,m){
   document.querySelectorAll('.dur-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('customDur').classList.remove('active');
   btn.classList.add('active');S.dur=m;S.total=m*60;S.customActive=false;
+  if(S.mode==='emom') emomRecomputeRounds();
   if(S.state==='idle'){S.remain=S.total;updateClock();}
   renderSched();
 }
@@ -648,6 +653,7 @@ function activateCustom(){
   document.getElementById('customDur').classList.add('active');
   S.customActive=true;
   S.dur=S.customMin;S.total=S.customMin*60;S.remain=S.total;
+  if(S.mode==='emom') emomRecomputeRounds();
   updateClock();renderSched();
 }
 function customStep(delta){
@@ -655,7 +661,8 @@ function customStep(delta){
   S.customMin=Math.max(1,Math.min(60,S.customMin+delta));
   document.getElementById('customDisplay').textContent=S.customMin+' MIN';
   if(!S.customActive)activateCustom();
-  else{S.dur=S.customMin;S.total=S.customMin*60;S.remain=S.total;updateClock();renderSched();}
+  else{S.dur=S.customMin;S.total=S.customMin*60;S.remain=S.total;
+  if(S.mode==='emom') emomRecomputeRounds();updateClock();renderSched();}
 }
 
 function emomStep(part,delta){
@@ -668,7 +675,7 @@ function emomStep(part,delta){
   const secs=total%60;
   document.getElementById('emomMin').textContent=mins;
   document.getElementById('emomSec').textContent=String(secs).padStart(2,'0');
-  refreshEmomSummary();
+  emomRecomputeRounds();
   renderSched();
 }
 
@@ -676,7 +683,6 @@ function emomRestStep(part,delta){
   if(S.state!=='idle')return;
   let total=S.emomRestSec||0;
   if(part==='min'){total=total+delta*60;} else {total=total+delta;}
-  // Rest peut être 0 (pas de rest) ou min 5s, max 5:00 (300s)
   if(total<0) total=0;
   if(total>0 && total<5) total=delta>0?5:0;
   if(total>300) total=300;
@@ -685,18 +691,24 @@ function emomRestStep(part,delta){
   const secs=total%60;
   document.getElementById('emomRestMin').textContent=mins;
   document.getElementById('emomRestSec').textContent=String(secs).padStart(2,'0');
-  refreshEmomSummary();
+  emomRecomputeRounds();
   renderSched();
 }
 
-function emomRoundsStep(delta){
-  if(S.state!=='idle')return;
-  let r=(S.emomRounds||5)+delta;
-  r=Math.max(1,Math.min(30,r));
-  S.emomRounds=r;
-  document.getElementById('emomRounds').textContent=r;
+function emomRecomputeRounds(){
+  // Calcul auto des tours en fonction de la durée WOD et du cycle work+rest
+  const work=S.emomIntervalSec||60;
+  const rest=S.emomRestSec||0;
+  const cycle=work+rest;
+  // Durée WOD : soit dur (boutons), soit customMin (custom)
+  const durMin=S.customActive?(S.customMin||10):(S.dur||5);
+  const durSec=durMin*60;
+  // Nombre de tours = combien de cycles entiers tiennent dans la durée
+  let rounds=Math.max(1,Math.floor(durSec/cycle));
+  S.emomRounds=rounds;
+  const el=document.getElementById('emomRounds');
+  if(el) el.textContent=rounds;
   refreshEmomSummary();
-  renderSched();
 }
 
 function refreshEmomSummary(){
@@ -710,7 +722,18 @@ function refreshEmomSummary(){
   const workStr=`${wm}:${String(ws).padStart(2,'0')}`;
   const restStr=`${rm}:${String(rs).padStart(2,'0')}`;
   const totalStr=`${tm}:${String(ts).padStart(2,'0')}`;
-  document.getElementById('emomSummary').textContent=`→ ${rounds} × (${workStr} + ${restStr}) = ${totalStr}`;
+  // Comparaison avec la durée WOD configurée
+  const durMin=S.customActive?(S.customMin||10):(S.dur||5);
+  const targetSec=durMin*60;
+  let extra='';
+  if(targetSec!==totalSec){
+    const diff=targetSec-totalSec;
+    const sign=diff>0?'+':'-';
+    const dm=Math.floor(Math.abs(diff)/60);
+    const ds=Math.abs(diff)%60;
+    extra=` ⚠ Configuré: ${durMin}:00 (écart ${sign}${dm}:${String(ds).padStart(2,'0')})`;
+  }
+  document.getElementById('emomSummary').textContent=`→ ${rounds} × (${workStr} + ${restStr}) = ${totalStr}${extra}`;
 }
 
 // ===== SCHEDULE =====
