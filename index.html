@@ -239,38 +239,10 @@
 </head>
 <body>
 
-<!-- ===== WELCOME SCREEN (1ère visite ou clic "Revoir l'accueil") ===== -->
+<!-- ===== SPLASH SCREEN (auto-dismiss après 2s) ===== -->
 <div id="welcomeScreen" class="welcome" style="display:none">
-  <div class="welcome-bg"></div>
   <div class="welcome-content">
-    <div class="welcome-tag">// CROSSFIT AUDIO ENGINE</div>
-    <h1 class="welcome-logo">
-      <span style="color:#e63fff;text-shadow:0 0 30px rgba(230,63,255,0.6)">R</span>·<span style="color:#c64fef;text-shadow:0 0 30px rgba(198,79,239,0.5)">E</span>·<span style="color:#a05fd0;text-shadow:0 0 30px rgba(160,95,208,0.5)">P</span>·<span style="color:#00e5ff;text-shadow:0 0 30px rgba(0,229,255,0.6)">S</span>
-    </h1>
-    <div class="welcome-baseline">Rhythm · Engine · Performance · Sound</div>
-    <div class="welcome-tagline">Le timer CrossFit qui parle plus fort que ta musique</div>
-    
-    <div class="welcome-stats">
-      <div class="welcome-stat">
-        <div class="welcome-stat-val">11</div>
-        <div class="welcome-stat-label">TRACKS<br/>INTÉGRÉS</div>
-      </div>
-      <div class="welcome-stat">
-        <div class="welcome-stat-val">4</div>
-        <div class="welcome-stat-label">MODES<br/>WOD</div>
-      </div>
-      <div class="welcome-stat">
-        <div class="welcome-stat-val">AI</div>
-        <div class="welcome-stat-label">VOICE<br/>BRIAN</div>
-      </div>
-    </div>
-    
-    <button class="welcome-cta" onclick="closeWelcome()">
-      ENTRER
-      <span class="welcome-cta-arrow">→</span>
-    </button>
-    
-    <div class="welcome-foot">v1.0 · Mobile · Offline-Ready</div>
+    <h1 class="welcome-logo">R·E·P·S</h1>
   </div>
 </div>
 <header>
@@ -1556,23 +1528,27 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ===== WELCOME SCREEN =====
+// ===== SPLASH SCREEN (auto-dismiss 2s) =====
 function showWelcome(){
   const w=document.getElementById('welcomeScreen');
-  if(w) w.style.display='flex';
+  if(w){
+    w.style.display='flex';
+    w.classList.remove('fade-out');
+    // Auto-fermeture après 2 secondes
+    setTimeout(()=>{closeWelcome();},2000);
+  }
 }
 function closeWelcome(){
   const w=document.getElementById('welcomeScreen');
-  if(w) w.style.display='none';
-  // Marquer comme vu en localStorage
-  try{localStorage.setItem('reps_welcome_seen','1');}catch(e){}
+  if(w){
+    // Animation fade-out puis hide
+    w.classList.add('fade-out');
+    setTimeout(()=>{w.style.display='none';},500);
+  }
 }
-// Au chargement : afficher si jamais vu
+// Au chargement : afficher à chaque ouverture
 window.addEventListener('DOMContentLoaded',()=>{
-  try{
-    const seen=localStorage.getItem('reps_welcome_seen');
-    if(!seen) showWelcome();
-  }catch(e){}
+  showWelcome();
 });
 
 </script>
