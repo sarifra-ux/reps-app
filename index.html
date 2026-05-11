@@ -80,7 +80,17 @@
   aside{border-right:1px solid var(--border);padding:22px 18px;display:flex;flex-direction:column;gap:24px;overflow-y:auto;background:linear-gradient(180deg,rgba(230,63,255,0.02),rgba(0,229,255,0.02));}
   .sec-label{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:3px;color:#9090b0;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
   .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
-  .tracks{display:flex;flex-direction:column;gap:7px;}
+  .tracks{display:flex;flex-direction:column;gap:8px;}
+  .track-cat{display:flex;flex-direction:column;}
+  .track-cat-head{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;transition:all 0.2s;width:100%;}
+  .track-cat-head:hover{border-color:var(--accent);}
+  .track-cat-label{flex:1;text-align:left;}
+  .track-cat-count{font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:1px;color:var(--muted);background:var(--surface);padding:3px 8px;border-radius:10px;border:1px solid var(--border);}
+  .track-cat-arrow{font-size:0.8rem;color:var(--muted);transition:transform 0.25s;}
+  .track-cat.open .track-cat-arrow{transform:rotate(180deg);}
+  .track-cat.open .track-cat-head{border-color:var(--accent);background:linear-gradient(135deg,rgba(230,63,255,0.1),rgba(0,229,255,0.05));}
+  .track-cat-body{display:none;flex-direction:column;gap:6px;margin-top:6px;padding-left:8px;border-left:2px solid var(--border);margin-left:8px;}
+  .track-cat.open .track-cat-body{display:flex;}
   .track-btn{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;cursor:pointer;display:flex;align-items:center;gap:14px;color:var(--text);transition:all 0.25s;font-size:1.05rem;}
   .track-btn:hover{border-color:var(--accent);transform:translateX(3px);box-shadow:0 0 12px rgba(230,63,255,0.2);}
   .track-btn.active{border-color:var(--accent);background:linear-gradient(135deg,rgba(230,63,255,0.18),rgba(0,229,255,0.08));box-shadow:0 0 24px var(--glow-a),inset 0 0 12px rgba(230,63,255,0.05);}
@@ -367,50 +377,95 @@
     <div>
       <div class="sec-label">🎵 Track</div>
       <div class="tracks">
-        <button class="track-btn active" onclick="selectTrack(this,'pogo')">
-          <span class="track-emoji">🔥</span>
-          <div><div class="track-title">Pogo dans la Nuit</div><div class="track-sub">RAP · Dark · Trap</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'pleinfeu')">
-          <span class="track-emoji">⚡</span>
-          <div><div class="track-title">Plein Feu Dans La Boîte</div><div class="track-sub">RAP · Hype · Energy</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'techno')">
-          <span class="track-emoji">🖤</span>
-          <div><div class="track-title">Berghain Box</div><div class="track-sub">TECHNO · Hard · Berlin</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'house')">
-          <span class="track-emoji">🌅</span>
-          <div><div class="track-title">Sunset Drop</div><div class="track-sub">HOUSE · Club · 128 BPM</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'hymne')">
-          <span class="track-emoji">🏆</span>
-          <div><div class="track-title">Arena Entrance</div><div class="track-sub">HYMNE · NBA · Sport</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'censured')">
-          <span class="track-emoji">🗡️</span>
-          <div><div class="track-title">Censured</div><div class="track-sub">HIP-HOP · Drill · Arabic</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'cartier')">
-          <span class="track-emoji">💎</span>
-          <div><div class="track-title">Cartier</div><div class="track-sub">HIP-HOP · Drill · Street</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'crime')">
-          <span class="track-emoji">🔫</span>
-          <div><div class="track-title">Crime</div><div class="track-sub">HIP-HOP · Dark · Heavy</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'cyrilgane')">
-          <span class="track-emoji">🥊</span>
-          <div><div class="track-title">Cyril Gane</div><div class="track-sub">HIP-HOP · Fight · Hymne</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'introduction')">
-          <span class="track-emoji">🎬</span>
-          <div><div class="track-title">Introduction</div><div class="track-sub">HIP-HOP · Intro · Atmospheric</div></div>
-        </button>
-        <button class="track-btn" onclick="selectTrack(this,'vibes')">
-          <span class="track-emoji">🌊</span>
-          <div><div class="track-title">Vibes</div><div class="track-sub">HIP-HOP · Chill · Smooth</div></div>
-        </button>
+        <div class="track-cat" data-cat="rap">
+          <button class="track-cat-head" onclick="toggleCat('rap')">
+            <span class="track-cat-label">🔥 RAP</span>
+            <span class="track-cat-count">2</span>
+            <span class="track-cat-arrow">▾</span>
+          </button>
+          <div class="track-cat-body">
+            <button class="track-btn active" onclick="selectTrack(this,'pogo')">
+              <span class="track-emoji">🔥</span>
+              <div><div class="track-title">Pogo dans la Nuit</div><div class="track-sub">Dark · Trap</div></div>
+            </button>
+            <button class="track-btn" onclick="selectTrack(this,'pleinfeu')">
+              <span class="track-emoji">⚡</span>
+              <div><div class="track-title">Plein Feu Dans La Boîte</div><div class="track-sub">Hype · Energy</div></div>
+            </button>
+          </div>
+        </div>
+        <div class="track-cat" data-cat="techno">
+          <button class="track-cat-head" onclick="toggleCat('techno')">
+            <span class="track-cat-label">🖤 TECHNO</span>
+            <span class="track-cat-count">1</span>
+            <span class="track-cat-arrow">▾</span>
+          </button>
+          <div class="track-cat-body">
+            <button class="track-btn" onclick="selectTrack(this,'techno')">
+              <span class="track-emoji">🖤</span>
+              <div><div class="track-title">Berghain Box</div><div class="track-sub">Hard · Berlin</div></div>
+            </button>
+          </div>
+        </div>
+        <div class="track-cat" data-cat="house">
+          <button class="track-cat-head" onclick="toggleCat('house')">
+            <span class="track-cat-label">🌅 HOUSE</span>
+            <span class="track-cat-count">1</span>
+            <span class="track-cat-arrow">▾</span>
+          </button>
+          <div class="track-cat-body">
+            <button class="track-btn" onclick="selectTrack(this,'house')">
+              <span class="track-emoji">🌅</span>
+              <div><div class="track-title">Sunset Drop</div><div class="track-sub">Club · 128 BPM</div></div>
+            </button>
+          </div>
+        </div>
+        <div class="track-cat" data-cat="hymne">
+          <button class="track-cat-head" onclick="toggleCat('hymne')">
+            <span class="track-cat-label">🏆 HYMNE</span>
+            <span class="track-cat-count">1</span>
+            <span class="track-cat-arrow">▾</span>
+          </button>
+          <div class="track-cat-body">
+            <button class="track-btn" onclick="selectTrack(this,'hymne')">
+              <span class="track-emoji">🏆</span>
+              <div><div class="track-title">Arena Entrance</div><div class="track-sub">NBA · Sport</div></div>
+            </button>
+          </div>
+        </div>
+        <div class="track-cat" data-cat="hiphop">
+          <button class="track-cat-head" onclick="toggleCat('hiphop')">
+            <span class="track-cat-label">💎 HIP-HOP</span>
+            <span class="track-cat-count">6</span>
+            <span class="track-cat-arrow">▾</span>
+          </button>
+          <div class="track-cat-body">
+            <button class="track-btn" onclick="selectTrack(this,'censured')">
+              <span class="track-emoji">🗡️</span>
+              <div><div class="track-title">Censured</div><div class="track-sub">Drill · Arabic</div></div>
+            </button>
+            <button class="track-btn" onclick="selectTrack(this,'cartier')">
+              <span class="track-emoji">💎</span>
+              <div><div class="track-title">Cartier</div><div class="track-sub">Drill · Street</div></div>
+            </button>
+            <button class="track-btn" onclick="selectTrack(this,'crime')">
+              <span class="track-emoji">🔫</span>
+              <div><div class="track-title">Crime</div><div class="track-sub">Dark · Heavy</div></div>
+            </button>
+            <button class="track-btn" onclick="selectTrack(this,'cyrilgane')">
+              <span class="track-emoji">🥊</span>
+              <div><div class="track-title">Cyril Gane</div><div class="track-sub">Fight · Hymne</div></div>
+            </button>
+            <button class="track-btn" onclick="selectTrack(this,'introduction')">
+              <span class="track-emoji">🎬</span>
+              <div><div class="track-title">Introduction</div><div class="track-sub">Intro · Atmospheric</div></div>
+            </button>
+            <button class="track-btn" onclick="selectTrack(this,'vibes')">
+              <span class="track-emoji">🌊</span>
+              <div><div class="track-title">Vibes</div><div class="track-sub">Chill · Smooth</div></div>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -633,6 +688,12 @@ function updateTotalFromMode(){
 function selectTrack(btn,key){
   document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');S.track=key;
+  // Ouvrir la catégorie parent et fermer les autres
+  const cat=btn.closest('.track-cat');
+  if(cat){
+    document.querySelectorAll('.track-cat').forEach(c=>c.classList.remove('open'));
+    cat.classList.add('open');
+  }
   const info=TRACK_INFO[key];
   document.getElementById('npBadge').textContent='🎵 '+info.name.toUpperCase();
   document.getElementById('tCover').textContent=info.emoji;
@@ -1549,6 +1610,26 @@ function closeWelcome(){
 // Au chargement : afficher à chaque ouverture
 window.addEventListener('DOMContentLoaded',()=>{
   showWelcome();
+});
+
+
+// ===== TRACK CATEGORIES (accordéon) =====
+function toggleCat(cat){
+  const all=document.querySelectorAll('.track-cat');
+  const target=document.querySelector('.track-cat[data-cat="'+cat+'"]');
+  if(!target) return;
+  const wasOpen=target.classList.contains('open');
+  all.forEach(c=>c.classList.remove('open'));
+  if(!wasOpen) target.classList.add('open');
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    const active=document.querySelector('.track-btn.active');
+    if(active){
+      const cat=active.closest('.track-cat');
+      if(cat) cat.classList.add('open');
+    }
+  },100);
 });
 
 </script>
