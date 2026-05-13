@@ -1040,10 +1040,14 @@ function playCount(num){
 
 function playBufferNow(buf, num){
   const ctx=audioCtx;
-  // Pause la musique sur le 5 (début du décompte)
+  // Ducking : baisse la musique à 25% au début du décompte (3)
   if(num===3 && musicAudio && !musicAudio.paused){
     musicWasPlaying=true;
-    try{musicAudio.pause();}catch(e){}
+    // On stocke le volume actuel avant de baisser
+    try{
+      window._musicVolBeforeDuck=musicAudio.volume;
+      musicAudio.volume=musicAudio.volume*0.25;
+    }catch(e){}
   }
   const source=ctx.createBufferSource();
   source.buffer=buf;
@@ -1053,7 +1057,13 @@ function playBufferNow(buf, num){
   gain.connect(ctx.destination);
   source.onended=()=>{
     if(num===1 && musicWasPlaying && musicAudio){
-      try{musicAudio.play();}catch(e){}
+      // Remettre la musique au volume initial
+      try{
+        if(window._musicVolBeforeDuck!==undefined){
+          musicAudio.volume=window._musicVolBeforeDuck;
+          window._musicVolBeforeDuck=undefined;
+        }
+      }catch(e){}
       musicWasPlaying=false;
     }
   };
@@ -1114,10 +1124,13 @@ function playRest(){
 
 function playRestBufferNow(buf){
   const ctx=audioCtx;
-  let wasPlaying=false;
+  let savedVol=null;
   if(musicAudio && !musicAudio.paused){
-    wasPlaying=true;
-    try{musicAudio.pause();}catch(e){}
+    // Ducking : on baisse à 25% au lieu de pause
+    try{
+      savedVol=musicAudio.volume;
+      musicAudio.volume=savedVol*0.25;
+    }catch(e){}
   }
   const source=ctx.createBufferSource();
   source.buffer=buf;
@@ -1126,8 +1139,8 @@ function playRestBufferNow(buf){
   source.connect(gain);
   gain.connect(ctx.destination);
   source.onended=()=>{
-    if(wasPlaying && musicAudio){
-      try{musicAudio.play();}catch(e){}
+    if(savedVol!==null && musicAudio){
+      try{musicAudio.volume=savedVol;}catch(e){}
     }
   };
   source.start(0);
@@ -1148,11 +1161,13 @@ function playRound(num){
 
 function playRoundBufferNow(buf){
   const ctx=audioCtx;
-  // Couper la musique pendant l'annonce du round (~2 sec)
-  let wasPlaying=false;
+  // Ducking : on baisse la musique à 25% pendant l'annonce (au lieu de couper)
+  let savedVol=null;
   if(musicAudio && !musicAudio.paused){
-    wasPlaying=true;
-    try{musicAudio.pause();}catch(e){}
+    try{
+      savedVol=musicAudio.volume;
+      musicAudio.volume=savedVol*0.25;
+    }catch(e){}
   }
   const source=ctx.createBufferSource();
   source.buffer=buf;
@@ -1161,8 +1176,8 @@ function playRoundBufferNow(buf){
   source.connect(gain);
   gain.connect(ctx.destination);
   source.onended=()=>{
-    if(wasPlaying && musicAudio){
-      try{musicAudio.play();}catch(e){}
+    if(savedVol!==null && musicAudio){
+      try{musicAudio.volume=savedVol;}catch(e){}
     }
   };
   source.start(0);
