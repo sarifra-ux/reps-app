@@ -68,6 +68,17 @@
 
   /* MODE TABS */
   .mode-tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;margin:14px 0;box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);}
+  .help-btn{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:0.6rem;cursor:pointer;margin-left:6px;padding:0;line-height:1;transition:all 0.2s;}
+  .help-btn:hover{border-color:var(--accent2);color:var(--accent2);}
+  .help-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99998;background:rgba(8,6,16,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;animation:welcomeFadeIn 0.25s ease-out;}
+  .help-modal{background:linear-gradient(135deg,var(--surface),var(--card));border:1.5px solid var(--border);border-radius:18px;padding:22px;max-width:440px;width:100%;max-height:80vh;overflow-y:auto;}
+  .help-modal-head{display:flex;align-items:center;justify-content:space-between;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px;color:var(--text);margin-bottom:18px;}
+  .help-close{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:0.9rem;line-height:1;}
+  .help-close:hover{border-color:var(--accent);color:var(--accent);}
+  .help-item{margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+  .help-item:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+  .help-item-title{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;margin-bottom:6px;}
+  .help-item-desc{font-family:'Barlow Condensed',sans-serif;font-size:1.05rem;color:#c0c0d8;line-height:1.5;}
   .mode-tab{flex:1;background:none;border:1.5px solid transparent;border-radius:10px;padding:13px 8px;font-family:'Bebas Neue',sans-serif;font-size:1.25rem;letter-spacing:2px;color:var(--muted);cursor:pointer;transition:all 0.25s;}
   /* Couleur par mode pour le bouton actif */
   .mode-tab[onclick*="'wod'"].active{background:linear-gradient(135deg,rgba(230,63,255,0.18),rgba(230,63,255,0.05));border-color:var(--accent-fortime);color:var(--accent-fortime);box-shadow:0 0 18px var(--glow-a),inset 0 0 12px rgba(230,63,255,0.1);}
@@ -81,6 +92,15 @@
   .sec-label{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:3px;color:#9090b0;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
   .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
   .tracks{display:flex;flex-direction:column;gap:8px;}
+  .track-shuffle{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;color:var(--text);transition:all 0.2s;width:100%;margin-bottom:4px;}
+  .track-shuffle:hover{border-color:var(--accent2);}
+  .track-shuffle.on{border-color:var(--accent2);background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(0,229,255,0.04));box-shadow:0 0 16px var(--glow-b);}
+  .track-shuffle-ic{font-size:1.4rem;}
+  .track-shuffle-txt{flex:1;text-align:left;}
+  .track-shuffle-title{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;}
+  .track-shuffle-sub{font-family:'DM Mono',monospace;font-size:0.52rem;letter-spacing:0.5px;color:var(--muted);margin-top:2px;}
+  .track-shuffle-state{font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:1px;color:var(--muted);background:var(--surface);padding:4px 10px;border-radius:10px;border:1px solid var(--border);}
+  .track-shuffle.on .track-shuffle-state{color:var(--accent2);border-color:var(--accent2);}
   .track-cat{display:flex;flex-direction:column;}
   .track-cat-head{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;transition:all 0.2s;width:100%;}
   .track-cat-head:hover{border-color:var(--accent);}
@@ -276,12 +296,38 @@
   <aside>
     <!-- 1. MODE TABS -->
     <div>
-      <div class="sec-label">Mode d'entraînement</div>
+      <div class="sec-label">Mode d'entraînement <button class="help-btn" onclick="showModeHelp()">?</button></div>
       <div class="mode-tabs">
         <button class="mode-tab active" onclick="setMode(this,'wod')">FOR TIME<small>WOD CLASSIQUE</small></button>
         <button class="mode-tab" onclick="setMode(this,'amrap')">AMRAP<small>MAX ROUNDS</small></button>
         <button class="mode-tab" onclick="setMode(this,'emom')">EMOM<small>EVERY MINUTE</small></button>
         <button class="mode-tab" onclick="setMode(this,'tabata')">TABATA<small>INTERVAL</small></button>
+      </div>
+    </div>
+
+    <!-- POPUP EXPLICATION DES MODES -->
+    <div id="modeHelpOverlay" class="help-overlay" style="display:none" onclick="hideModeHelp()">
+      <div class="help-modal" onclick="event.stopPropagation()">
+        <div class="help-modal-head">
+          <span>Les modes expliqués</span>
+          <button class="help-close" onclick="hideModeHelp()">✕</button>
+        </div>
+        <div class="help-item">
+          <div class="help-item-title" style="color:var(--accent-fortime)">⏱ FOR TIME</div>
+          <div class="help-item-desc">Tu fais le workout le plus vite possible. Le chrono compte le temps écoulé. L'objectif : terminer toutes les répétitions avant la fin du temps imparti, ou le plus rapidement possible.</div>
+        </div>
+        <div class="help-item">
+          <div class="help-item-title" style="color:var(--accent-amrap)">🔁 AMRAP</div>
+          <div class="help-item-desc">"As Many Rounds As Possible" (le plus de tours possible). Tu enchaînes un maximum de tours d'un circuit pendant une durée fixe. Plus tu en fais, mieux c'est.</div>
+        </div>
+        <div class="help-item">
+          <div class="help-item-title" style="color:var(--accent-emom)">⚡ EMOM</div>
+          <div class="help-item-desc">"Every Minute On the Minute" (chaque minute, à la minute). À chaque intervalle (ex: toutes les minutes), tu démarres une série d'exercices. Le temps restant dans l'intervalle = ta récup. Tu peux ajouter un temps de repos entre les tours.</div>
+        </div>
+        <div class="help-item">
+          <div class="help-item-title" style="color:var(--accent-tabata)">🔥 TABATA</div>
+          <div class="help-item-desc">Intervalle haute intensité : un temps d'effort (ex: 20s) suivi d'un temps de repos (ex: 10s), répété plusieurs fois (souvent 8 tours). Court mais très intense.</div>
+        </div>
       </div>
     </div>
 
@@ -377,6 +423,14 @@
     <div>
       <div class="sec-label">🎵 Track</div>
       <div class="tracks">
+        <button class="track-shuffle" id="shuffleBtn" onclick="toggleShuffle()">
+          <span class="track-shuffle-ic">🎲</span>
+          <div class="track-shuffle-txt">
+            <div class="track-shuffle-title">MIX ALÉATOIRE</div>
+            <div class="track-shuffle-sub">Enchaîne plusieurs morceaux au hasard</div>
+          </div>
+          <span class="track-shuffle-state" id="shuffleState">OFF</span>
+        </button>
         <div class="track-cat" data-cat="rap">
           <button class="track-cat-head" onclick="toggleCat('rap')">
             <span class="track-cat-label">🔥 RAP</span>
@@ -954,15 +1008,87 @@ function getCachedAudio(key, src){
   if(!audioCache[key]){audioCache[key]=new Audio(src);}
   return audioCache[key];
 }
+let shuffleOn=false;
+const ALL_TRACK_KEYS=['pogo','pleinfeu','techno','house','hymne','censured','cartier','crime','cyrilgane','introduction','vibes'];
+
+function toggleShuffle(){
+  shuffleOn=!shuffleOn;
+  const btn=document.getElementById('shuffleBtn');
+  const st=document.getElementById('shuffleState');
+  if(shuffleOn){
+    btn.classList.add('on');
+    st.textContent='ON';
+  } else {
+    btn.classList.remove('on');
+    st.textContent='OFF';
+  }
+  // Si on joue déjà, on relance avec le nouveau mode
+  if(S.state==='playing'){stopMusic();startMusic();}
+}
+
+function pickRandomTrack(excludeKey){
+  let pool=ALL_TRACK_KEYS.filter(k=>k!==excludeKey);
+  if(pool.length===0) pool=ALL_TRACK_KEYS;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+
 function startMusic(){
   if(musicAudio){try{musicAudio.pause();}catch(e){}}
-  musicAudio=getCachedAudio('music_'+S.track, MUSIC[S.track]);
-  musicAudio.loop=true;
-  musicAudio.currentTime=0;
-  musicAudio.volume=parseInt(document.getElementById('volMusic').value)/100;
-  musicAudio.play().catch(err=>console.warn('music play',err));
+  if(shuffleOn){
+    // Mode aléatoire : on pioche un morceau au hasard, et à la fin on enchaîne
+    const firstKey=pickRandomTrack(null);
+    _shuffleCurrentKey=firstKey;
+    musicAudio=getCachedAudio('music_'+firstKey, MUSIC[firstKey]);
+    musicAudio.loop=false;
+    musicAudio.currentTime=0;
+    musicAudio.volume=parseInt(document.getElementById('volMusic').value)/100;
+    musicAudio.onended=playNextShuffle;
+    musicAudio.play().catch(err=>console.warn('music play',err));
+  } else {
+    musicAudio=getCachedAudio('music_'+S.track, MUSIC[S.track]);
+    musicAudio.loop=true;
+    musicAudio.onended=null;
+    musicAudio.currentTime=0;
+    musicAudio.volume=parseInt(document.getElementById('volMusic').value)/100;
+    musicAudio.play().catch(err=>console.warn('music play',err));
+  }
 }
-function stopMusic(){if(musicAudio){try{musicAudio.pause();}catch(e){}musicAudio=null;}}
+
+let _shuffleCurrentKey=null;
+function playNextShuffle(){
+  if(!shuffleOn || S.state!=='playing') return;
+  const nextKey=pickRandomTrack(_shuffleCurrentKey);
+  _shuffleCurrentKey=nextKey;
+  musicAudio=getCachedAudio('music_'+nextKey, MUSIC[nextKey]);
+  musicAudio.loop=false;
+  musicAudio.currentTime=0;
+  musicAudio.volume=(_duckCount>0?musicTargetVolume()*0.25:musicTargetVolume());
+  musicAudio.onended=playNextShuffle;
+  musicAudio.play().catch(err=>console.warn('music next',err));
+}
+function stopMusic(){if(musicAudio){try{musicAudio.pause();}catch(e){}musicAudio=null;}_duckCount=0;}
+
+// === SYSTÈME DE DUCKING CENTRALISÉ ===
+// Le volume de référence vient TOUJOURS du slider (jamais du volume courant qui peut être déjà ducké)
+let _duckCount=0; // nombre de "ducks" actifs en parallèle
+function musicTargetVolume(){
+  const el=document.getElementById('volMusic');
+  return el?(parseInt(el.value)/100):0.6;
+}
+function duckStart(){
+  // On incrémente le compteur ; tant qu'il est > 0 la musique reste baissée
+  _duckCount++;
+  if(musicAudio){
+    try{musicAudio.volume=musicTargetVolume()*0.25;}catch(e){}
+  }
+}
+function duckEnd(){
+  _duckCount=Math.max(0,_duckCount-1);
+  // On ne remonte la musique QUE si plus aucun duck actif
+  if(_duckCount===0 && musicAudio){
+    try{musicAudio.volume=musicTargetVolume();}catch(e){}
+  }
+}
 
 function playBeep(){
   beepAudio=getCachedAudio('beep', BEEP_AUDIO);
@@ -1040,15 +1166,8 @@ function playCount(num){
 
 function playBufferNow(buf, num){
   const ctx=audioCtx;
-  // Ducking : baisse la musique à 25% au début du décompte (3)
-  if(num===3 && musicAudio && !musicAudio.paused){
-    musicWasPlaying=true;
-    // On stocke le volume actuel avant de baisser
-    try{
-      window._musicVolBeforeDuck=musicAudio.volume;
-      musicAudio.volume=musicAudio.volume*0.25;
-    }catch(e){}
-  }
+  // Ducking : chaque chiffre du décompte duck pendant sa lecture
+  duckStart();
   const source=ctx.createBufferSource();
   source.buffer=buf;
   const gain=ctx.createGain();
@@ -1056,16 +1175,7 @@ function playBufferNow(buf, num){
   source.connect(gain);
   gain.connect(ctx.destination);
   source.onended=()=>{
-    if(num===1 && musicWasPlaying && musicAudio){
-      // Remettre la musique au volume initial
-      try{
-        if(window._musicVolBeforeDuck!==undefined){
-          musicAudio.volume=window._musicVolBeforeDuck;
-          window._musicVolBeforeDuck=undefined;
-        }
-      }catch(e){}
-      musicWasPlaying=false;
-    }
+    duckEnd();
   };
   source.start(0);
 }
@@ -1124,14 +1234,7 @@ function playRest(){
 
 function playRestBufferNow(buf){
   const ctx=audioCtx;
-  let savedVol=null;
-  if(musicAudio && !musicAudio.paused){
-    // Ducking : on baisse à 25% au lieu de pause
-    try{
-      savedVol=musicAudio.volume;
-      musicAudio.volume=savedVol*0.25;
-    }catch(e){}
-  }
+  duckStart();
   const source=ctx.createBufferSource();
   source.buffer=buf;
   const gain=ctx.createGain();
@@ -1139,9 +1242,7 @@ function playRestBufferNow(buf){
   source.connect(gain);
   gain.connect(ctx.destination);
   source.onended=()=>{
-    if(savedVol!==null && musicAudio){
-      try{musicAudio.volume=savedVol;}catch(e){}
-    }
+    duckEnd();
   };
   source.start(0);
 }
@@ -1161,14 +1262,7 @@ function playRound(num){
 
 function playRoundBufferNow(buf){
   const ctx=audioCtx;
-  // Ducking : on baisse la musique à 25% pendant l'annonce (au lieu de couper)
-  let savedVol=null;
-  if(musicAudio && !musicAudio.paused){
-    try{
-      savedVol=musicAudio.volume;
-      musicAudio.volume=savedVol*0.25;
-    }catch(e){}
-  }
+  duckStart();
   const source=ctx.createBufferSource();
   source.buffer=buf;
   const gain=ctx.createGain();
@@ -1176,9 +1270,7 @@ function playRoundBufferNow(buf){
   source.connect(gain);
   gain.connect(ctx.destination);
   source.onended=()=>{
-    if(savedVol!==null && musicAudio){
-      try{musicAudio.volume=savedVol;}catch(e){}
-    }
+    duckEnd();
   };
   source.start(0);
 }
@@ -1625,6 +1717,16 @@ window.addEventListener('DOMContentLoaded',()=>{
   showWelcome();
 });
 
+
+// ===== POPUP AIDE MODES =====
+function showModeHelp(){
+  const o=document.getElementById('modeHelpOverlay');
+  if(o) o.style.display='flex';
+}
+function hideModeHelp(){
+  const o=document.getElementById('modeHelpOverlay');
+  if(o) o.style.display='none';
+}
 
 // ===== TRACK CATEGORIES (accordéon) =====
 function toggleCat(cat){
