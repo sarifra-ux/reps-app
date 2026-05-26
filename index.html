@@ -92,15 +92,22 @@
   .sec-label{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:3px;color:#9090b0;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
   .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
   .tracks{display:flex;flex-direction:column;gap:8px;}
-  .track-shuffle{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;color:var(--text);transition:all 0.2s;width:100%;margin-bottom:4px;}
-  .track-shuffle:hover{border-color:var(--accent2);}
-  .track-shuffle.on{border-color:var(--accent2);background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(0,229,255,0.04));box-shadow:0 0 16px var(--glow-b);}
-  .track-shuffle-ic{font-size:1.4rem;}
-  .track-shuffle-txt{flex:1;text-align:left;}
-  .track-shuffle-title{font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;}
-  .track-shuffle-sub{font-family:'DM Mono',monospace;font-size:0.52rem;letter-spacing:0.5px;color:var(--muted);margin-top:2px;}
-  .track-shuffle-state{font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:1px;color:var(--muted);background:var(--surface);padding:4px 10px;border-radius:10px;border:1px solid var(--border);}
-  .track-shuffle.on .track-shuffle-state{color:var(--accent2);border-color:var(--accent2);}
+  .mix-modes{display:flex;gap:6px;margin-bottom:4px;}
+  .mix-btn{flex:1;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--text);transition:all 0.2s;text-align:left;}
+  .mix-btn:hover{border-color:var(--accent2);}
+  .mix-btn.on{border-color:var(--accent2);background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(0,229,255,0.04));box-shadow:0 0 14px var(--glow-b);}
+  .mix-btn-ic{font-size:1.2rem;}
+  .mix-btn-txt{flex:1;min-width:0;}
+  .mix-btn-title{font-family:'Bebas Neue',sans-serif;font-size:0.95rem;letter-spacing:1.5px;}
+  .mix-btn-sub{font-family:'DM Mono',monospace;font-size:0.45rem;letter-spacing:0.5px;color:var(--muted);margin-top:1px;}
+  .mix-btn.on .mix-btn-sub{color:var(--accent2);}
+  /* Checkbox mode manuel : remplace l'emoji par une case à cocher */
+  .track-pick{display:inline-flex;width:22px;height:22px;border:1.5px solid var(--border);border-radius:6px;align-items:center;justify-content:center;background:var(--surface);transition:all 0.2s;flex-shrink:0;}
+  .track-pick.checked{background:var(--accent2);border-color:var(--accent2);}
+  .track-pick.checked::after{content:'✓';color:#000;font-weight:700;font-size:0.9rem;}
+  /* Cacher la case sauf en mode manuel */
+  body:not(.mix-manual) .track-pick{display:none;}
+  body.mix-manual .track-emoji{display:none;}
   .track-cat{display:flex;flex-direction:column;}
   .track-cat-head{display:flex;align-items:center;gap:10px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;cursor:pointer;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;transition:all 0.2s;width:100%;}
   .track-cat-head:hover{border-color:var(--accent);}
@@ -423,14 +430,22 @@
     <div>
       <div class="sec-label">🎵 Track</div>
       <div class="tracks">
-        <button class="track-shuffle" id="shuffleBtn" onclick="toggleShuffle()">
-          <span class="track-shuffle-ic">🎲</span>
-          <div class="track-shuffle-txt">
-            <div class="track-shuffle-title">MIX ALÉATOIRE</div>
-            <div class="track-shuffle-sub">Enchaîne plusieurs morceaux au hasard</div>
-          </div>
-          <span class="track-shuffle-state" id="shuffleState">OFF</span>
-        </button>
+        <div class="mix-modes">
+          <button class="mix-btn" id="mixAutoBtn" onclick="setMixMode('auto')">
+            <span class="mix-btn-ic">🎲</span>
+            <div class="mix-btn-txt">
+              <div class="mix-btn-title">AUTO</div>
+              <div class="mix-btn-sub">Musique choisie + suite aléatoire</div>
+            </div>
+          </button>
+          <button class="mix-btn" id="mixManualBtn" onclick="setMixMode('manual')">
+            <span class="mix-btn-ic">✓</span>
+            <div class="mix-btn-txt">
+              <div class="mix-btn-title">MANUEL</div>
+              <div class="mix-btn-sub"><span id="mixManualCount">0</span> morceaux cochés</div>
+            </div>
+          </button>
+        </div>
         <div class="track-cat" data-cat="rap">
           <button class="track-cat-head" onclick="toggleCat('rap')">
             <span class="track-cat-label">🔥 RAP</span>
@@ -439,10 +454,12 @@
           </button>
           <div class="track-cat-body">
             <button class="track-btn active" onclick="selectTrack(this,'pogo')">
+              <span class="track-pick" data-key="pogo" onclick="event.stopPropagation();toggleTrackPick(this,'pogo')"></span>
               <span class="track-emoji">🔥</span>
               <div><div class="track-title">Pogo dans la Nuit</div><div class="track-sub">Dark · Trap</div></div>
             </button>
             <button class="track-btn" onclick="selectTrack(this,'pleinfeu')">
+              <span class="track-pick" data-key="pleinfeu" onclick="event.stopPropagation();toggleTrackPick(this,'pleinfeu')"></span>
               <span class="track-emoji">⚡</span>
               <div><div class="track-title">Plein Feu Dans La Boîte</div><div class="track-sub">Hype · Energy</div></div>
             </button>
@@ -456,6 +473,7 @@
           </button>
           <div class="track-cat-body">
             <button class="track-btn" onclick="selectTrack(this,'techno')">
+              <span class="track-pick" data-key="techno" onclick="event.stopPropagation();toggleTrackPick(this,'techno')"></span>
               <span class="track-emoji">🖤</span>
               <div><div class="track-title">Berghain Box</div><div class="track-sub">Hard · Berlin</div></div>
             </button>
@@ -469,6 +487,7 @@
           </button>
           <div class="track-cat-body">
             <button class="track-btn" onclick="selectTrack(this,'house')">
+              <span class="track-pick" data-key="house" onclick="event.stopPropagation();toggleTrackPick(this,'house')"></span>
               <span class="track-emoji">🌅</span>
               <div><div class="track-title">Sunset Drop</div><div class="track-sub">Club · 128 BPM</div></div>
             </button>
@@ -482,6 +501,7 @@
           </button>
           <div class="track-cat-body">
             <button class="track-btn" onclick="selectTrack(this,'hymne')">
+              <span class="track-pick" data-key="hymne" onclick="event.stopPropagation();toggleTrackPick(this,'hymne')"></span>
               <span class="track-emoji">🏆</span>
               <div><div class="track-title">Arena Entrance</div><div class="track-sub">NBA · Sport</div></div>
             </button>
@@ -495,26 +515,32 @@
           </button>
           <div class="track-cat-body">
             <button class="track-btn" onclick="selectTrack(this,'censured')">
+              <span class="track-pick" data-key="censured" onclick="event.stopPropagation();toggleTrackPick(this,'censured')"></span>
               <span class="track-emoji">🗡️</span>
               <div><div class="track-title">Censured</div><div class="track-sub">Drill · Arabic</div></div>
             </button>
             <button class="track-btn" onclick="selectTrack(this,'cartier')">
+              <span class="track-pick" data-key="cartier" onclick="event.stopPropagation();toggleTrackPick(this,'cartier')"></span>
               <span class="track-emoji">💎</span>
               <div><div class="track-title">Cartier</div><div class="track-sub">Drill · Street</div></div>
             </button>
             <button class="track-btn" onclick="selectTrack(this,'crime')">
+              <span class="track-pick" data-key="crime" onclick="event.stopPropagation();toggleTrackPick(this,'crime')"></span>
               <span class="track-emoji">🔫</span>
               <div><div class="track-title">Crime</div><div class="track-sub">Dark · Heavy</div></div>
             </button>
             <button class="track-btn" onclick="selectTrack(this,'cyrilgane')">
+              <span class="track-pick" data-key="cyrilgane" onclick="event.stopPropagation();toggleTrackPick(this,'cyrilgane')"></span>
               <span class="track-emoji">🥊</span>
               <div><div class="track-title">Cyril Gane</div><div class="track-sub">Fight · Hymne</div></div>
             </button>
             <button class="track-btn" onclick="selectTrack(this,'introduction')">
+              <span class="track-pick" data-key="introduction" onclick="event.stopPropagation();toggleTrackPick(this,'introduction')"></span>
               <span class="track-emoji">🎬</span>
               <div><div class="track-title">Introduction</div><div class="track-sub">Intro · Atmospheric</div></div>
             </button>
             <button class="track-btn" onclick="selectTrack(this,'vibes')">
+              <span class="track-pick" data-key="vibes" onclick="event.stopPropagation();toggleTrackPick(this,'vibes')"></span>
               <span class="track-emoji">🌊</span>
               <div><div class="track-title">Vibes</div><div class="track-sub">Chill · Smooth</div></div>
             </button>
@@ -1013,56 +1039,92 @@ function getCachedAudio(key, src){
   if(!audioCache[key]){audioCache[key]=new Audio(src);}
   return audioCache[key];
 }
-let shuffleOn=false;
+// === MIX MODES (Auto aléatoire / Mix manuel / Single) ===
+// mixMode: null = mode single (1 morceau en boucle)
+//          'auto' = morceau choisi puis aléatoire
+//          'manual' = enchaîne les morceaux cochés
+let mixMode=null;
 const ALL_TRACK_KEYS=['pogo','pleinfeu','techno','house','hymne','censured','cartier','crime','cyrilgane','introduction','vibes'];
+let manualPicks=[]; // morceaux cochés par l'utilisateur en mode manuel
+let _shuffleCurrentKey=null;
 
-function toggleShuffle(){
-  shuffleOn=!shuffleOn;
-  const btn=document.getElementById('shuffleBtn');
-  const st=document.getElementById('shuffleState');
-  if(shuffleOn){
-    btn.classList.add('on');
-    st.textContent='ON';
+function setMixMode(mode){
+  // Toggle : si on reclique sur le mode actif, on désactive
+  if(mixMode===mode){
+    mixMode=null;
+    document.body.classList.remove('mix-manual');
   } else {
-    btn.classList.remove('on');
-    st.textContent='OFF';
+    mixMode=mode;
+    if(mode==='manual') document.body.classList.add('mix-manual');
+    else document.body.classList.remove('mix-manual');
   }
-  // Si on joue déjà, on relance avec le nouveau mode
+  // Mettre à jour visuel des 2 boutons
+  document.getElementById('mixAutoBtn').classList.toggle('on', mixMode==='auto');
+  document.getElementById('mixManualBtn').classList.toggle('on', mixMode==='manual');
+  // Si on joue déjà, relancer
   if(S.state==='playing'){stopMusic();startMusic();}
 }
 
-function pickRandomTrack(excludeKey){
-  let pool=ALL_TRACK_KEYS.filter(k=>k!==excludeKey);
-  if(pool.length===0) pool=ALL_TRACK_KEYS;
-  return pool[Math.floor(Math.random()*pool.length)];
+function toggleTrackPick(el, key){
+  const idx=manualPicks.indexOf(key);
+  if(idx>=0){
+    manualPicks.splice(idx,1);
+    el.classList.remove('checked');
+  } else {
+    manualPicks.push(key);
+    el.classList.add('checked');
+  }
+  document.getElementById('mixManualCount').textContent=manualPicks.length;
+}
+
+function pickRandomTrack(excludeKey, pool){
+  let list=(pool && pool.length)?pool:ALL_TRACK_KEYS;
+  let filtered=list.filter(k=>k!==excludeKey);
+  if(filtered.length===0) filtered=list;
+  return filtered[Math.floor(Math.random()*filtered.length)];
 }
 
 function startMusic(){
   if(musicAudio){try{musicAudio.pause();}catch(e){}}
-  if(shuffleOn){
-    // Mode aléatoire : on pioche un morceau au hasard, et à la fin on enchaîne
-    const firstKey=pickRandomTrack(null);
-    _shuffleCurrentKey=firstKey;
-    musicAudio=getCachedAudio('music_'+firstKey, MUSIC[firstKey]);
-    musicAudio.loop=false;
-    musicAudio.currentTime=0;
-    musicAudio.volume=parseInt(document.getElementById('volMusic').value)/100;
-    musicAudio.onended=playNextShuffle;
-    musicAudio.play().catch(err=>console.warn('music play',err));
+  let firstKey, loopMode;
+  if(mixMode==='auto'){
+    // Démarre avec la musique choisie, puis enchaîne en aléatoire
+    firstKey=S.track;
+    loopMode=false;
+  } else if(mixMode==='manual' && manualPicks.length>=2){
+    // Mode manuel : premier morceau cliqué = premier joué, puis enchaîne dans les cochés
+    firstKey=manualPicks[0];
+    loopMode=false;
+  } else if(mixMode==='manual' && manualPicks.length===1){
+    // Un seul coché : boucle dessus
+    firstKey=manualPicks[0];
+    loopMode=true;
   } else {
-    musicAudio=getCachedAudio('music_'+S.track, MUSIC[S.track]);
-    musicAudio.loop=true;
-    musicAudio.onended=null;
-    musicAudio.currentTime=0;
-    musicAudio.volume=parseInt(document.getElementById('volMusic').value)/100;
-    musicAudio.play().catch(err=>console.warn('music play',err));
+    // Mode single : juste le morceau choisi en boucle
+    firstKey=S.track;
+    loopMode=true;
   }
+  _shuffleCurrentKey=firstKey;
+  musicAudio=getCachedAudio('music_'+firstKey, MUSIC[firstKey]);
+  musicAudio.loop=loopMode;
+  musicAudio.currentTime=0;
+  musicAudio.volume=parseInt(document.getElementById('volMusic').value)/100;
+  musicAudio.onended=(loopMode?null:playNextShuffle);
+  musicAudio.play().catch(err=>console.warn('music play',err));
 }
 
-let _shuffleCurrentKey=null;
 function playNextShuffle(){
-  if(!shuffleOn || S.state!=='playing') return;
-  const nextKey=pickRandomTrack(_shuffleCurrentKey);
+  if(!mixMode || S.state!=='playing') return;
+  let nextKey;
+  if(mixMode==='auto'){
+    // Aléatoire dans tous les morceaux (sauf celui qu'on vient de jouer)
+    nextKey=pickRandomTrack(_shuffleCurrentKey, ALL_TRACK_KEYS);
+  } else if(mixMode==='manual'){
+    // Aléatoire dans les morceaux cochés
+    nextKey=pickRandomTrack(_shuffleCurrentKey, manualPicks);
+  } else {
+    return;
+  }
   _shuffleCurrentKey=nextKey;
   musicAudio=getCachedAudio('music_'+nextKey, MUSIC[nextKey]);
   musicAudio.loop=false;
