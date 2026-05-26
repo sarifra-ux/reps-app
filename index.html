@@ -681,32 +681,36 @@ function setLang(l){
 
 // ===== MODE =====
 function setMode(btn,mode){
-  if(S.state!=='idle'){resetTimer();}
-  document.querySelectorAll('.mode-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  S.mode=mode;
+  try{
+    if(S.state!=='idle'){resetTimer();}
+    document.querySelectorAll('.mode-tab').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    S.mode=mode;
 
-  document.getElementById('durSection').style.display='';
-  document.getElementById('tabataSection').style.display='none';
-  document.getElementById('emomSection').style.display='none';
+    document.getElementById('durSection').style.display='';
+    document.getElementById('tabataSection').style.display='none';
+    document.getElementById('emomSection').style.display='none';
 
-  const lbl=document.getElementById('durLabel');
-  const eyebrow=document.getElementById('timerEyebrow');
-  const schedLbl=document.getElementById('schedLabel');
+    const lbl=document.getElementById('durLabel');
+    const eyebrow=document.getElementById('timerEyebrow');
+    const schedLbl=document.getElementById('schedLabel');
 
-  if(mode==='wod'){lbl.textContent='Durée WOD';eyebrow.textContent='// TEMPS RESTANT';schedLbl.textContent='Programme des annonces';}
-  else if(mode==='amrap'){lbl.textContent='Durée AMRAP';eyebrow.textContent='// AMRAP — TEMPS RESTANT';schedLbl.textContent='Annonces chaque minute';}
-  else if(mode==='emom'){lbl.textContent='Durée EMOM';eyebrow.textContent='// EMOM — TEMPS ÉCOULÉ';schedLbl.textContent='Top à chaque intervalle';document.getElementById('emomSection').style.display='';emomRecomputeRounds();}
-  else if(mode==='tabata'){
-    document.getElementById('durSection').style.display='none';
-    document.getElementById('tabataSection').style.display='';
-    eyebrow.textContent='// TABATA';
-    schedLbl.textContent='Rounds';
+    if(mode==='wod'){lbl.textContent='Durée WOD';eyebrow.textContent='// TEMPS RESTANT';schedLbl.textContent='Programme des annonces';}
+    else if(mode==='amrap'){lbl.textContent='Durée AMRAP';eyebrow.textContent='// AMRAP — TEMPS RESTANT';schedLbl.textContent='Annonces chaque minute';}
+    else if(mode==='emom'){lbl.textContent='Durée EMOM';eyebrow.textContent='// EMOM — TEMPS ÉCOULÉ';schedLbl.textContent='Top à chaque intervalle';document.getElementById('emomSection').style.display='';emomRecomputeRounds();}
+    else if(mode==='tabata'){
+      document.getElementById('durSection').style.display='none';
+      document.getElementById('tabataSection').style.display='';
+      eyebrow.textContent='// TABATA';
+      schedLbl.textContent='Rounds';
+    }
+
+    updateTotalFromMode();
+    renderSched();
+    updateClock();
+  }catch(e){
+    console.error('setMode error:',e);
   }
-
-  updateTotalFromMode();
-  renderSched();
-  updateClock();
 }
 
 function updateTotalFromMode(){
@@ -856,7 +860,8 @@ function refreshEmomSummary(){
     const ds=Math.abs(diff)%60;
     extra=` ⚠ Configuré: ${durMin}:00 (écart ${sign}${dm}:${String(ds).padStart(2,'0')})`;
   }
-  document.getElementById('emomSummary').textContent=`→ ${rounds} × (${workStr} + ${restStr}) = ${totalStr}${extra}`;
+  const el=document.getElementById('emomSummary');
+  if(el) el.textContent=`→ ${rounds} × (${workStr} + ${restStr}) = ${totalStr}${extra}`;
 }
 
 // ===== SCHEDULE =====
