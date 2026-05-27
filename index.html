@@ -623,6 +623,7 @@
 <script>
 const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'house.mp3',hymne:'hymne.mp3',censured:'censured.mp3',cartier:'cartier.mp3',crime:'crime.mp3',cyrilgane:'cyrilgane.mp3',introduction:'introduction.mp3',vibes:'vibes.mp3'};
 const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
+const COUNT_AUDIO_EN=['count-en-10.mp3','count-en-9.mp3','count-en-8.mp3','count-en-7.mp3','count-en-6.mp3','count-en-5.mp3','count-en-4.mp3','count-en-3.mp3','count-en-2.mp3','count-en-1.mp3','count-en-go.mp3'];
 const BEEP_AUDIO='beep.mp3';
 const TICK_AUDIO='tick.mp3';
 // Voix Brian découpée pour le décompte 5-4-3-2-1 par langue
@@ -638,7 +639,7 @@ const ROUND_AUDIO={
 
 const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:867},{n:'8',t:1806},{n:'7',t:2735},{n:'6',t:3760},{n:'5',t:4845},{n:'4',t:6056},{n:'3',t:7123},{n:'2',t:7886},{n:'1',t:8675},{n:'GO',t:9380}],
-  en:[{n:'10',t:0},{n:'9',t:764},{n:'8',t:1642},{n:'7',t:2298},{n:'6',t:3104},{n:'5',t:3899},{n:'4',t:4722},{n:'3',t:5523},{n:'2',t:6315},{n:'1',t:7089},{n:'GO',t:7760}]
+  en:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}]
 };
 
 const TXT={
@@ -688,7 +689,7 @@ const S={
   dur:5,
   total:300,remain:300,
   state:'idle',
-  iv:null,cdTimers:[],annTO:null,schedItems:[],
+  iv:null,cdTimers:[],cdAudioTimers:[],annTO:null,schedItems:[],
   // Tabata state
   tabPhase:'work',tabRound:1,tabTotalRounds:8,tabWorkSec:20,tabRestSec:10
 };
@@ -1407,7 +1408,7 @@ function startVisualCountdown(){
   S.cdTimers.push(setTimeout(()=>overlay.classList.remove('show'),lastT+500));
 }
 
-function clearCd(){S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];document.getElementById('cdOverlay').classList.remove('show');}
+function clearCd(){S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}document.getElementById('cdOverlay').classList.remove('show');}
 
 // ===== SEQUENCE =====
 function togglePlay(){
@@ -1432,11 +1433,28 @@ function launch(){
   startVisualCountdown();
 
   if(voiceAudio){try{voiceAudio.pause();}catch(e){}}
-  voiceAudio=getCachedAudio('voice_'+S.lang, GO_AUDIO[S.lang]);
-  voiceAudio.currentTime=0;
-  voiceAudio.volume=parseInt(document.getElementById('volVoice').value)/100;
-  voiceAudio.onended=()=>{voiceAudio=null;startChrono();};
-  voiceAudio.play().catch(err=>{console.warn('voice play',err);startChrono();});
+  if(S.lang==='en'){
+    // Nouveau système EN : 11 fichiers synchronisés sur le timer (1 par seconde)
+    const vol=parseInt(document.getElementById('volVoice').value)/100;
+    S.cdAudioTimers=[];
+    COUNT_AUDIO_EN.forEach((file,i)=>{
+      const t=setTimeout(()=>{
+        const a=new Audio(file);
+        a.volume=vol;
+        a.play().catch(err=>console.warn('count audio',err));
+      },i*1000);
+      S.cdAudioTimers.push(t);
+    });
+    // Démarrer le chrono pile après le "Go!" (à 10s + 500ms pour laisser le mot finir)
+    S.cdAudioTimers.push(setTimeout(()=>startChrono(),10500));
+  } else {
+    // Ancien système FR : un seul fichier audio
+    voiceAudio=getCachedAudio('voice_'+S.lang, GO_AUDIO[S.lang]);
+    voiceAudio.currentTime=0;
+    voiceAudio.volume=parseInt(document.getElementById('volVoice').value)/100;
+    voiceAudio.onended=()=>{voiceAudio=null;startChrono();};
+    voiceAudio.play().catch(err=>{console.warn('voice play',err);startChrono();});
+  }
 }
 
 function startChrono(){
