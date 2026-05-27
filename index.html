@@ -1623,7 +1623,6 @@ function resume(){startMusic();document.getElementById('waveform').classList.add
 function resetTimer(){
   clearInterval(S.iv);clearCd();stopMusic();musicWasPlaying=false;
   if(voiceAudio){voiceAudio.pause();voiceAudio=null;}
-  if(countAudio){try{countAudio.pause();}catch(e){}countAudio=null;}
   window.speechSynthesis&&window.speechSynthesis.cancel();
   S.state='idle';
   if(S.mode==='tabata'){S.tabPhase='work';S.tabRound=1;updateTotalFromMode();}
