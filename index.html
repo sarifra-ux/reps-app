@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>R.E.P.S — Rhythm Engine Performance Sound</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#080810">
@@ -46,6 +46,8 @@
     color:var(--text);
     font-family:'Barlow Condensed',sans-serif;
     min-height:100vh;
+    touch-action:manipulation;
+    -webkit-text-size-adjust:100%;
     overflow-x:hidden;
   }
   body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(230,63,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(230,63,255,0.03) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
@@ -1447,14 +1449,21 @@ function launch(){
   const vol=parseInt(document.getElementById('volVoice').value)/100;
   const countAudioList=(S.lang==='fr')?COUNT_AUDIO_FR:COUNT_AUDIO_EN;
   S.cdAudioTimers=[];
+  // Ducking musique pendant tout le décompte pour que la voix soit bien audible
+  const vMus=parseInt(document.getElementById('volMusic').value)/100;
+  if(musicAudio) musicAudio.volume=vMus*0.15;
   countAudioList.forEach((file,i)=>{
     const t=setTimeout(()=>{
       const a=new Audio(file);
-      a.volume=vol;
+      a.volume=Math.min(vol*1.5, 1.0);
       a.play().catch(err=>console.warn('count audio',err));
     },i*1000);
     S.cdAudioTimers.push(t);
   });
+  // Restaurer le volume musique normal après le "Go!"
+  S.cdAudioTimers.push(setTimeout(()=>{
+    if(musicAudio) musicAudio.volume=vMus;
+  },10800));
   // Démarrer le chrono pile après le "Go!" (à 10s + 500ms pour laisser le mot finir)
   S.cdAudioTimers.push(setTimeout(()=>startChrono(),10500));
 }
