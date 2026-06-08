@@ -624,6 +624,7 @@
 const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'house.mp3',hymne:'hymne.mp3',censured:'censured.mp3',cartier:'cartier.mp3',crime:'crime.mp3',cyrilgane:'cyrilgane.mp3',introduction:'introduction.mp3',vibes:'vibes.mp3'};
 const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
 const COUNT_AUDIO_EN=['count-en-10.mp3','count-en-9.mp3','count-en-8.mp3','count-en-7.mp3','count-en-6.mp3','count-en-5.mp3','count-en-4.mp3','count-en-3.mp3','count-en-2.mp3','count-en-1.mp3','count-en-go.mp3'];
+const COUNT_AUDIO_FR=['count-fr-10.mp3','count-fr-9.mp3','count-fr-8.mp3','count-fr-7.mp3','count-fr-6.mp3','count-fr-5.mp3','count-fr-4.mp3','count-fr-3.mp3','count-fr-2.mp3','count-fr-1.mp3','count-fr-go.mp3'];
 const BEEP_AUDIO='beep.mp3';
 const TICK_AUDIO='tick.mp3';
 // Voix Brian découpée pour le décompte 5-4-3-2-1 par langue
@@ -631,14 +632,20 @@ const COUNT_AUDIO={
   fr:{1:'fr-1.mp3',2:'fr-2.mp3',3:'fr-3.mp3',4:'fr-4.mp3',5:'fr-5.mp3'},
   en:{1:'en-1.mp3',2:'en-2.mp3',3:'en-3.mp3',4:'en-4.mp3',5:'en-5.mp3'}
 };
-// Annonces "Round X" en voix Brian (anglais uniquement, valable pour FR et EN)
+// Annonces "Round X" : version FR (Audrey) et version EN (Nayva)
 const ROUND_AUDIO={
-  2:'round-2.mp3',3:'round-3.mp3',4:'round-4.mp3',5:'round-5.mp3',
-  6:'round-6.mp3',7:'round-7.mp3',8:'round-8.mp3',9:'round-9.mp3',10:'round-10.mp3'
+  en:{
+    2:'round-2.mp3',3:'round-3.mp3',4:'round-4.mp3',5:'round-5.mp3',
+    6:'round-6.mp3',7:'round-7.mp3',8:'round-8.mp3',9:'round-9.mp3',10:'round-10.mp3'
+  },
+  fr:{
+    2:'round-2-fr.mp3',3:'round-3-fr.mp3',4:'round-4-fr.mp3',5:'round-5-fr.mp3',
+    6:'round-6-fr.mp3',7:'round-7-fr.mp3',8:'round-8-fr.mp3',9:'round-9-fr.mp3',10:'round-10-fr.mp3'
+  }
 };
 
 const CD_TIMINGS={
-  fr:[{n:'10',t:0},{n:'9',t:867},{n:'8',t:1806},{n:'7',t:2735},{n:'6',t:3760},{n:'5',t:4845},{n:'4',t:6056},{n:'3',t:7123},{n:'2',t:7886},{n:'1',t:8675},{n:'GO',t:9380}],
+  fr:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
   en:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}]
 };
 
@@ -1251,14 +1258,15 @@ function playBufferNow(buf, num){
 // === Annonce vocale "Round X" via Web Audio API ===
 let roundBuffers={};
 async function loadRoundBuffer(num){
-  if(roundBuffers[num]) return roundBuffers[num];
-  const src=ROUND_AUDIO[num];
+  const key=S.lang+'_'+num;
+  if(roundBuffers[key]) return roundBuffers[key];
+  const src=ROUND_AUDIO[S.lang]&&ROUND_AUDIO[S.lang][num];
   if(!src) return null;
   try{
     const resp=await fetch(src);
     const arr=await resp.arrayBuffer();
     const buf=await audioCtx.decodeAudioData(arr);
-    roundBuffers[num]=buf;
+    roundBuffers[key]=buf;
     return buf;
   }catch(e){
     console.warn('loadRoundBuffer fail',e);
@@ -1276,14 +1284,15 @@ async function preloadRoundBuffers(){
   await loadRestBuffer();
 }
 
-let restBuffer=null;
+let restBuffer={};
 async function loadRestBuffer(){
-  if(restBuffer) return restBuffer;
+  if(restBuffer[S.lang]) return restBuffer[S.lang];
   try{
-    const resp=await fetch('rest.mp3');
+    const src=(S.lang==='fr')?'rest-fr.mp3':'rest.mp3';
+    const resp=await fetch(src);
     const arr=await resp.arrayBuffer();
-    restBuffer=await audioCtx.decodeAudioData(arr);
-    return restBuffer;
+    restBuffer[S.lang]=await audioCtx.decodeAudioData(arr);
+    return restBuffer[S.lang];
   }catch(e){
     console.warn('loadRestBuffer fail',e);
     return null;
@@ -1293,11 +1302,11 @@ async function loadRestBuffer(){
 function playRest(){
   const ctx=ensureAudioCtx();
   if(!ctx) return;
-  if(!restBuffer){
+  if(!restBuffer[S.lang]){
     loadRestBuffer().then(b=>{if(b) playRestBufferNow(b);});
     return;
   }
-  playRestBufferNow(restBuffer);
+  playRestBufferNow(restBuffer[S.lang]);
 }
 
 function playRestBufferNow(buf){
@@ -1318,7 +1327,8 @@ function playRestBufferNow(buf){
 function playRound(num){
   const ctx=ensureAudioCtx();
   if(!ctx) return;
-  let buf=roundBuffers[num];
+  const key=S.lang+'_'+num;
+  let buf=roundBuffers[key];
   if(!buf){
     loadRoundBuffer(num).then(b=>{
       if(b) playRoundBufferNow(b);
@@ -1433,28 +1443,20 @@ function launch(){
   startVisualCountdown();
 
   if(voiceAudio){try{voiceAudio.pause();}catch(e){}}
-  if(S.lang==='en'){
-    // Nouveau système EN : 11 fichiers synchronisés sur le timer (1 par seconde)
-    const vol=parseInt(document.getElementById('volVoice').value)/100;
-    S.cdAudioTimers=[];
-    COUNT_AUDIO_EN.forEach((file,i)=>{
-      const t=setTimeout(()=>{
-        const a=new Audio(file);
-        a.volume=vol;
-        a.play().catch(err=>console.warn('count audio',err));
-      },i*1000);
-      S.cdAudioTimers.push(t);
-    });
-    // Démarrer le chrono pile après le "Go!" (à 10s + 500ms pour laisser le mot finir)
-    S.cdAudioTimers.push(setTimeout(()=>startChrono(),10500));
-  } else {
-    // Ancien système FR : un seul fichier audio
-    voiceAudio=getCachedAudio('voice_'+S.lang, GO_AUDIO[S.lang]);
-    voiceAudio.currentTime=0;
-    voiceAudio.volume=parseInt(document.getElementById('volVoice').value)/100;
-    voiceAudio.onended=()=>{voiceAudio=null;startChrono();};
-    voiceAudio.play().catch(err=>{console.warn('voice play',err);startChrono();});
-  }
+  // Nouveau système unifié EN/FR : 11 fichiers synchronisés sur le timer (1 par seconde)
+  const vol=parseInt(document.getElementById('volVoice').value)/100;
+  const countAudioList=(S.lang==='fr')?COUNT_AUDIO_FR:COUNT_AUDIO_EN;
+  S.cdAudioTimers=[];
+  countAudioList.forEach((file,i)=>{
+    const t=setTimeout(()=>{
+      const a=new Audio(file);
+      a.volume=vol;
+      a.play().catch(err=>console.warn('count audio',err));
+    },i*1000);
+    S.cdAudioTimers.push(t);
+  });
+  // Démarrer le chrono pile après le "Go!" (à 10s + 500ms pour laisser le mot finir)
+  S.cdAudioTimers.push(setTimeout(()=>startChrono(),10500));
 }
 
 function startChrono(){
@@ -1567,7 +1569,7 @@ function checkAnnounce(){
         // Début d'un nouveau WORK (= nouveau round, sauf le tout 1er)
         if(currentRound>1){
           showAnnounce(`🔔 ROUND ${currentRound}`);
-          if(ROUND_AUDIO[currentRound]){
+          if(ROUND_AUDIO[S.lang]&&ROUND_AUDIO[S.lang][currentRound]){
             playRound(currentRound);
           } else {
             playTick();
@@ -1583,7 +1585,7 @@ function checkAnnounce(){
     if(rest===0 && r>10 && elapsed>0 && inCycle===0){
       const roundN=currentRound;
       showAnnounce(`🔔 ROUND ${roundN}`);
-      if(ROUND_AUDIO[roundN]){
+      if(ROUND_AUDIO[S.lang]&&ROUND_AUDIO[S.lang][roundN]){
         playRound(roundN);
       } else {
         playTick();
