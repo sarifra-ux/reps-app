@@ -1,5 +1,5 @@
 // R.E.P.S Service Worker — mode hors-ligne
-const CACHE_NAME = 'reps-v8';
+const CACHE_NAME = 'reps-v9';
 const ASSETS = [
   '/',
   '/index.html',
@@ -25,7 +25,13 @@ const ASSETS = [
   '/time.mp3','/last-minute.mp3','/ten-sec.mp3','/thirty-sec.mp3',
   '/three-min.mp3','/two-min.mp3','/halfway.mp3',
     '/count-en-10.mp3','/count-en-9.mp3','/count-en-8.mp3','/count-en-7.mp3','/count-en-6.mp3',
-    '/count-en-5.mp3','/count-en-4.mp3','/count-en-3.mp3','/count-en-2.mp3','/count-en-1.mp3','/count-en-go.mp3'
+    '/count-en-5.mp3','/count-en-4.mp3','/count-en-3.mp3','/count-en-2.mp3','/count-en-1.mp3','/count-en-go.mp3',
+    '/time-fr.mp3','/last-minute-fr.mp3','/ten-sec-fr.mp3','/thirty-sec-fr.mp3',
+    '/three-min-fr.mp3','/two-min-fr.mp3','/halfway-fr.mp3','/rest-fr.mp3',
+    '/round-2-fr.mp3','/round-3-fr.mp3','/round-4-fr.mp3','/round-5-fr.mp3','/round-6-fr.mp3',
+    '/round-7-fr.mp3','/round-8-fr.mp3','/round-9-fr.mp3','/round-10-fr.mp3',
+    '/count-fr-10.mp3','/count-fr-9.mp3','/count-fr-8.mp3','/count-fr-7.mp3','/count-fr-6.mp3',
+    '/count-fr-5.mp3','/count-fr-4.mp3','/count-fr-3.mp3','/count-fr-2.mp3','/count-fr-1.mp3','/count-fr-go.mp3'
 ];
 
 // Installation : on précharge tous les fichiers
