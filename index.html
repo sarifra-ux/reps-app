@@ -1451,11 +1451,11 @@ function launch(){
   S.cdAudioTimers=[];
   // Ducking musique pendant tout le décompte pour que la voix soit bien audible
   const vMus=parseInt(document.getElementById('volMusic').value)/100;
-  if(musicAudio) musicAudio.volume=vMus*0.15;
+  if(musicAudio) musicAudio.volume=vMus*0.05;
   countAudioList.forEach((file,i)=>{
     const t=setTimeout(()=>{
       const a=new Audio(file);
-      a.volume=Math.min(vol*1.5, 1.0);
+      a.volume=Math.min(vol*2.0, 1.0);
       a.play().catch(err=>console.warn('count audio',err));
     },i*1000);
     S.cdAudioTimers.push(t);
