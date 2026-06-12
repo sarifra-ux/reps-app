@@ -525,6 +525,26 @@
   body.epured-mode .app{
     grid-template-columns:1fr !important;
   }
+  /* R géant en filigrane en fond du timer */
+  body.epured-mode main::before{
+    content:'R';
+    position:fixed;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    font-family:'Bebas Neue',sans-serif;
+    font-size:80vh;
+    font-weight:400;
+    color:rgba(255,255,255,0.04);
+    line-height:0.8;
+    z-index:0;
+    pointer-events:none;
+    user-select:none;
+    letter-spacing:-0.05em;
+  }
+  body.epured-mode main > *{
+    position:relative;
+    z-index:2;
+  }
 </style>
 </head>
 <body>
