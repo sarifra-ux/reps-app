@@ -61,6 +61,30 @@
   .lang-btn.active{background:rgba(230,63,255,0.12);border-color:var(--accent);color:var(--accent);}
   .fs-btn{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:7px 10px;color:var(--muted);cursor:pointer;font-size:1rem;}
   .fs-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .new-wod-btn{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:7px 12px;
+    color:var(--muted);
+    cursor:pointer;
+    font-family:'DM Mono',monospace;
+    font-size:0.7rem;
+    letter-spacing:1px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    transition:all 0.2s ease;
+  }
+  .new-wod-btn:hover,.new-wod-btn:active{
+    border-color:#9b30ff;
+    color:#9b30ff;
+    box-shadow:0 0 12px rgba(155,48,255,0.3);
+  }
+  @media(max-width:600px){
+    .new-wod-label{display:none;}
+    .new-wod-btn{padding:7px 10px;}
+  }
   .status-pill{display:flex;align-items:center;gap:8px;border-radius:20px;padding:7px 14px;font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:2px;border:1px solid rgba(0,230,118,0.25);background:rgba(0,230,118,0.07);color:var(--green);}
   .status-pill.launching{border-color:rgba(255,214,0,0.4);background:rgba(255,214,0,0.08);color:var(--gold);}
   .status-pill.playing{border-color:rgba(230,63,255,0.4);background:rgba(230,63,255,0.1);color:var(--accent);}
@@ -681,6 +705,7 @@
       <button class="lang-btn active" id="btnFR" onclick="setLang('fr')">🇫🇷 FR</button>
       <button class="lang-btn" id="btnEN" onclick="setLang('en')">🇬🇧 EN</button>
     </div>
+    <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label">NOUVEAU</span></button>
     <button class="fs-btn" onclick="toggleFullscreen()" title="Plein écran">⛶</button>
     <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText">READY</span></div>
   </div>
@@ -2201,6 +2226,25 @@ function closeWelcome(){
 function finishWizard(){
   document.body.classList.remove('wizard-active');
   document.body.classList.add('epured-mode');
+}
+
+// ===== RELANCER LE WIZARD (bouton Nouveau WOD) =====
+function resetWizard(){
+  // Si un WOD est en cours, on l'arrête proprement
+  if(S.state && S.state!=='idle'){
+    try{resetTimer();}catch(e){}
+  }
+  // Effacer les choix précédents (sauf la langue)
+  try{
+    localStorage.removeItem('reps_mode');
+    localStorage.removeItem('reps_timing');
+    localStorage.removeItem('reps_music_category');
+  }catch(e){}
+  // Sortir du mode épuré
+  document.body.classList.remove('epured-mode');
+  document.body.classList.add('wizard-active');
+  // Lancer le wizard depuis l'écran mode
+  showModeChoice();
 }
 
 function chooseLanguage(lang){
