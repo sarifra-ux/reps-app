@@ -76,6 +76,21 @@
     color:#9b30ff;
     box-shadow:0 0 12px rgba(155,48,255,0.3);
   }
+  .favs-btn{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:7px 10px;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:1rem;
+    transition:all 0.2s ease;
+  }
+  .favs-btn:hover,.favs-btn:active{
+    border-color:#ffb300;
+    color:#ffb300;
+    box-shadow:0 0 12px rgba(255,179,0,0.3);
+  }
   .new-wod-btn{
     background:var(--card);
     border:1px solid var(--border);
@@ -383,6 +398,82 @@
     font-size:0.8rem;
     color:var(--text);
     min-width:42px;text-align:right;
+  }
+
+  /* ===== FAVORIS MODAL ===== */
+  .fav-modal-list{
+    display:flex;flex-direction:column;gap:8px;
+    max-height:50vh;overflow-y:auto;
+    padding-right:4px;
+  }
+  .fav-modal-item{
+    display:flex;align-items:center;gap:10px;
+    padding:14px 16px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+    cursor:pointer;
+    transition:all 0.2s ease;
+  }
+  .fav-modal-item:hover{
+    border-color:#ffb300;
+    box-shadow:0 0 12px rgba(255,179,0,0.2);
+  }
+  .fav-modal-info{
+    flex:1;display:flex;flex-direction:column;gap:4px;
+    min-width:0;
+  }
+  .fav-modal-name{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:1rem;letter-spacing:2px;
+    color:var(--text);
+    text-transform:uppercase;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .fav-modal-meta{
+    font-family:'DM Mono',monospace;
+    font-size:0.65rem;letter-spacing:1px;
+    color:var(--muted);
+  }
+  .fav-modal-del{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--muted);
+    width:30px;height:30px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:0.9rem;
+    transition:all 0.2s ease;
+    flex-shrink:0;
+  }
+  .fav-modal-del:hover{
+    border-color:#ff3358;
+    color:#ff3358;
+  }
+  .fav-modal-empty{
+    text-align:center;
+    padding:24px 16px;
+    color:var(--muted);
+    font-family:'DM Mono',monospace;
+    font-size:0.75rem;
+    letter-spacing:1px;
+  }
+  .btn-save-fav-modal{
+    margin-top:16px;
+    padding:14px 20px;
+    background:rgba(255,179,0,0.1);
+    border:1px solid rgba(255,179,0,0.4);
+    border-radius:12px;
+    color:#ffb300;
+    font-family:'Bebas Neue',sans-serif;
+    font-size:1.1rem;letter-spacing:3px;
+    cursor:pointer;
+    transition:all 0.2s ease;
+    text-transform:uppercase;
+  }
+  .btn-save-fav-modal:hover,.btn-save-fav-modal:active{
+    background:rgba(255,179,0,0.2);
+    box-shadow:0 0 16px rgba(255,179,0,0.3);
   }
 
   .now-playing-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;}
@@ -839,6 +930,7 @@
       <button class="lang-btn" id="btnEN" onclick="setLang('en')">🇬🇧 EN</button>
     </div>
     <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label">NOUVEAU</span></button>
+    <button class="favs-btn" onclick="openFavorites()" title="Favoris">⭐</button>
     <button class="settings-btn" onclick="openSettings()" title="Réglages">⚙</button>
     <button class="fs-btn" onclick="toggleFullscreen()" title="Plein écran">⛶</button>
     <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText">READY</span></div>
@@ -875,6 +967,24 @@
           <span class="settings-val" id="settingsVolVoiceVal">100%</span>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL FAVORIS ===== -->
+<div id="favoritesModal" class="settings-modal" style="display:none" onclick="closeFavoritesBackdrop(event)">
+  <div class="settings-modal-content" onclick="event.stopPropagation()">
+    <div class="settings-modal-header">
+      <h3 class="settings-modal-title" id="favoritesModalTitle">Favoris</h3>
+      <button class="settings-modal-close" onclick="closeFavorites()">✕</button>
+    </div>
+    <div class="settings-modal-body">
+      <div class="fav-modal-list" id="favModalList">
+        <!-- Liste remplie dynamiquement -->
+      </div>
+      <button class="btn-save-fav-modal" onclick="saveFavoriteFromModal()" id="btnSaveFavModal">
+        💾 <span id="btnSaveFavLabel">Sauvegarder ce WOD</span>
+      </button>
     </div>
   </div>
 </div>
@@ -2352,6 +2462,83 @@ function renderFavs(){
     el.querySelector('.fav-del').onclick=(e)=>deleteFavorite(e,i);
     list.appendChild(el);
   });
+}
+
+// ===== FAVORIS MODAL (header) =====
+function openFavorites(){
+  const modal=document.getElementById('favoritesModal');
+  if(!modal) return;
+  // Adapter les labels selon la langue
+  const title=document.getElementById('favoritesModalTitle');
+  const saveLbl=document.getElementById('btnSaveFavLabel');
+  if(S.lang==='en'){
+    if(title) title.textContent='Favorites';
+    if(saveLbl) saveLbl.textContent='Save this WOD';
+  } else {
+    if(title) title.textContent='Favoris';
+    if(saveLbl) saveLbl.textContent='Sauvegarder ce WOD';
+  }
+  renderFavsModal();
+  modal.style.display='flex';
+}
+function closeFavorites(){
+  const modal=document.getElementById('favoritesModal');
+  if(modal) modal.style.display='none';
+}
+function closeFavoritesBackdrop(e){
+  if(e.target.id==='favoritesModal') closeFavorites();
+}
+function renderFavsModal(){
+  const list=document.getElementById('favModalList');
+  if(!list) return;
+  const favs=getFavs();
+  if(!favs.length){
+    list.innerHTML='<div class="fav-modal-empty">'+(S.lang==='en'?'No saved WOD yet':'Aucun WOD sauvegardé')+'</div>';
+    return;
+  }
+  list.innerHTML='';
+  favs.forEach((f,i)=>{
+    const el=document.createElement('div');
+    el.className='fav-modal-item';
+    el.onclick=()=>{
+      loadFavorite(i);
+      closeFavorites();
+    };
+    const modeIcon={wod:'🏁',amrap:'♾️',emom:'🔔',tabata:'🔥'}[f.mode]||'⏱';
+    const modeLabel={wod:'FOR TIME',amrap:'AMRAP',emom:'EMOM',tabata:'TABATA'}[f.mode]||'';
+    const dur=f.mode==='tabata'?`${f.tabRounds}×${f.tabWork}/${f.tabRest}s`:`${f.dur} min`;
+    el.innerHTML=`
+      <span style="font-size:1.4rem">${modeIcon}</span>
+      <div class="fav-modal-info">
+        <div class="fav-modal-name">${f.name}</div>
+        <div class="fav-modal-meta">${modeLabel} · ${dur}</div>
+      </div>
+      <button class="fav-modal-del" title="Supprimer">✕</button>
+    `;
+    el.querySelector('.fav-modal-del').onclick=(e)=>{
+      e.stopPropagation();
+      deleteFavorite(e,i);
+      renderFavsModal();
+    };
+    list.appendChild(el);
+  });
+}
+function saveFavoriteFromModal(){
+  const promptText=S.lang==='en'?'Name this WOD:':'Nom du WOD :';
+  const name=prompt(promptText);
+  if(!name) return;
+  const fav={name,mode:S.mode,track:S.track,dur:S.dur,lang:S.lang};
+  if(S.mode==='tabata'){
+    fav.tabWork=parseInt(document.getElementById('tabWork').value)||20;
+    fav.tabRest=parseInt(document.getElementById('tabRest').value)||10;
+    fav.tabRounds=parseInt(document.getElementById('tabRounds').value)||8;
+  }
+  const favs=getFavs();
+  favs.push(fav);
+  setFavs(favs);
+  renderFavsModal();
+  // Aussi rafraîchir la sidebar (cachée mais existante)
+  try{renderFavs();}catch(e){}
 }
 
 // INIT
