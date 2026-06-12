@@ -1972,14 +1972,14 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ===== SPLASH SCREEN (auto-dismiss 2s) =====
+// ===== SPLASH SCREEN (auto-dismiss 1s) =====
 function showWelcome(){
   const w=document.getElementById('welcomeScreen');
   if(w){
     w.style.display='flex';
     w.classList.remove('fade-out');
-    // Auto-fermeture après 2 secondes
-    setTimeout(()=>{closeWelcome();},2000);
+    // Auto-fermeture après 1 seconde
+    setTimeout(()=>{closeWelcome();},1000);
   }
 }
 function closeWelcome(){
@@ -2070,7 +2070,7 @@ function setupModeSwipe(){
 // Lancer le wizard après le splash
 function showWelcomeThenWizard(){
   showWelcome();
-  // Après le splash (2.5s), afficher l'écran mode si c'est la 1ère utilisation
+  // Après le splash (1.5s), afficher l'écran mode si c'est la 1ère utilisation
   setTimeout(()=>{
     let savedMode=null;
     try{savedMode=localStorage.getItem('reps_mode');}catch(e){}
@@ -2080,7 +2080,7 @@ function showWelcomeThenWizard(){
       // Mode déjà choisi : on affiche directement l'app
       document.body.classList.remove('wizard-active');
     }
-  },2600);
+  },1500);
 }
 
 // Au chargement : vérifier si langue déjà choisie
