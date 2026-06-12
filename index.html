@@ -390,6 +390,13 @@
     border-color:#ff3358;
     box-shadow:0 0 24px rgba(255,51,88,0.4);
   }
+  /* Cache l'app pendant le wizard */
+  body.wizard-active > header,
+  body.wizard-active > main,
+  body.wizard-active > .bottom-row,
+  body.wizard-active > footer{
+    visibility:hidden;
+  }
 </style>
 </head>
 <body>
@@ -1988,6 +1995,8 @@ function chooseLanguage(lang){
 function showModeChoice(){
   const screen=document.getElementById('modeChoiceScreen');
   if(!screen) return;
+  // Cacher l'app pendant le wizard
+  document.body.classList.add('wizard-active');
   // Adapter le titre selon la langue
   const title=document.getElementById('modeChoiceTitle');
   const hint=document.getElementById('modeChoiceHint');
@@ -2014,7 +2023,13 @@ function chooseMode(mode){
   if(screen){
     screen.style.opacity='0';
     screen.style.transition='opacity 0.4s ease';
-    setTimeout(()=>{screen.style.display='none';},400);
+    setTimeout(()=>{
+      screen.style.display='none';
+      // Afficher l'app maintenant que le wizard est fini
+      document.body.classList.remove('wizard-active');
+    },400);
+  } else {
+    document.body.classList.remove('wizard-active');
   }
 }
 
@@ -2046,6 +2061,9 @@ function showWelcomeThenWizard(){
     try{savedMode=localStorage.getItem('reps_mode');}catch(e){}
     if(!savedMode){
       showModeChoice();
+    } else {
+      // Mode déjà choisi : on affiche directement l'app
+      document.body.classList.remove('wizard-active');
     }
   },2600);
 }
@@ -2054,6 +2072,14 @@ function showWelcomeThenWizard(){
 window.addEventListener('DOMContentLoaded',()=>{
   let savedLang=null;
   try{savedLang=localStorage.getItem('reps_lang');}catch(e){}
+  let savedMode=null;
+  try{savedMode=localStorage.getItem('reps_mode');}catch(e){}
+  
+  // Si pas de langue OU pas de mode : on est en mode wizard, on cache l'app
+  if(!savedLang||!savedMode){
+    document.body.classList.add('wizard-active');
+  }
+  
   if(savedLang==='fr'||savedLang==='en'){
     // Langue déjà choisie : appliquer et afficher le splash habituel
     setLang(savedLang);
