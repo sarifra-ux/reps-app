@@ -274,9 +274,72 @@
   .t-meta{font-family:'DM Mono',monospace;font-size:0.56rem;color:var(--muted);margin-top:4px;line-height:1.5;}
 
   @media(max-width:900px){.app{grid-template-columns:1fr;}aside{border-right:none;border-bottom:1px solid var(--border);}.bottom-row{grid-template-columns:1fr;}}
+
+  /* ===== ÉCRAN CHOIX DE LANGUE ===== */
+  .lang-choice{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;
+    background:
+      radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0,229,255,0.12) 0%, transparent 50%),
+      var(--bg);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    animation:welcomeFadeIn 0.4s ease-out;
+  }
+  .lang-choice-content{
+    display:flex;flex-direction:column;align-items:center;gap:32px;
+    max-width:480px;width:100%;
+  }
+  .lang-choice-sub{
+    font-family:'Barlow Condensed',sans-serif;
+    font-size:1.2rem;letter-spacing:2px;text-transform:uppercase;
+    color:var(--text);text-align:center;line-height:1.6;
+  }
+  .lang-choice-buttons{
+    display:flex;flex-direction:column;gap:16px;width:100%;
+  }
+  .lang-choice-btn{
+    display:flex;align-items:center;justify-content:center;gap:16px;
+    padding:24px 32px;
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:16px;
+    color:var(--text);
+    font-family:'Bebas Neue',sans-serif;
+    font-size:1.8rem;letter-spacing:3px;
+    cursor:pointer;
+    transition:all 0.2s ease;
+    width:100%;
+  }
+  .lang-choice-btn:hover,.lang-choice-btn:active{
+    border-color:var(--accent);
+    background:var(--surface);
+    box-shadow:0 0 24px rgba(230,63,255,0.4);
+    transform:translateY(-2px);
+  }
+  .lang-flag{font-size:2.4rem;}
+  .lang-name{font-weight:400;}
+  @keyframes welcomeFadeIn{from{opacity:0}to{opacity:1}}
 </style>
 </head>
 <body>
+
+<!-- ===== ÉCRAN CHOIX DE LANGUE (1ère visite uniquement) ===== -->
+<div id="langChoiceScreen" class="lang-choice" style="display:none">
+  <div class="lang-choice-content">
+    <h1 class="welcome-logo">R·E·P·S</h1>
+    <div class="lang-choice-sub">Choose your language<br><span style="opacity:.7">Choisis ta langue</span></div>
+    <div class="lang-choice-buttons">
+      <button class="lang-choice-btn" onclick="chooseLanguage('fr')">
+        <span class="lang-flag">🇫🇷</span>
+        <span class="lang-name">Français</span>
+      </button>
+      <button class="lang-choice-btn" onclick="chooseLanguage('en')">
+        <span class="lang-flag">🇬🇧</span>
+        <span class="lang-name">English</span>
+      </button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== SPLASH SCREEN (auto-dismiss après 2s) ===== -->
 <div id="welcomeScreen" class="welcome" style="display:none">
@@ -712,6 +775,7 @@ function setLang(l){
   S.lang=l;
   document.getElementById('btnFR').className='lang-btn'+(l==='fr'?' active':'');
   document.getElementById('btnEN').className='lang-btn'+(l==='en'?' active':'');
+  try{localStorage.setItem('reps_lang',l);}catch(e){}
   renderSched();
 }
 
@@ -1807,9 +1871,35 @@ function closeWelcome(){
     setTimeout(()=>{w.style.display='none';},500);
   }
 }
-// Au chargement : afficher à chaque ouverture
-window.addEventListener('DOMContentLoaded',()=>{
+
+// ===== CHOIX DE LANGUE (1ère visite) =====
+function chooseLanguage(lang){
+  try{localStorage.setItem('reps_lang',lang);}catch(e){}
+  setLang(lang);
+  // Cacher l'écran de choix de langue
+  const c=document.getElementById('langChoiceScreen');
+  if(c){
+    c.style.opacity='0';
+    c.style.transition='opacity 0.4s ease';
+    setTimeout(()=>{c.style.display='none';},400);
+  }
+  // Afficher le splash habituel
   showWelcome();
+}
+
+// Au chargement : vérifier si langue déjà choisie
+window.addEventListener('DOMContentLoaded',()=>{
+  let savedLang=null;
+  try{savedLang=localStorage.getItem('reps_lang');}catch(e){}
+  if(savedLang==='fr'||savedLang==='en'){
+    // Langue déjà choisie : appliquer et afficher le splash habituel
+    setLang(savedLang);
+    showWelcome();
+  } else {
+    // 1ère visite : afficher l'écran de choix
+    const c=document.getElementById('langChoiceScreen');
+    if(c) c.style.display='flex';
+  }
 });
 
 
