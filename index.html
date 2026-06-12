@@ -61,6 +61,21 @@
   .lang-btn.active{background:rgba(230,63,255,0.12);border-color:var(--accent);color:var(--accent);}
   .fs-btn{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:7px 10px;color:var(--muted);cursor:pointer;font-size:1rem;}
   .fs-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .settings-btn{
+    background:var(--card);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:7px 10px;
+    color:var(--muted);
+    cursor:pointer;
+    font-size:1rem;
+    transition:all 0.2s ease;
+  }
+  .settings-btn:hover,.settings-btn:active{
+    border-color:#9b30ff;
+    color:#9b30ff;
+    box-shadow:0 0 12px rgba(155,48,255,0.3);
+  }
   .new-wod-btn{
     background:var(--card);
     border:1px solid var(--border);
@@ -277,6 +292,98 @@
   body.fullscreen-mode .now-playing-bar{position:absolute;top:40px;left:40px;}
   .exit-fs-btn{position:fixed;top:20px;right:20px;z-index:1000;background:rgba(0,0,0,0.6);border:1px solid var(--border);color:var(--text);padding:10px 16px;border-radius:10px;cursor:pointer;font-family:'DM Mono',monospace;font-size:0.7rem;display:none;}
   body.fullscreen-mode .exit-fs-btn{display:block;}
+
+  /* ===== MODAL SETTINGS ===== */
+  .settings-modal{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;
+    z-index:99995;
+    background:rgba(8,6,16,0.85);
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    display:flex;align-items:center;justify-content:center;
+    padding:24px;
+    animation:welcomeFadeIn 0.25s ease-out;
+  }
+  .settings-modal-content{
+    background:var(--card);
+    border:1px solid rgba(155,48,255,0.3);
+    border-radius:20px;
+    padding:24px;
+    width:100%;max-width:420px;
+    box-shadow:0 0 40px rgba(155,48,255,0.2);
+  }
+  .settings-modal-header{
+    display:flex;align-items:center;justify-content:space-between;
+    margin-bottom:24px;
+    padding-bottom:16px;
+    border-bottom:1px solid var(--border);
+  }
+  .settings-modal-title{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:1.8rem;letter-spacing:4px;
+    margin:0;
+    color:var(--text);
+  }
+  .settings-modal-close{
+    background:transparent;
+    border:1px solid var(--border);
+    color:var(--muted);
+    width:32px;height:32px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:0.9rem;
+    transition:all 0.2s ease;
+  }
+  .settings-modal-close:hover{
+    border-color:var(--accent);
+    color:var(--accent);
+  }
+  .settings-modal-body{
+    display:flex;flex-direction:column;gap:20px;
+  }
+  .settings-row{
+    display:flex;flex-direction:column;gap:10px;
+  }
+  .settings-row-label{
+    display:flex;align-items:center;gap:10px;
+    font-family:'DM Mono',monospace;
+    font-size:0.75rem;letter-spacing:2px;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+  .settings-icon{font-size:1rem;}
+  .settings-row-control{
+    display:flex;align-items:center;gap:12px;
+  }
+  .settings-row-control input[type=range]{
+    flex:1;
+    -webkit-appearance:none;
+    height:6px;
+    background:var(--border);
+    border-radius:3px;
+    outline:none;
+  }
+  .settings-row-control input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width:20px;height:20px;
+    background:#9b30ff;
+    border-radius:50%;
+    cursor:pointer;
+    box-shadow:0 0 12px rgba(155,48,255,0.6);
+  }
+  .settings-row-control input[type=range]::-moz-range-thumb{
+    width:20px;height:20px;
+    background:#9b30ff;
+    border-radius:50%;
+    cursor:pointer;
+    border:none;
+    box-shadow:0 0 12px rgba(155,48,255,0.6);
+  }
+  .settings-val{
+    font-family:'DM Mono',monospace;
+    font-size:0.8rem;
+    color:var(--text);
+    min-width:42px;text-align:right;
+  }
 
   .now-playing-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;}
   .np-badge{background:rgba(230,63,255,0.1);border:1px solid rgba(230,63,255,0.25);border-radius:20px;padding:4px 14px;font-family:'DM Mono',monospace;font-size:0.55rem;color:var(--accent);letter-spacing:2px;}
@@ -732,12 +839,45 @@
       <button class="lang-btn" id="btnEN" onclick="setLang('en')">🇬🇧 EN</button>
     </div>
     <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label">NOUVEAU</span></button>
+    <button class="settings-btn" onclick="openSettings()" title="Réglages">⚙</button>
     <button class="fs-btn" onclick="toggleFullscreen()" title="Plein écran">⛶</button>
     <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText">READY</span></div>
   </div>
 </header>
 
 <button class="exit-fs-btn" onclick="toggleFullscreen()">✕ QUITTER</button>
+
+<!-- ===== MODAL SETTINGS ===== -->
+<div id="settingsModal" class="settings-modal" style="display:none" onclick="closeSettingsBackdrop(event)">
+  <div class="settings-modal-content" onclick="event.stopPropagation()">
+    <div class="settings-modal-header">
+      <h3 class="settings-modal-title" id="settingsModalTitle">Réglages</h3>
+      <button class="settings-modal-close" onclick="closeSettings()">✕</button>
+    </div>
+    <div class="settings-modal-body">
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <span class="settings-icon">🎵</span>
+          <span class="settings-name" id="settingsMusicLabel">Musique</span>
+        </div>
+        <div class="settings-row-control">
+          <input type="range" min="0" max="100" value="60" id="settingsVolMusic" oninput="updateSettingsVolMusic(this.value)">
+          <span class="settings-val" id="settingsVolMusicVal">60%</span>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <span class="settings-icon">🎙️</span>
+          <span class="settings-name" id="settingsVoiceLabel">Voix</span>
+        </div>
+        <div class="settings-row-control">
+          <input type="range" min="0" max="100" value="100" id="settingsVolVoice" oninput="updateSettingsVolVoice(this.value)">
+          <span class="settings-val" id="settingsVolVoiceVal">100%</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="app">
   <aside>
@@ -2271,6 +2411,67 @@ function resetWizard(){
   document.body.classList.add('wizard-active');
   // Lancer le wizard depuis l'écran mode
   showModeChoice();
+}
+
+// ===== MENU SETTINGS =====
+function openSettings(){
+  const modal=document.getElementById('settingsModal');
+  if(!modal) return;
+  // Adapter les labels selon la langue
+  const title=document.getElementById('settingsModalTitle');
+  const musicLbl=document.getElementById('settingsMusicLabel');
+  const voiceLbl=document.getElementById('settingsVoiceLabel');
+  if(S.lang==='en'){
+    if(title) title.textContent='Settings';
+    if(musicLbl) musicLbl.textContent='Music';
+    if(voiceLbl) voiceLbl.textContent='Voice';
+  } else {
+    if(title) title.textContent='Réglages';
+    if(musicLbl) musicLbl.textContent='Musique';
+    if(voiceLbl) voiceLbl.textContent='Voix';
+  }
+  // Synchroniser les sliders avec les valeurs actuelles de la sidebar
+  const volMusic=document.getElementById('volMusic');
+  const volVoice=document.getElementById('volVoice');
+  const sVolMusic=document.getElementById('settingsVolMusic');
+  const sVolVoice=document.getElementById('settingsVolVoice');
+  if(volMusic && sVolMusic){
+    sVolMusic.value=volMusic.value;
+    document.getElementById('settingsVolMusicVal').textContent=volMusic.value+'%';
+  }
+  if(volVoice && sVolVoice){
+    sVolVoice.value=volVoice.value;
+    document.getElementById('settingsVolVoiceVal').textContent=volVoice.value+'%';
+  }
+  modal.style.display='flex';
+}
+function closeSettings(){
+  const modal=document.getElementById('settingsModal');
+  if(modal) modal.style.display='none';
+}
+function closeSettingsBackdrop(e){
+  // Fermer si on clique sur le backdrop (en dehors du contenu)
+  if(e.target.id==='settingsModal') closeSettings();
+}
+function updateSettingsVolMusic(v){
+  // Mettre à jour le slider modal ET la sidebar
+  document.getElementById('settingsVolMusicVal').textContent=v+'%';
+  const volMusic=document.getElementById('volMusic');
+  if(volMusic){
+    volMusic.value=v;
+    // Déclencher la mise à jour du volume audio réel
+    if(typeof updateVolMusic==='function') updateVolMusic(v);
+    document.getElementById('volMusicVal').textContent=v+'%';
+  }
+}
+function updateSettingsVolVoice(v){
+  document.getElementById('settingsVolVoiceVal').textContent=v+'%';
+  const volVoice=document.getElementById('volVoice');
+  if(volVoice){
+    volVoice.value=v;
+    if(typeof updateVolVoice==='function') updateVolVoice(v);
+    document.getElementById('volVoiceVal').textContent=v+'%';
+  }
 }
 
 function chooseLanguage(lang){
