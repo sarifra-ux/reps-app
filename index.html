@@ -455,6 +455,68 @@
     color:var(--muted);
     font-size:1.2rem;
   }
+
+  /* ===== ÉCRAN CHOIX DE LA MUSIQUE ===== */
+  .music-choice{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99996;
+    background:
+      radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0,229,255,0.12) 0%, transparent 50%),
+      var(--bg);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    animation:welcomeFadeIn 0.4s ease-out;
+    overflow-y:auto;
+  }
+  .music-choice-content{
+    display:flex;flex-direction:column;align-items:center;gap:20px;
+    max-width:480px;width:100%;
+  }
+  .music-choice-tiles{
+    display:flex;flex-direction:column;gap:12px;width:100%;
+  }
+  .music-tile{
+    display:flex;align-items:center;gap:20px;
+    padding:20px 28px;
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:16px;
+    color:var(--text);
+    font-family:'Bebas Neue',sans-serif;
+    cursor:pointer;
+    transition:all 0.2s ease;
+    width:100%;
+    text-align:left;
+  }
+  .music-tile:hover,.music-tile:active{
+    transform:translateY(-2px);
+  }
+  .music-tile-icon{
+    font-size:2rem;
+    line-height:1;
+  }
+  .music-tile-name{
+    font-size:1.5rem;letter-spacing:3px;
+  }
+  .music-tile-rap:hover,.music-tile-rap:active{
+    border-color:#e63fff;
+    box-shadow:0 0 24px rgba(230,63,255,0.4);
+  }
+  .music-tile-techno:hover,.music-tile-techno:active{
+    border-color:#ffffff;
+    box-shadow:0 0 24px rgba(255,255,255,0.3);
+  }
+  .music-tile-house:hover,.music-tile-house:active{
+    border-color:#00e5ff;
+    box-shadow:0 0 24px rgba(0,229,255,0.4);
+  }
+  .music-tile-hymne:hover,.music-tile-hymne:active{
+    border-color:#ffb300;
+    box-shadow:0 0 24px rgba(255,179,0,0.4);
+  }
+  .music-tile-hiphop:hover,.music-tile-hiphop:active{
+    border-color:#9b30ff;
+    box-shadow:0 0 24px rgba(155,48,255,0.4);
+  }
 </style>
 </head>
 <body>
@@ -518,6 +580,36 @@
       <!-- Boutons remplis dynamiquement selon le mode -->
     </div>
     <div class="wizard-hint" id="timingChoiceHint">Glisse vers la gauche pour continuer</div>
+  </div>
+</div>
+
+<!-- ===== ÉCRAN 4 : CHOIX DE LA MUSIQUE ===== -->
+<div id="musicChoiceScreen" class="music-choice" style="display:none">
+  <div class="music-choice-content">
+    <h2 class="wizard-title" id="musicChoiceTitle">Musique</h2>
+    <div class="music-choice-tiles">
+      <button class="music-tile music-tile-rap" onclick="chooseMusic('rap')">
+        <span class="music-tile-icon">🎤</span>
+        <span class="music-tile-name">RAP</span>
+      </button>
+      <button class="music-tile music-tile-techno" onclick="chooseMusic('techno')">
+        <span class="music-tile-icon">🎹</span>
+        <span class="music-tile-name">TECHNO</span>
+      </button>
+      <button class="music-tile music-tile-house" onclick="chooseMusic('house')">
+        <span class="music-tile-icon">🪩</span>
+        <span class="music-tile-name">HOUSE</span>
+      </button>
+      <button class="music-tile music-tile-hymne" onclick="chooseMusic('hymne')">
+        <span class="music-tile-icon">🏆</span>
+        <span class="music-tile-name">HYMNE</span>
+      </button>
+      <button class="music-tile music-tile-hiphop" onclick="chooseMusic('hiphop')">
+        <span class="music-tile-icon">💿</span>
+        <span class="music-tile-name">HIP-HOP</span>
+      </button>
+    </div>
+    <div class="wizard-hint" id="musicChoiceHint">Choix aléatoire dans la catégorie</div>
   </div>
 </div>
 <header>
@@ -2187,8 +2279,68 @@ function chooseTiming(value){
   if(typeof updateTotalFromMode==='function') updateTotalFromMode();
   if(typeof updateClock==='function') updateClock();
   
-  // Fermer l'écran timing et afficher l'app
+  // Fermer l'écran timing et passer à l'écran musique
   const screen=document.getElementById('timingChoiceScreen');
+  if(screen){
+    screen.style.opacity='0';
+    screen.style.transition='opacity 0.4s ease';
+    setTimeout(()=>{
+      screen.style.display='none';
+      showMusicChoice();
+    },400);
+  } else {
+    showMusicChoice();
+  }
+}
+
+// ===== WIZARD : ÉCRAN 4 (MUSIQUE) =====
+function showMusicChoice(){
+  const screen=document.getElementById('musicChoiceScreen');
+  if(!screen) return;
+  const title=document.getElementById('musicChoiceTitle');
+  const hint=document.getElementById('musicChoiceHint');
+  if(title) title.textContent=S.lang==='en'?'Music':'Musique';
+  if(hint) hint.textContent=S.lang==='en'?'Random pick in the category':'Choix aléatoire dans la catégorie';
+  screen.style.display='flex';
+  screen.style.opacity='1';
+}
+
+function chooseMusic(category){
+  // Mapping catégorie → tracks disponibles
+  const CATEGORY_TRACKS={
+    'rap':['pogo','pleinfeu'],
+    'techno':['techno'],
+    'house':['house'],
+    'hymne':['hymne'],
+    'hiphop':['censured','cartier','crime','cyrilgane','introduction','vibes']
+  };
+  const tracks=CATEGORY_TRACKS[category]||['pogo'];
+  // Aléatoire dans la catégorie
+  const chosen=tracks[Math.floor(Math.random()*tracks.length)];
+  S.track=chosen;
+  
+  // Mettre à jour l'UI track dans l'app
+  try{
+    const info=TRACK_INFO[chosen];
+    if(info){
+      const npBadge=document.getElementById('npBadge');
+      const tCover=document.getElementById('tCover');
+      const tName=document.getElementById('tName');
+      if(npBadge) npBadge.textContent='🎵 '+info.name.toUpperCase();
+      if(tCover) tCover.textContent=info.emoji;
+      if(tName) tName.textContent=info.name.toUpperCase();
+    }
+    // Activer le bon bouton track
+    document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active'));
+    const btn=document.querySelector(`.track-btn[onclick*="'${chosen}'"]`);
+    if(btn) btn.classList.add('active');
+  }catch(e){console.warn('chooseMusic ui',e);}
+  
+  // Sauver le choix
+  try{localStorage.setItem('reps_music_category',category);}catch(e){}
+  
+  // Fermer l'écran musique et afficher l'app
+  const screen=document.getElementById('musicChoiceScreen');
   if(screen){
     screen.style.opacity='0';
     screen.style.transition='opacity 0.4s ease';
@@ -2225,16 +2377,18 @@ function showWelcomeThenWizard(){
   showWelcome();
   // Après le splash, afficher l'écran approprié selon les choix précédents
   setTimeout(()=>{
-    let savedMode=null,savedTiming=null;
+    let savedMode=null,savedTiming=null,savedMusic=null;
     try{
       savedMode=localStorage.getItem('reps_mode');
       savedTiming=localStorage.getItem('reps_timing');
+      savedMusic=localStorage.getItem('reps_music_category');
     }catch(e){}
     if(!savedMode){
       showModeChoice();
     } else if(!savedTiming){
-      // Mode déjà choisi mais pas le timing : afficher l'écran timing
       showTimingChoice(savedMode);
+    } else if(!savedMusic){
+      showMusicChoice();
     } else {
       // Tout déjà choisi : afficher l'app
       document.body.classList.remove('wizard-active');
@@ -2244,15 +2398,16 @@ function showWelcomeThenWizard(){
 
 // Au chargement : vérifier si langue déjà choisie
 window.addEventListener('DOMContentLoaded',()=>{
-  let savedLang=null,savedMode=null,savedTiming=null;
+  let savedLang=null,savedMode=null,savedTiming=null,savedMusic=null;
   try{
     savedLang=localStorage.getItem('reps_lang');
     savedMode=localStorage.getItem('reps_mode');
     savedTiming=localStorage.getItem('reps_timing');
+    savedMusic=localStorage.getItem('reps_music_category');
   }catch(e){}
   
-  // Si pas de langue OU pas de mode OU pas de timing : on est en mode wizard
-  if(!savedLang||!savedMode||!savedTiming){
+  // Si un des choix manque : on est en mode wizard
+  if(!savedLang||!savedMode||!savedTiming||!savedMusic){
     document.body.classList.add('wizard-active');
   }
   
