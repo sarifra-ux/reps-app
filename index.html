@@ -412,6 +412,49 @@
     z-index:99990;
     pointer-events:none;
   }
+
+  /* ===== ÉCRAN CHOIX DU TIMING ===== */
+  .timing-choice{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99997;
+    background:
+      radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0,229,255,0.12) 0%, transparent 50%),
+      var(--bg);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    animation:welcomeFadeIn 0.4s ease-out;
+    overflow-y:auto;
+  }
+  .timing-choice-content{
+    display:flex;flex-direction:column;align-items:center;gap:24px;
+    max-width:480px;width:100%;
+  }
+  .timing-choice-buttons{
+    display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;
+  }
+  .timing-btn{
+    padding:24px 16px;
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:16px;
+    color:var(--text);
+    font-family:'Bebas Neue',sans-serif;
+    font-size:1.6rem;letter-spacing:2px;
+    cursor:pointer;
+    transition:all 0.2s ease;
+    text-align:center;
+  }
+  .timing-btn:hover,.timing-btn:active{
+    transform:translateY(-2px);
+    border-color:var(--accent);
+    box-shadow:0 0 24px rgba(230,63,255,0.4);
+  }
+  .timing-btn-custom{
+    grid-column:1 / -1;
+    background:transparent;
+    border-color:var(--border);
+    color:var(--muted);
+    font-size:1.2rem;
+  }
 </style>
 </head>
 <body>
@@ -464,6 +507,17 @@
       </button>
     </div>
     <div class="wizard-hint" id="modeChoiceHint">Glisse vers la gauche pour continuer</div>
+  </div>
+</div>
+
+<!-- ===== ÉCRAN 3 : CHOIX DU TIMING ===== -->
+<div id="timingChoiceScreen" class="timing-choice" style="display:none">
+  <div class="timing-choice-content">
+    <h2 class="wizard-title" id="timingChoiceTitle">Durée</h2>
+    <div class="timing-choice-buttons" id="timingChoiceButtons">
+      <!-- Boutons remplis dynamiquement selon le mode -->
+    </div>
+    <div class="wizard-hint" id="timingChoiceHint">Glisse vers la gauche pour continuer</div>
   </div>
 </div>
 <header>
@@ -1972,14 +2026,14 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// ===== SPLASH SCREEN (auto-dismiss 1s) =====
+// ===== SPLASH SCREEN (auto-dismiss instantané) =====
 function showWelcome(){
   const w=document.getElementById('welcomeScreen');
   if(w){
     w.style.display='flex';
     w.classList.remove('fade-out');
-    // Auto-fermeture après 1 seconde
-    setTimeout(()=>{closeWelcome();},1000);
+    // Auto-fermeture après 0.5 seconde
+    setTimeout(()=>{closeWelcome();},500);
   }
 }
 function closeWelcome(){
@@ -2033,14 +2087,113 @@ function chooseMode(mode){
   const tabBtn=document.querySelector(`.mode-tab[onclick*="'${mode}'"]`);
   if(tabBtn) setMode(tabBtn, mode);
   else S.mode=mode;
-  // Fermer l'écran wizard
+  // Fermer l'écran wizard mode
   const screen=document.getElementById('modeChoiceScreen');
   if(screen){
     screen.style.opacity='0';
     screen.style.transition='opacity 0.4s ease';
     setTimeout(()=>{
       screen.style.display='none';
-      // Afficher l'app maintenant que le wizard est fini
+      // Enchaîner sur l'écran 3 : timing
+      showTimingChoice(mode);
+    },400);
+  } else {
+    showTimingChoice(mode);
+  }
+}
+
+// ===== WIZARD : ÉCRAN 3 (TIMING) =====
+function showTimingChoice(mode){
+  const screen=document.getElementById('timingChoiceScreen');
+  if(!screen) return;
+  const title=document.getElementById('timingChoiceTitle');
+  const hint=document.getElementById('timingChoiceHint');
+  const btns=document.getElementById('timingChoiceButtons');
+  if(!btns) return;
+  
+  // Configurer le titre selon le mode et la langue
+  let titleText='';
+  if(mode==='wod'){
+    titleText=S.lang==='en'?'Cap Time':'Cap Time';
+  } else if(mode==='tabata'){
+    titleText='Tabata';
+  } else {
+    titleText=S.lang==='en'?'Duration':'Durée';
+  }
+  if(title) title.textContent=titleText;
+  if(hint) hint.textContent=S.lang==='en'?'Swipe left to continue':'Glisse vers la gauche pour continuer';
+  
+  // Construire les boutons selon le mode
+  btns.innerHTML='';
+  if(mode==='tabata'){
+    // Tabata : preset classique + custom
+    const btnClassic=document.createElement('button');
+    btnClassic.className='timing-btn';
+    btnClassic.textContent=S.lang==='en'?'CLASSIC (20/10 × 8)':'CLASSIQUE (20/10 × 8)';
+    btnClassic.onclick=()=>chooseTiming('tabata-classic');
+    btns.appendChild(btnClassic);
+    
+    const btnCustom=document.createElement('button');
+    btnCustom.className='timing-btn timing-btn-custom';
+    btnCustom.textContent=S.lang==='en'?'Custom':'Personnalisé';
+    btnCustom.onclick=()=>chooseTiming('custom');
+    btns.appendChild(btnCustom);
+  } else {
+    // For Time / AMRAP / EMOM : durées preset
+    const durations=[5,10,15,20,30];
+    durations.forEach(d=>{
+      const b=document.createElement('button');
+      b.className='timing-btn';
+      b.textContent=d+' MIN';
+      b.onclick=()=>chooseTiming(d);
+      btns.appendChild(b);
+    });
+    const btnCustom=document.createElement('button');
+    btnCustom.className='timing-btn timing-btn-custom';
+    btnCustom.textContent=S.lang==='en'?'Custom':'Personnalisé';
+    btnCustom.onclick=()=>chooseTiming('custom');
+    btns.appendChild(btnCustom);
+  }
+  
+  screen.style.display='flex';
+  screen.style.opacity='1';
+}
+
+function chooseTiming(value){
+  const mode=S.mode;
+  if(value==='custom'){
+    // Mode custom : on ferme tout, l'utilisateur va régler dans l'app
+    try{localStorage.setItem('reps_timing','custom');}catch(e){}
+  } else if(value==='tabata-classic' && mode==='tabata'){
+    // Appliquer les valeurs Tabata classiques
+    S.tabWorkSec=20;
+    S.tabRestSec=10;
+    S.tabTotalRounds=8;
+    const w=document.getElementById('tabWork');
+    const r=document.getElementById('tabRest');
+    const rd=document.getElementById('tabRounds');
+    if(w) w.value=20;
+    if(r) r.value=10;
+    if(rd) rd.value=8;
+    try{localStorage.setItem('reps_timing','tabata-classic');}catch(e){}
+  } else if(typeof value==='number'){
+    // Durée en minutes
+    S.dur=value;
+    document.querySelectorAll('.dur-btn').forEach(b=>{
+      b.classList.toggle('active',parseInt(b.textContent)===value);
+    });
+    try{localStorage.setItem('reps_timing',value.toString());}catch(e){}
+  }
+  if(typeof updateTotalFromMode==='function') updateTotalFromMode();
+  if(typeof updateClock==='function') updateClock();
+  
+  // Fermer l'écran timing et afficher l'app
+  const screen=document.getElementById('timingChoiceScreen');
+  if(screen){
+    screen.style.opacity='0';
+    screen.style.transition='opacity 0.4s ease';
+    setTimeout(()=>{
+      screen.style.display='none';
       document.body.classList.remove('wizard-active');
     },400);
   } else {
@@ -2070,14 +2223,20 @@ function setupModeSwipe(){
 // Lancer le wizard après le splash
 function showWelcomeThenWizard(){
   showWelcome();
-  // Après le splash (1.5s), afficher l'écran mode si c'est la 1ère utilisation
+  // Après le splash, afficher l'écran approprié selon les choix précédents
   setTimeout(()=>{
-    let savedMode=null;
-    try{savedMode=localStorage.getItem('reps_mode');}catch(e){}
+    let savedMode=null,savedTiming=null;
+    try{
+      savedMode=localStorage.getItem('reps_mode');
+      savedTiming=localStorage.getItem('reps_timing');
+    }catch(e){}
     if(!savedMode){
       showModeChoice();
+    } else if(!savedTiming){
+      // Mode déjà choisi mais pas le timing : afficher l'écran timing
+      showTimingChoice(savedMode);
     } else {
-      // Mode déjà choisi : on affiche directement l'app
+      // Tout déjà choisi : afficher l'app
       document.body.classList.remove('wizard-active');
     }
   },1500);
@@ -2085,13 +2244,15 @@ function showWelcomeThenWizard(){
 
 // Au chargement : vérifier si langue déjà choisie
 window.addEventListener('DOMContentLoaded',()=>{
-  let savedLang=null;
-  try{savedLang=localStorage.getItem('reps_lang');}catch(e){}
-  let savedMode=null;
-  try{savedMode=localStorage.getItem('reps_mode');}catch(e){}
+  let savedLang=null,savedMode=null,savedTiming=null;
+  try{
+    savedLang=localStorage.getItem('reps_lang');
+    savedMode=localStorage.getItem('reps_mode');
+    savedTiming=localStorage.getItem('reps_timing');
+  }catch(e){}
   
-  // Si pas de langue OU pas de mode : on est en mode wizard, on cache l'app
-  if(!savedLang||!savedMode){
+  // Si pas de langue OU pas de mode OU pas de timing : on est en mode wizard
+  if(!savedLang||!savedMode||!savedTiming){
     document.body.classList.add('wizard-active');
   }
   
