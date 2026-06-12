@@ -319,6 +319,77 @@
   .lang-flag{font-size:2.4rem;}
   .lang-name{font-weight:400;}
   @keyframes welcomeFadeIn{from{opacity:0}to{opacity:1}}
+
+  /* ===== ÉCRAN CHOIX DE MODE ===== */
+  .mode-choice{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99998;
+    background:
+      radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0,229,255,0.12) 0%, transparent 50%),
+      var(--bg);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    animation:welcomeFadeIn 0.4s ease-out;
+    overflow-y:auto;
+  }
+  .mode-choice-content{
+    display:flex;flex-direction:column;align-items:center;gap:24px;
+    max-width:480px;width:100%;
+  }
+  .wizard-title{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:2rem;letter-spacing:4px;
+    color:var(--text);text-align:center;margin:0;
+    text-transform:uppercase;
+  }
+  .wizard-hint{
+    font-family:'DM Mono',monospace;
+    font-size:0.7rem;letter-spacing:2px;
+    color:var(--muted);text-align:center;
+    margin-top:8px;opacity:0.6;
+    text-transform:uppercase;
+  }
+  .mode-choice-tiles{
+    display:flex;flex-direction:column;gap:12px;width:100%;
+  }
+  .mode-tile{
+    display:flex;align-items:center;gap:20px;
+    padding:24px 28px;
+    background:var(--card);
+    border:2px solid var(--border);
+    border-radius:16px;
+    color:var(--text);
+    font-family:'Bebas Neue',sans-serif;
+    cursor:pointer;
+    transition:all 0.2s ease;
+    width:100%;
+    text-align:left;
+  }
+  .mode-tile:hover,.mode-tile:active{
+    transform:translateY(-2px);
+  }
+  .mode-tile-icon{
+    font-size:2.4rem;
+    line-height:1;
+  }
+  .mode-tile-name{
+    font-size:1.8rem;letter-spacing:3px;
+  }
+  .mode-tile-fortime:hover,.mode-tile-fortime:active{
+    border-color:#e63fff;
+    box-shadow:0 0 24px rgba(230,63,255,0.4);
+  }
+  .mode-tile-amrap:hover,.mode-tile-amrap:active{
+    border-color:#00e5ff;
+    box-shadow:0 0 24px rgba(0,229,255,0.4);
+  }
+  .mode-tile-emom:hover,.mode-tile-emom:active{
+    border-color:#ffb300;
+    box-shadow:0 0 24px rgba(255,179,0,0.4);
+  }
+  .mode-tile-tabata:hover,.mode-tile-tabata:active{
+    border-color:#ff3358;
+    box-shadow:0 0 24px rgba(255,51,88,0.4);
+  }
 </style>
 </head>
 <body>
@@ -345,6 +416,32 @@
 <div id="welcomeScreen" class="welcome" style="display:none">
   <div class="welcome-content">
     <h1 class="welcome-logo">R·E·P·S</h1>
+  </div>
+</div>
+
+<!-- ===== ÉCRAN 2 : CHOIX DU MODE WOD ===== -->
+<div id="modeChoiceScreen" class="mode-choice" style="display:none">
+  <div class="mode-choice-content">
+    <h2 class="wizard-title" id="modeChoiceTitle">Mode d'entraînement</h2>
+    <div class="mode-choice-tiles">
+      <button class="mode-tile mode-tile-fortime" onclick="chooseMode('wod')">
+        <span class="mode-tile-icon">🏁</span>
+        <span class="mode-tile-name">FOR TIME</span>
+      </button>
+      <button class="mode-tile mode-tile-amrap" onclick="chooseMode('amrap')">
+        <span class="mode-tile-icon">♾️</span>
+        <span class="mode-tile-name">AMRAP</span>
+      </button>
+      <button class="mode-tile mode-tile-emom" onclick="chooseMode('emom')">
+        <span class="mode-tile-icon">🔔</span>
+        <span class="mode-tile-name">EMOM</span>
+      </button>
+      <button class="mode-tile mode-tile-tabata" onclick="chooseMode('tabata')">
+        <span class="mode-tile-icon">🔥</span>
+        <span class="mode-tile-name">TABATA</span>
+      </button>
+    </div>
+    <div class="wizard-hint" id="modeChoiceHint">Glisse vers la gauche pour continuer</div>
   </div>
 </div>
 <header>
@@ -1883,8 +1980,74 @@ function chooseLanguage(lang){
     c.style.transition='opacity 0.4s ease';
     setTimeout(()=>{c.style.display='none';},400);
   }
-  // Afficher le splash habituel
+  // Afficher le splash habituel puis enchaîner sur le wizard mode
+  showWelcomeThenWizard();
+}
+
+// ===== WIZARD : ÉCRAN 2 (MODE WOD) =====
+function showModeChoice(){
+  const screen=document.getElementById('modeChoiceScreen');
+  if(!screen) return;
+  // Adapter le titre selon la langue
+  const title=document.getElementById('modeChoiceTitle');
+  const hint=document.getElementById('modeChoiceHint');
+  if(S.lang==='en'){
+    if(title) title.textContent='Training mode';
+    if(hint) hint.textContent='Swipe left to continue';
+  } else {
+    if(title) title.textContent='Mode d\'entraînement';
+    if(hint) hint.textContent='Glisse vers la gauche pour continuer';
+  }
+  screen.style.display='flex';
+  screen.style.opacity='1';
+}
+
+function chooseMode(mode){
+  // Sauver le choix
+  try{localStorage.setItem('reps_mode',mode);}catch(e){}
+  // Appliquer le mode dans l'app sous-jacente
+  const tabBtn=document.querySelector(`.mode-tab[onclick*="'${mode}'"]`);
+  if(tabBtn) setMode(tabBtn, mode);
+  else S.mode=mode;
+  // Fermer l'écran wizard
+  const screen=document.getElementById('modeChoiceScreen');
+  if(screen){
+    screen.style.opacity='0';
+    screen.style.transition='opacity 0.4s ease';
+    setTimeout(()=>{screen.style.display='none';},400);
+  }
+}
+
+// Swipe pour fermer l'écran mode et accéder à l'app
+function setupModeSwipe(){
+  const screen=document.getElementById('modeChoiceScreen');
+  if(!screen) return;
+  let touchStartX=0;
+  screen.addEventListener('touchstart',e=>{
+    touchStartX=e.changedTouches[0].screenX;
+  },{passive:true});
+  screen.addEventListener('touchend',e=>{
+    const touchEndX=e.changedTouches[0].screenX;
+    const diff=touchStartX-touchEndX;
+    if(diff>80){
+      // Swipe gauche : on accepte le mode actuel (pré-sélectionné via choix précédent ou défaut)
+      const savedMode=localStorage.getItem('reps_mode')||S.mode||'wod';
+      chooseMode(savedMode);
+    }
+  },{passive:true});
+}
+
+// Lancer le wizard après le splash
+function showWelcomeThenWizard(){
   showWelcome();
+  // Après le splash (2.5s), afficher l'écran mode si c'est la 1ère utilisation
+  setTimeout(()=>{
+    let savedMode=null;
+    try{savedMode=localStorage.getItem('reps_mode');}catch(e){}
+    if(!savedMode){
+      showModeChoice();
+    }
+  },2600);
 }
 
 // Au chargement : vérifier si langue déjà choisie
@@ -1894,12 +2057,14 @@ window.addEventListener('DOMContentLoaded',()=>{
   if(savedLang==='fr'||savedLang==='en'){
     // Langue déjà choisie : appliquer et afficher le splash habituel
     setLang(savedLang);
-    showWelcome();
+    showWelcomeThenWizard();
   } else {
     // 1ère visite : afficher l'écran de choix
     const c=document.getElementById('langChoiceScreen');
     if(c) c.style.display='flex';
   }
+  // Activer le swipe sur l'écran mode (pour navigation manuelle)
+  setupModeSwipe();
 });
 
 
