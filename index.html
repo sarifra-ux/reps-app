@@ -395,7 +395,22 @@
   body.wizard-active > main,
   body.wizard-active > .bottom-row,
   body.wizard-active > footer{
-    visibility:hidden;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
+  body.wizard-active{
+    background:var(--bg) !important;
+  }
+  body.wizard-active::before{
+    content:'';
+    position:fixed;
+    top:0;left:0;width:100vw;height:100vh;
+    background:
+      radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0,229,255,0.12) 0%, transparent 50%),
+      var(--bg);
+    z-index:99990;
+    pointer-events:none;
   }
 </style>
 </head>
