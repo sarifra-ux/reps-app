@@ -525,25 +525,56 @@
   body.epured-mode .app{
     grid-template-columns:1fr !important;
   }
-  /* R géant en filigrane en fond du timer */
+  /* REPS géant en filigrane violet sur l'écran épuré */
   body.epured-mode main::before{
-    content:'R';
+    content:'R·E·P·S';
     position:fixed;
     top:50%;left:50%;
     transform:translate(-50%,-50%);
     font-family:'Bebas Neue',sans-serif;
-    font-size:80vh;
+    font-size:24vw;
     font-weight:400;
-    color:rgba(255,255,255,0.04);
+    color:rgba(155,48,255,0.06);
     line-height:0.8;
     z-index:0;
     pointer-events:none;
     user-select:none;
-    letter-spacing:-0.05em;
+    letter-spacing:0.1em;
+    white-space:nowrap;
+    text-shadow:0 0 60px rgba(155,48,255,0.15);
   }
   body.epured-mode main > *{
     position:relative;
     z-index:2;
+  }
+  /* Masquer le panneau "Programme des annonces" en mode épuré */
+  body.epured-mode .schedule{
+    display:none !important;
+  }
+  /* La track-info prend toute la largeur */
+  body.epured-mode .bottom-row{
+    grid-template-columns:1fr !important;
+  }
+  body.epured-mode .track-info{
+    justify-content:center;
+    padding:18px 24px;
+    background:rgba(155,48,255,0.08);
+    border:1px solid rgba(155,48,255,0.3);
+    border-radius:16px;
+  }
+  body.epured-mode .t-cover{
+    font-size:2.4rem;
+  }
+  body.epured-mode .t-name{
+    font-size:1.2rem;
+    letter-spacing:3px;
+  }
+  /* Mise en avant du status timer (mode WOD) */
+  body.epured-mode .timer-status{
+    font-size:1rem;
+    letter-spacing:3px;
+    color:var(--accent);
+    text-transform:uppercase;
   }
 </style>
 </head>
