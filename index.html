@@ -517,6 +517,14 @@
     border-color:#9b30ff;
     box-shadow:0 0 24px rgba(155,48,255,0.4);
   }
+
+  /* ===== MODE ÉPURÉ : sidebar masquée après le wizard ===== */
+  body.epured-mode aside{
+    display:none !important;
+  }
+  body.epured-mode .app{
+    grid-template-columns:1fr !important;
+  }
 </style>
 </head>
 <body>
@@ -2138,6 +2146,12 @@ function closeWelcome(){
 }
 
 // ===== CHOIX DE LANGUE (1ère visite) =====
+// Fonction utilitaire : sortir du wizard et entrer en mode épuré
+function finishWizard(){
+  document.body.classList.remove('wizard-active');
+  document.body.classList.add('epured-mode');
+}
+
 function chooseLanguage(lang){
   try{localStorage.setItem('reps_lang',lang);}catch(e){}
   setLang(lang);
@@ -2346,10 +2360,10 @@ function chooseMusic(category){
     screen.style.transition='opacity 0.4s ease';
     setTimeout(()=>{
       screen.style.display='none';
-      document.body.classList.remove('wizard-active');
+      finishWizard();
     },400);
   } else {
-    document.body.classList.remove('wizard-active');
+    finishWizard();
   }
 }
 
@@ -2391,7 +2405,7 @@ function showWelcomeThenWizard(){
       showMusicChoice();
     } else {
       // Tout déjà choisi : afficher l'app
-      document.body.classList.remove('wizard-active');
+      finishWizard();
     }
   },1500);
 }
@@ -2409,6 +2423,9 @@ window.addEventListener('DOMContentLoaded',()=>{
   // Si un des choix manque : on est en mode wizard
   if(!savedLang||!savedMode||!savedTiming||!savedMusic){
     document.body.classList.add('wizard-active');
+  } else {
+    // Tous les choix sont faits, on est en mode épuré dès le départ
+    document.body.classList.add('epured-mode');
   }
   
   if(savedLang==='fr'||savedLang==='en'){
