@@ -313,6 +313,29 @@
     display:flex;flex-direction:column;align-items:center;gap:32px;
     max-width:480px;width:100%;
   }
+  .welcome-logo-block{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    margin-bottom:8px;
+  }
+  .welcome-logo{
+    font-family:'Bebas Neue',sans-serif;
+    font-size:4.5rem;
+    letter-spacing:14px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    background-clip:text;
+    line-height:1;
+    margin:0;
+    text-shadow:0 0 80px rgba(230,63,255,0.3);
+  }
+  .welcome-logo-sub{
+    font-family:'DM Mono',monospace;
+    font-size:0.7rem;
+    letter-spacing:5px;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
   .lang-choice-sub{
     font-family:'Barlow Condensed',sans-serif;
     font-size:1.2rem;letter-spacing:2px;text-transform:uppercase;
@@ -607,7 +630,10 @@
 <!-- ===== ÉCRAN CHOIX DE LANGUE (1ère visite uniquement) ===== -->
 <div id="langChoiceScreen" class="lang-choice" style="display:none">
   <div class="lang-choice-content">
-    <h1 class="welcome-logo">R·E·P·S</h1>
+    <div class="welcome-logo-block">
+      <h1 class="welcome-logo">R·E·P·S</h1>
+      <div class="welcome-logo-sub">Rhythm Engine Performance Sound</div>
+    </div>
     <div class="lang-choice-sub">Choose your language<br><span style="opacity:.7">Choisis ta langue</span></div>
     <div class="lang-choice-buttons">
       <button class="lang-choice-btn" onclick="chooseLanguage('fr')">
