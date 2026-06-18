@@ -187,6 +187,15 @@
   .imp-empty{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);text-align:center;padding:8px;letter-spacing:0.5px;}
   .imp-del{margin-left:auto;width:24px;height:24px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;font-size:1rem;line-height:1;flex-shrink:0;transition:all 0.2s;}
   .imp-del:hover,.imp-del:active{border-color:#ff4d6d;color:#ff4d6d;background:rgba(255,77,109,0.12);}
+  .music-tile-perso:hover,.music-tile-perso:active{border-color:var(--accent2);box-shadow:0 0 18px rgba(0,229,255,0.25);}
+  .perso-row{display:flex;align-items:center;gap:8px;}
+  .perso-pick{flex:1;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--text);text-align:left;transition:all 0.2s;}
+  .perso-pick:hover,.perso-pick:active{border-color:var(--accent);box-shadow:0 0 12px rgba(230,63,255,0.2);}
+  .perso-emoji{font-size:1.3rem;flex-shrink:0;}
+  .perso-name{font-size:0.8rem;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;}
+  .perso-sub{font-size:0.6rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;}
+  .perso-del{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:1.2rem;line-height:1;flex-shrink:0;cursor:pointer;transition:all 0.2s;}
+  .perso-del:hover,.perso-del:active{border-color:#ff4d6d;color:#ff4d6d;background:rgba(255,77,109,0.12);}
 
   .durations{display:flex;flex-wrap:wrap;gap:7px;}
   .dur-btn{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-family:'Bebas Neue',sans-serif;font-size:1.85rem;letter-spacing:2px;cursor:pointer;color:var(--muted);line-height:1;display:flex;flex-direction:column;align-items:center;transition:all 0.2s;}
@@ -921,6 +930,10 @@
         <span class="music-tile-icon">💿</span>
         <span class="music-tile-name">HIP-HOP</span>
       </button>
+      <button class="music-tile music-tile-perso" onclick="openPersoModal()">
+        <span class="music-tile-icon">🎵</span>
+        <span class="music-tile-name">MES MORCEAUX</span>
+      </button>
     </div>
     <div class="wizard-hint" id="musicChoiceHint">Choix aléatoire dans la catégorie</div>
   </div>
@@ -976,6 +989,22 @@
     </div>
   </div>
 </div>
+
+<!-- ===== MODAL MES MORCEAUX (import perso) ===== -->
+<div id="persoModal" class="settings-modal" style="display:none" onclick="closePersoModalBackdrop(event)">
+  <div class="settings-modal-content" onclick="event.stopPropagation()">
+    <div class="settings-modal-header">
+      <h3 class="settings-modal-title">Mes morceaux</h3>
+      <button class="settings-modal-close" onclick="closePersoModal()">✕</button>
+    </div>
+    <div class="settings-modal-body">
+      <button class="imp-add-btn" onclick="document.getElementById('impFileInput2').click()">+ Importer (musique ou vidéo)</button>
+      <div id="persoModalList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;"></div>
+      <div class="imp-empty" id="persoModalEmpty">Aucun morceau importé. Importe ta musique, ou un enregistrement d'écran d'une chanson.</div>
+    </div>
+  </div>
+</div>
+<input type="file" id="impFileInput2" accept="audio/*,video/*" multiple style="display:none" onchange="handleImportFiles(this.files)">
 
 <!-- ===== MODAL FAVORIS ===== -->
 <div id="favoritesModal" class="settings-modal" style="display:none" onclick="closeFavoritesBackdrop(event)">
@@ -3088,9 +3117,10 @@ function handleImportFiles(fileList){
   });
   return chain.then(()=>{
     impUpdateCount();
+    if(typeof renderPersoModalList==='function') renderPersoModalList();
     const cat=document.querySelector('.track-cat[data-cat="perso"]');
     if(cat){ document.querySelectorAll('.track-cat').forEach(c=>c.classList.remove('open')); cat.classList.add('open'); }
-    const inp=document.getElementById('impFileInput'); if(inp) inp.value='';
+    ['impFileInput','impFileInput2'].forEach(id=>{ const inp=document.getElementById(id); if(inp) inp.value=''; });
   });
 }
 function impRemove(id){
@@ -3122,6 +3152,54 @@ function impLoadAll(){
     });
     impUpdateCount();
   }).catch(e=>console.warn('IndexedDB indisponible',e));
+}
+function impPersoKeys(){ return Object.keys(MUSIC).filter(k=>k.indexOf('imp_')===0); }
+function renderPersoModalList(){
+  const list=document.getElementById('persoModalList');
+  const empty=document.getElementById('persoModalEmpty');
+  if(!list) return;
+  list.innerHTML='';
+  const keys=impPersoKeys();
+  if(empty) empty.style.display=keys.length?'none':'block';
+  keys.forEach(id=>{
+    const info=TRACK_INFO[id]||{name:'Sans titre',emoji:'🎵',sub:''};
+    const row=document.createElement('div'); row.className='perso-row';
+    const pick=document.createElement('button'); pick.className='perso-pick';
+    pick.setAttribute('onclick',"choosePersoTrack('"+id+"')");
+    const em=document.createElement('span'); em.className='perso-emoji'; em.textContent=info.emoji;
+    const txt=document.createElement('div');
+    const t=document.createElement('div'); t.className='perso-name'; t.textContent=info.name;
+    const s=document.createElement('div'); s.className='perso-sub'; s.textContent=info.sub||'';
+    txt.appendChild(t); txt.appendChild(s);
+    pick.appendChild(em); pick.appendChild(txt);
+    const del=document.createElement('button'); del.className='perso-del'; del.textContent='×'; del.title='Supprimer';
+    del.setAttribute('onclick',"impRemove('"+id+"');renderPersoModalList();");
+    row.appendChild(pick); row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+function openPersoModal(){ renderPersoModalList(); const m=document.getElementById('persoModal'); if(m) m.style.display='flex'; }
+function closePersoModal(){ const m=document.getElementById('persoModal'); if(m) m.style.display='none'; }
+function closePersoModalBackdrop(e){ if(e.target&&e.target.id==='persoModal') closePersoModal(); }
+function choosePersoTrack(id){
+  const info=TRACK_INFO[id]; if(!info) return;
+  S.track=id;
+  try{
+    const npBadge=document.getElementById('npBadge'); if(npBadge) npBadge.textContent='🎵 '+info.name.toUpperCase();
+    const tCover=document.getElementById('tCover'); if(tCover) tCover.textContent=info.emoji;
+    const tName=document.getElementById('tName'); if(tName) tName.textContent=info.name.toUpperCase();
+    document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active'));
+    const btn=document.querySelector(".track-btn[onclick*=\"'"+id+"'\"]"); if(btn) btn.classList.add('active');
+  }catch(e){}
+  try{localStorage.setItem('reps_music_category','perso');}catch(e){}
+  closePersoModal();
+  const screen=document.getElementById('musicChoiceScreen');
+  if(screen && screen.style.display!=='none'){
+    screen.style.opacity='0'; screen.style.transition='opacity 0.4s ease';
+    setTimeout(()=>{ screen.style.display='none'; if(typeof finishWizard==='function') finishWizard(); },400);
+  } else if(S.state==='playing'){
+    stopMusic(); startMusic();
+  }
 }
 window.addEventListener('DOMContentLoaded',impLoadAll);
 
