@@ -181,6 +181,12 @@
   .track-title{font-size:0.82rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;}
   .track-sub{font-size:0.58rem;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px;}
   .track-btn.active .track-sub{color:var(--accent);}
+  /* ===== BIBLIOTHÈQUE PERSO (import musique) ===== */
+  .imp-add-btn{width:100%;background:linear-gradient(135deg,rgba(0,229,255,0.12),rgba(0,229,255,0.04));border:1.5px dashed var(--accent2);border-radius:14px;padding:14px 18px;cursor:pointer;color:var(--accent2);font-family:'DM Mono',monospace;font-size:0.72rem;letter-spacing:1.5px;text-transform:uppercase;transition:all 0.2s;margin-bottom:2px;}
+  .imp-add-btn:hover,.imp-add-btn:active{background:linear-gradient(135deg,rgba(0,229,255,0.22),rgba(0,229,255,0.08));box-shadow:0 0 14px rgba(0,229,255,0.25);}
+  .imp-empty{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);text-align:center;padding:8px;letter-spacing:0.5px;}
+  .imp-del{margin-left:auto;width:24px;height:24px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;font-size:1rem;line-height:1;flex-shrink:0;transition:all 0.2s;}
+  .imp-del:hover,.imp-del:active{border-color:#ff4d6d;color:#ff4d6d;background:rgba(255,77,109,0.12);}
 
   .durations{display:flex;flex-wrap:wrap;gap:7px;}
   .dur-btn{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-family:'Bebas Neue',sans-serif;font-size:1.85rem;letter-spacing:2px;cursor:pointer;color:var(--muted);line-height:1;display:flex;flex-direction:column;align-items:center;transition:all 0.2s;}
@@ -1236,6 +1242,19 @@
             </button>
           </div>
         </div>
+        <div class="track-cat" data-cat="perso">
+          <button class="track-cat-head" onclick="toggleCat('perso')">
+            <span class="track-cat-label">🎵 MES MORCEAUX</span>
+            <span class="track-cat-count" id="persoCount">0</span>
+            <span class="track-cat-arrow">▾</span>
+          </button>
+          <div class="track-cat-body">
+            <button class="imp-add-btn" onclick="document.getElementById('impFileInput').click()">+ Importer un morceau</button>
+            <div id="persoTracks"></div>
+            <div class="imp-empty" id="persoEmpty">Aucun morceau importé. Ajoute tes propres musiques depuis ton téléphone.</div>
+          </div>
+        </div>
+        <input type="file" id="impFileInput" accept="audio/*" multiple style="display:none" onchange="handleImportFiles(this.files)">
       </div>
     </div>
 
@@ -2979,6 +2998,105 @@ window.addEventListener('DOMContentLoaded',()=>{
     }
   },100);
 });
+
+// ===== BIBLIOTHÈQUE PERSO : import de musique + persistance (IndexedDB) =====
+const IMP_DB='reps_music_db', IMP_STORE='tracks';
+function impOpenDB(){
+  return new Promise((resolve,reject)=>{
+    let req;
+    try{ req=indexedDB.open(IMP_DB,1); }catch(e){ reject(e); return; }
+    req.onupgradeneeded=()=>{ const db=req.result; if(!db.objectStoreNames.contains(IMP_STORE)) db.createObjectStore(IMP_STORE,{keyPath:'id'}); };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function impSave(rec){ return impOpenDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(IMP_STORE,'readwrite'); tx.objectStore(IMP_STORE).put(rec); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+function impGetAll(){ return impOpenDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(IMP_STORE,'readonly'); const rq=tx.objectStore(IMP_STORE).getAll(); rq.onsuccess=()=>res(rq.result||[]); rq.onerror=()=>rej(rq.error); })); }
+function impDeleteDB(id){ return impOpenDB().then(db=>new Promise((res,rej)=>{ const tx=db.transaction(IMP_STORE,'readwrite'); tx.objectStore(IMP_STORE).delete(id); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); })); }
+
+function impCleanName(filename){
+  let n=(filename||'').replace(/\.[^.]+$/,'').replace(/[_]+/g,' ').trim();
+  if(n.length>42) n=n.slice(0,42)+'…';
+  return n||'Sans titre';
+}
+function impUpdateCount(){
+  const n=Object.keys(MUSIC).filter(k=>k.indexOf('imp_')===0).length;
+  const c=document.getElementById('persoCount'); if(c) c.textContent=n;
+  const empty=document.getElementById('persoEmpty'); if(empty) empty.style.display=n?'none':'block';
+}
+function impAddToUI(id,name){
+  TRACK_INFO[id]={name:name,emoji:'🎵',sub:'Perso · Importé'};
+  if(ALL_TRACK_KEYS.indexOf(id)<0) ALL_TRACK_KEYS.push(id);
+  const body=document.getElementById('persoTracks');
+  if(!body) return;
+  const btn=document.createElement('button');
+  btn.className='track-btn'; btn.id='trackbtn_'+id;
+  btn.setAttribute('onclick',"selectTrack(this,'"+id+"')");
+  const pick=document.createElement('span');
+  pick.className='track-pick'; pick.setAttribute('data-key',id);
+  pick.setAttribute('onclick',"event.stopPropagation();toggleTrackPick(this,'"+id+"')");
+  const emoji=document.createElement('span'); emoji.className='track-emoji'; emoji.textContent='🎵';
+  const txt=document.createElement('div');
+  const t=document.createElement('div'); t.className='track-title'; t.textContent=name;
+  const s=document.createElement('div'); s.className='track-sub'; s.textContent='Perso · Importé';
+  txt.appendChild(t); txt.appendChild(s);
+  const del=document.createElement('span');
+  del.className='imp-del'; del.textContent='×'; del.title='Supprimer';
+  del.setAttribute('onclick',"event.stopPropagation();impRemove('"+id+"')");
+  btn.appendChild(pick); btn.appendChild(emoji); btn.appendChild(txt); btn.appendChild(del);
+  body.appendChild(btn);
+}
+function handleImportFiles(fileList){
+  const files=Array.from(fileList||[]).filter(f=>(f.type&&f.type.indexOf('audio')===0)||/\.(mp3|m4a|aac|ogg|oga|wav|flac)$/i.test(f.name));
+  if(!files.length){ alert('Choisis un fichier audio (mp3, m4a, wav, etc.).'); return; }
+  let chain=Promise.resolve();
+  files.forEach((f,i)=>{
+    chain=chain.then(()=>{
+      const id='imp_'+Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,6);
+      const name=impCleanName(f.name);
+      return impSave({id:id,name:name,blob:f}).then(()=>{
+        MUSIC[id]=URL.createObjectURL(f);
+        impAddToUI(id,name);
+      }).catch(e=>{
+        console.error('import',e);
+        alert('Impossible d\'enregistrer « '+name+' ». L\'espace de stockage est peut-être plein.');
+      });
+    });
+  });
+  chain.then(()=>{
+    impUpdateCount();
+    const cat=document.querySelector('.track-cat[data-cat="perso"]');
+    if(cat){ document.querySelectorAll('.track-cat').forEach(c=>c.classList.remove('open')); cat.classList.add('open'); }
+    const inp=document.getElementById('impFileInput'); if(inp) inp.value='';
+  });
+}
+function impRemove(id){
+  const btn=document.getElementById('trackbtn_'+id); if(btn) btn.remove();
+  if(MUSIC[id]){ try{URL.revokeObjectURL(MUSIC[id]);}catch(e){} delete MUSIC[id]; }
+  delete TRACK_INFO[id];
+  const ai=ALL_TRACK_KEYS.indexOf(id); if(ai>=0) ALL_TRACK_KEYS.splice(ai,1);
+  const mi=manualPicks.indexOf(id);
+  if(mi>=0){ manualPicks.splice(mi,1); const mc=document.getElementById('mixManualCount'); if(mc) mc.textContent=manualPicks.length; }
+  if(audioCache['music_'+id]){ try{audioCache['music_'+id].pause();}catch(e){} delete audioCache['music_'+id]; }
+  if(S.track===id){
+    S.track='pogo';
+    const def=document.querySelector('.track-btn[onclick*="\'pogo\'"]');
+    if(def){ document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active')); def.classList.add('active'); }
+  }
+  impDeleteDB(id).catch(e=>console.error('del',e));
+  impUpdateCount();
+}
+function impLoadAll(){
+  impGetAll().then(recs=>{
+    (recs||[]).forEach(r=>{
+      if(!r||!r.blob) return;
+      MUSIC[r.id]=URL.createObjectURL(r.blob);
+      impAddToUI(r.id, r.name||'Sans titre');
+    });
+    impUpdateCount();
+  }).catch(e=>console.warn('IndexedDB indisponible',e));
+}
+window.addEventListener('DOMContentLoaded',impLoadAll);
 
 </script>
 </body>
