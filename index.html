@@ -1254,7 +1254,7 @@
             <div class="imp-empty" id="persoEmpty">Aucun morceau importé. Ajoute tes propres musiques depuis ton téléphone.</div>
           </div>
         </div>
-        <input type="file" id="impFileInput" accept="audio/*" multiple style="display:none" onchange="handleImportFiles(this.files)">
+        <input type="file" id="impFileInput" accept="audio/*,video/*" multiple style="display:none" onchange="handleImportFiles(this.files)">
       </div>
     </div>
 
@@ -2999,7 +2999,7 @@ window.addEventListener('DOMContentLoaded',()=>{
   },100);
 });
 
-// ===== BIBLIOTHÈQUE PERSO : import de musique + persistance (IndexedDB) =====
+// ===== BIBLIOTHÈQUE PERSO : import audio ET vidéo (enregistrement d'écran) + persistance (IndexedDB) =====
 const IMP_DB='reps_music_db', IMP_STORE='tracks';
 function impOpenDB(){
   return new Promise((resolve,reject)=>{
@@ -3019,13 +3019,33 @@ function impCleanName(filename){
   if(n.length>42) n=n.slice(0,42)+'…';
   return n||'Sans titre';
 }
+// Un enregistrement d'écran iPhone est une vidéo (.mov) ; on n'en jouera que le son
+function impIsVideo(f){ return (f.type&&f.type.indexOf('video')===0)||/\.(mov|mp4|m4v|webm|avi|mkv)$/i.test(f.name); }
+function impIsAudio(f){ return (f.type&&f.type.indexOf('audio')===0)||/\.(mp3|m4a|aac|ogg|oga|wav|flac)$/i.test(f.name); }
+// Crée l'élément média. Pour une vidéo : un <video> caché dont on ne lit que l'audio.
+function impMakeMediaEl(url, kind){
+  let el;
+  if(kind==='video'){
+    el=document.createElement('video');
+    el.src=url;
+    el.setAttribute('playsinline',''); el.playsInline=true; el.preload='auto';
+    // Hors écran plutôt que display:none (iOS refuse parfois de jouer un media en display:none)
+    el.style.cssText='position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+    document.body.appendChild(el);
+  } else {
+    el=new Audio(url);
+  }
+  return el;
+}
 function impUpdateCount(){
   const n=Object.keys(MUSIC).filter(k=>k.indexOf('imp_')===0).length;
   const c=document.getElementById('persoCount'); if(c) c.textContent=n;
   const empty=document.getElementById('persoEmpty'); if(empty) empty.style.display=n?'none':'block';
 }
-function impAddToUI(id,name){
-  TRACK_INFO[id]={name:name,emoji:'🎵',sub:'Perso · Importé'};
+function impAddToUI(id,name,kind){
+  const emoji=kind==='video'?'🎬':'🎵';
+  const sub=kind==='video'?'Perso · Vidéo':'Perso · Audio';
+  TRACK_INFO[id]={name:name,emoji:emoji,sub:sub};
   if(ALL_TRACK_KEYS.indexOf(id)<0) ALL_TRACK_KEYS.push(id);
   const body=document.getElementById('persoTracks');
   if(!body) return;
@@ -3035,35 +3055,38 @@ function impAddToUI(id,name){
   const pick=document.createElement('span');
   pick.className='track-pick'; pick.setAttribute('data-key',id);
   pick.setAttribute('onclick',"event.stopPropagation();toggleTrackPick(this,'"+id+"')");
-  const emoji=document.createElement('span'); emoji.className='track-emoji'; emoji.textContent='🎵';
+  const em=document.createElement('span'); em.className='track-emoji'; em.textContent=emoji;
   const txt=document.createElement('div');
   const t=document.createElement('div'); t.className='track-title'; t.textContent=name;
-  const s=document.createElement('div'); s.className='track-sub'; s.textContent='Perso · Importé';
+  const s=document.createElement('div'); s.className='track-sub'; s.textContent=sub;
   txt.appendChild(t); txt.appendChild(s);
   const del=document.createElement('span');
   del.className='imp-del'; del.textContent='×'; del.title='Supprimer';
   del.setAttribute('onclick',"event.stopPropagation();impRemove('"+id+"')");
-  btn.appendChild(pick); btn.appendChild(emoji); btn.appendChild(txt); btn.appendChild(del);
+  btn.appendChild(pick); btn.appendChild(em); btn.appendChild(txt); btn.appendChild(del);
   body.appendChild(btn);
 }
 function handleImportFiles(fileList){
-  const files=Array.from(fileList||[]).filter(f=>(f.type&&f.type.indexOf('audio')===0)||/\.(mp3|m4a|aac|ogg|oga|wav|flac)$/i.test(f.name));
-  if(!files.length){ alert('Choisis un fichier audio (mp3, m4a, wav, etc.).'); return; }
+  const files=Array.from(fileList||[]).filter(f=>impIsAudio(f)||impIsVideo(f));
+  if(!files.length){ alert('Choisis un fichier audio (mp3, m4a...) ou une vidéo (enregistrement d\'écran .mov, .mp4).'); return Promise.resolve(); }
   let chain=Promise.resolve();
   files.forEach((f,i)=>{
     chain=chain.then(()=>{
       const id='imp_'+Date.now()+'_'+i+'_'+Math.random().toString(36).slice(2,6);
       const name=impCleanName(f.name);
-      return impSave({id:id,name:name,blob:f}).then(()=>{
-        MUSIC[id]=URL.createObjectURL(f);
-        impAddToUI(id,name);
+      const kind=impIsVideo(f)?'video':'audio';
+      return impSave({id:id,name:name,blob:f,kind:kind}).then(()=>{
+        const url=URL.createObjectURL(f);
+        MUSIC[id]=url;
+        audioCache['music_'+id]=impMakeMediaEl(url,kind);
+        impAddToUI(id,name,kind);
       }).catch(e=>{
         console.error('import',e);
         alert('Impossible d\'enregistrer « '+name+' ». L\'espace de stockage est peut-être plein.');
       });
     });
   });
-  chain.then(()=>{
+  return chain.then(()=>{
     impUpdateCount();
     const cat=document.querySelector('.track-cat[data-cat="perso"]');
     if(cat){ document.querySelectorAll('.track-cat').forEach(c=>c.classList.remove('open')); cat.classList.add('open'); }
@@ -3072,12 +3095,13 @@ function handleImportFiles(fileList){
 }
 function impRemove(id){
   const btn=document.getElementById('trackbtn_'+id); if(btn) btn.remove();
+  const el=audioCache['music_'+id];
+  if(el){ try{el.pause();}catch(e){} if(el.tagName==='VIDEO'&&el.parentNode){ el.parentNode.removeChild(el); } delete audioCache['music_'+id]; }
   if(MUSIC[id]){ try{URL.revokeObjectURL(MUSIC[id]);}catch(e){} delete MUSIC[id]; }
   delete TRACK_INFO[id];
   const ai=ALL_TRACK_KEYS.indexOf(id); if(ai>=0) ALL_TRACK_KEYS.splice(ai,1);
   const mi=manualPicks.indexOf(id);
   if(mi>=0){ manualPicks.splice(mi,1); const mc=document.getElementById('mixManualCount'); if(mc) mc.textContent=manualPicks.length; }
-  if(audioCache['music_'+id]){ try{audioCache['music_'+id].pause();}catch(e){} delete audioCache['music_'+id]; }
   if(S.track===id){
     S.track='pogo';
     const def=document.querySelector('.track-btn[onclick*="\'pogo\'"]');
@@ -3090,8 +3114,11 @@ function impLoadAll(){
   impGetAll().then(recs=>{
     (recs||[]).forEach(r=>{
       if(!r||!r.blob) return;
-      MUSIC[r.id]=URL.createObjectURL(r.blob);
-      impAddToUI(r.id, r.name||'Sans titre');
+      const kind=r.kind||'audio';
+      const url=URL.createObjectURL(r.blob);
+      MUSIC[r.id]=url;
+      audioCache['music_'+r.id]=impMakeMediaEl(url,kind);
+      impAddToUI(r.id, r.name||'Sans titre', kind);
     });
     impUpdateCount();
   }).catch(e=>console.warn('IndexedDB indisponible',e));
