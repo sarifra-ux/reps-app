@@ -1926,6 +1926,38 @@ let audioCtx=null;
 let countBuffers={}; // cache des AudioBuffer par clé "lang_num"
 let musicWasPlaying=false;
 
+// === iOS : débloquer le Web Audio quand le bouton silencieux est activé ===
+// Sur iPhone, le mute switch coupe le Web Audio API mais PAS l'audio HTML.
+// On joue en boucle un mini-WAV silencieux (audio HTML) pour forcer le Web
+// Audio sur le canal "média". Résultat : les voix Brian passent même en silencieux.
+const _isIOS=/iP(hone|od|ad)/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+let _iosUnlockEl=null;
+function _makeSilentWavURI(seconds){
+  const sr=8000, n=Math.floor(sr*seconds), dataSize=n*2;
+  const buf=new ArrayBuffer(44+dataSize), v=new DataView(buf);
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i));};
+  w(0,'RIFF');v.setUint32(4,36+dataSize,true);w(8,'WAVE');w(12,'fmt ');
+  v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);
+  v.setUint32(24,sr,true);v.setUint32(28,sr*2,true);v.setUint16(32,2,true);
+  v.setUint16(34,16,true);w(36,'data');v.setUint32(40,dataSize,true);
+  let bin='';const b=new Uint8Array(buf);
+  for(let i=0;i<b.length;i++)bin+=String.fromCharCode(b[i]);
+  return 'data:audio/wav;base64,'+btoa(bin);
+}
+function unlockIOSAudio(){
+  if(!_isIOS) return;
+  if(!_iosUnlockEl){
+    const el=document.createElement('audio');
+    el.src=_makeSilentWavURI(0.2);
+    el.loop=true;
+    el.setAttribute('x-webkit-airplay','deny');
+    el.preload='auto';
+    el.volume=0;
+    _iosUnlockEl=el;
+  }
+  _iosUnlockEl.play().catch(()=>{});
+}
+
 function ensureAudioCtx(){
   if(!audioCtx){
     const Ctx=window.AudioContext||window.webkitAudioContext;
@@ -2162,6 +2194,7 @@ function clearCd(){S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdA
 
 // ===== SEQUENCE =====
 function togglePlay(){
+  unlockIOSAudio(); // iPhone : forcer le Web Audio sur le canal média (geste utilisateur)
   if(S.state==='idle') launch();
   else if(S.state==='playing') pause();
   else if(S.state==='paused') resume();
