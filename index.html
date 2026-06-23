@@ -717,6 +717,28 @@
     font-size:1.2rem;
   }
 
+  /* ===== ÉCRAN PERSONNALISÉ (un par mode) ===== */
+  .cs-block{
+    display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;
+    background:linear-gradient(135deg,var(--card),var(--card-hover));
+    border:1.5px solid var(--border);border-radius:16px;padding:18px;
+  }
+  .cs-block-title{
+    font-family:'DM Mono',monospace;font-size:0.72rem;letter-spacing:2px;
+    color:var(--muted);text-transform:uppercase;
+  }
+  .cs-summary{
+    font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--accent2);
+    text-align:center;letter-spacing:1px;
+  }
+  .cs-continue-btn{
+    width:100%;padding:20px;border:none;border-radius:16px;color:#fff;cursor:pointer;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:3px;
+    text-transform:uppercase;
+  }
+  .cs-continue-btn:active{transform:scale(0.98);}
+
   /* ===== ÉCRAN CHOIX DE LA MUSIQUE ===== */
   .music-choice{
     position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99996;
@@ -937,6 +959,16 @@
       </button>
     </div>
     <div class="wizard-hint" id="musicChoiceHint">Choix aléatoire dans la catégorie</div>
+  </div>
+</div>
+<!-- ===== ÉCRAN PERSONNALISÉ (par mode) ===== -->
+<div id="customScreen" class="timing-choice" style="display:none">
+  <div class="timing-choice-content">
+    <h2 class="wizard-title" id="customScreenTitle">Personnalisé</h2>
+    <div id="customScreenBody" style="display:flex;flex-direction:column;gap:14px;width:100%"></div>
+    <div class="cs-summary" id="customScreenSummary"></div>
+    <button class="cs-continue-btn" onclick="csContinue()">Continuer →</button>
+    <div class="wizard-hint">Règle, puis continue vers la musique</div>
   </div>
 </div>
 <header>
@@ -2909,7 +2941,7 @@ function chooseTiming(value){
   
   // "Personnalisé" => on ouvre le panneau de réglages complet (work/rest EMOM,
   // durée custom, track...). Sinon (durée preset) => écran musique du wizard.
-  const next = (value==='custom') ? openConfigFromWizard : showMusicChoice;
+  const next = (value==='custom') ? (()=>showCustomChoice(S.mode)) : showMusicChoice;
   const screen=document.getElementById('timingChoiceScreen');
   if(screen){
     screen.style.opacity='0';
@@ -2941,6 +2973,134 @@ function openConfigFromWizard(){
   const btn=document.getElementById('customizeBtn');
   if(btn) btn.innerHTML='✓ <span class="new-wod-label">TERMINÉ</span>';
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+// ===== ÉCRAN PERSONNALISÉ (un par mode) =====
+let CS={};
+function _csFmt(s){const m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0');}
+function _csStepper(label,valId,minusCall,plusCall,valText){
+  return '<div class="emom-picker">'
+    + (label?('<div class="emom-picker-label">'+label+'</div>'):'')
+    + '<div class="emom-picker-row">'
+    + '<button class="emom-picker-btn" onclick="'+minusCall+'">−</button>'
+    + '<div class="emom-picker-val" id="'+valId+'">'+valText+'</div>'
+    + '<button class="emom-picker-btn" onclick="'+plusCall+'">+</button>'
+    + '</div></div>';
+}
+function showCustomChoice(mode){
+  CS={
+    mode:mode,
+    work:S.emomIntervalSec||60, rest:S.emomRestSec||0, rounds:S.emomRounds||5,
+    tabWork:S.tabWorkSec||20, tabRest:S.tabRestSec||10, tabRounds:S.tabTotalRounds||8,
+    durMin:S.dur||10
+  };
+  const title=document.getElementById('customScreenTitle');
+  const body=document.getElementById('customScreenBody');
+  if(title){
+    const names={wod:'For Time',amrap:'AMRAP',emom:'EMOM',tabata:'Tabata'};
+    title.textContent='Perso · '+(names[mode]||'');
+  }
+  let html='';
+  if(mode==='emom'){
+    html+='<div class="cs-block"><div class="cs-block-title">⚡ Work (effort)</div><div class="emom-pickers">'
+      + _csStepper('MIN','csv_wmin',"csEmom('work','min',-1)","csEmom('work','min',1)",Math.floor(CS.work/60))
+      + _csStepper('SEC','csv_wsec',"csEmom('work','sec',-1)","csEmom('work','sec',1)",String(CS.work%60).padStart(2,'0'))
+      + '</div></div>';
+    html+='<div class="cs-block"><div class="cs-block-title">😮‍💨 Rest (récup)</div><div class="emom-pickers">'
+      + _csStepper('MIN','csv_rmin',"csEmom('rest','min',-1)","csEmom('rest','min',1)",Math.floor(CS.rest/60))
+      + _csStepper('SEC','csv_rsec',"csEmom('rest','sec',-1)","csEmom('rest','sec',1)",String(CS.rest%60).padStart(2,'0'))
+      + '</div></div>';
+    html+='<div class="cs-block"><div class="cs-block-title">🔁 Nombre de tours</div><div class="emom-pickers">'
+      + _csStepper('','csv_rounds',"csRounds(-1)","csRounds(1)",CS.rounds)
+      + '</div></div>';
+  } else if(mode==='tabata'){
+    html+='<div class="cs-block"><div class="cs-block-title">⚡ Work (sec)</div><div class="emom-pickers">'
+      + _csStepper('','csv_tw',"csTab('work',-1)","csTab('work',1)",CS.tabWork)
+      + '</div></div>';
+    html+='<div class="cs-block"><div class="cs-block-title">😮‍💨 Rest (sec)</div><div class="emom-pickers">'
+      + _csStepper('','csv_tr',"csTab('rest',-1)","csTab('rest',1)",CS.tabRest)
+      + '</div></div>';
+    html+='<div class="cs-block"><div class="cs-block-title">🔁 Nombre de tours</div><div class="emom-pickers">'
+      + _csStepper('','csv_trnd',"csTab('rounds',-1)","csTab('rounds',1)",CS.tabRounds)
+      + '</div></div>';
+  } else {
+    html+='<div class="cs-block"><div class="cs-block-title">⏱ Durée (min)</div><div class="emom-pickers">'
+      + _csStepper('','csv_dur',"csDur(-1)","csDur(1)",CS.durMin)
+      + '</div></div>';
+  }
+  if(body) body.innerHTML=html;
+  csRefreshSummary();
+  const screen=document.getElementById('customScreen');
+  if(screen){ screen.style.display='flex'; screen.style.opacity='1'; }
+}
+function csRefreshSummary(){
+  const sum=document.getElementById('customScreenSummary');
+  if(!sum) return;
+  if(CS.mode==='emom'){
+    const total=CS.rounds*(CS.work+CS.rest);
+    sum.textContent='→ '+CS.rounds+' × ('+_csFmt(CS.work)+' + '+_csFmt(CS.rest)+') = '+_csFmt(total);
+  } else if(CS.mode==='tabata'){
+    const total=CS.tabRounds*(CS.tabWork+CS.tabRest);
+    sum.textContent='→ '+CS.tabRounds+' × ('+CS.tabWork+'s + '+CS.tabRest+'s) = '+_csFmt(total);
+  } else {
+    sum.textContent='→ '+CS.durMin+' min';
+  }
+}
+function csEmom(which,part,delta){
+  let v=(which==='work')?CS.work:CS.rest;
+  v += (part==='min')?delta*60:delta*5;
+  const min=(which==='rest')?0:5;
+  v=Math.max(min,Math.min(600,v));
+  if(which==='work'){CS.work=v;document.getElementById('csv_wmin').textContent=Math.floor(v/60);document.getElementById('csv_wsec').textContent=String(v%60).padStart(2,'0');}
+  else{CS.rest=v;document.getElementById('csv_rmin').textContent=Math.floor(v/60);document.getElementById('csv_rsec').textContent=String(v%60).padStart(2,'0');}
+  csRefreshSummary();
+}
+function csRounds(delta){
+  CS.rounds=Math.max(1,Math.min(50,CS.rounds+delta));
+  document.getElementById('csv_rounds').textContent=CS.rounds;
+  csRefreshSummary();
+}
+function csTab(part,delta){
+  if(part==='work'){CS.tabWork=Math.max(5,Math.min(300,CS.tabWork+delta*5));document.getElementById('csv_tw').textContent=CS.tabWork;}
+  else if(part==='rest'){CS.tabRest=Math.max(0,Math.min(300,CS.tabRest+delta*5));document.getElementById('csv_tr').textContent=CS.tabRest;}
+  else{CS.tabRounds=Math.max(1,Math.min(50,CS.tabRounds+delta));document.getElementById('csv_trnd').textContent=CS.tabRounds;}
+  csRefreshSummary();
+}
+function csDur(delta){
+  CS.durMin=Math.max(1,Math.min(90,CS.durMin+delta));
+  document.getElementById('csv_dur').textContent=CS.durMin;
+  csRefreshSummary();
+}
+function csContinue(){
+  if(CS.mode==='emom'){
+    S.emomIntervalSec=CS.work; S.emomRestSec=CS.rest; S.emomRounds=CS.rounds;
+    try{
+      const a=document.getElementById('emomMin'),b=document.getElementById('emomSec');
+      const c=document.getElementById('emomRestMin'),d=document.getElementById('emomRestSec');
+      const e=document.getElementById('emomRounds');
+      if(a)a.textContent=Math.floor(CS.work/60);
+      if(b)b.textContent=String(CS.work%60).padStart(2,'0');
+      if(c)c.textContent=Math.floor(CS.rest/60);
+      if(d)d.textContent=String(CS.rest%60).padStart(2,'0');
+      if(e)e.textContent=CS.rounds;
+    }catch(err){}
+  } else if(CS.mode==='tabata'){
+    S.tabWorkSec=CS.tabWork; S.tabRestSec=CS.tabRest; S.tabTotalRounds=CS.tabRounds;
+    const w=document.getElementById('tabWork'),r=document.getElementById('tabRest'),rd=document.getElementById('tabRounds');
+    if(w)w.value=CS.tabWork; if(r)r.value=CS.tabRest; if(rd)rd.value=CS.tabRounds;
+  } else {
+    S.dur=CS.durMin; S.customActive=false;
+  }
+  if(typeof updateTotalFromMode==='function') updateTotalFromMode();
+  if(typeof updateClock==='function') updateClock();
+  const screen=document.getElementById('customScreen');
+  if(screen){
+    screen.style.opacity='0';
+    screen.style.transition='opacity 0.4s ease';
+    setTimeout(()=>{ screen.style.display='none'; showMusicChoice(); },400);
+  } else {
+    showMusicChoice();
+  }
 }
 
 // ===== WIZARD : ÉCRAN 4 (MUSIQUE) =====
