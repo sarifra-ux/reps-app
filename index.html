@@ -950,6 +950,7 @@
       <button class="lang-btn" id="btnEN" onclick="setLang('en')">🇬🇧 EN</button>
     </div>
     <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label">NOUVEAU</span></button>
+    <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)">✏️ <span class="new-wod-label">PERSO</span></button>
     <button class="favs-btn" onclick="openFavorites()" title="Favoris">⭐</button>
     <button class="settings-btn" onclick="openSettings()" title="Réglages">⚙</button>
     <button class="fs-btn" onclick="toggleFullscreen()" title="Plein écran">⛶</button>
@@ -2661,6 +2662,28 @@ function closeWelcome(){
 function finishWizard(){
   document.body.classList.remove('wizard-active');
   document.body.classList.add('epured-mode');
+}
+
+// ===== OUVRIR / FERMER LE PANNEAU DE RÉGLAGES COMPLET =====
+// Le mode épuré masque le panneau latéral (aside) où vivent tous les réglages
+// (modes, durée, work/rest EMOM, tabata). Ce bouton le rouvre puis le referme.
+function toggleConfigPanel(){
+  const epured=document.body.classList.toggle('epured-mode');
+  const btn=document.getElementById('customizeBtn');
+  if(btn){
+    btn.innerHTML = epured
+      ? '✏️ <span class="new-wod-label">PERSO</span>'
+      : '✓ <span class="new-wod-label">TERMINÉ</span>';
+  }
+  if(!epured){
+    // Panneau ouvert : on resynchronise l'affichage avec le mode courant
+    // (pour que la Config EMOM apparaisse bien si on est en EMOM)
+    if(S.state==='idle'){
+      const tab=document.querySelector(`.mode-tab[onclick*="'${S.mode}'"]`);
+      if(tab){ try{ setMode(tab, S.mode); }catch(e){} }
+    }
+    window.scrollTo({top:0,behavior:'smooth'});
+  }
 }
 
 // ===== RELANCER LE WIZARD (bouton Nouveau WOD) =====
