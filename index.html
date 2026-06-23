@@ -2907,18 +2907,40 @@ function chooseTiming(value){
   if(typeof updateTotalFromMode==='function') updateTotalFromMode();
   if(typeof updateClock==='function') updateClock();
   
-  // Fermer l'écran timing et passer à l'écran musique
+  // "Personnalisé" => on ouvre le panneau de réglages complet (work/rest EMOM,
+  // durée custom, track...). Sinon (durée preset) => écran musique du wizard.
+  const next = (value==='custom') ? openConfigFromWizard : showMusicChoice;
   const screen=document.getElementById('timingChoiceScreen');
   if(screen){
     screen.style.opacity='0';
     screen.style.transition='opacity 0.4s ease';
     setTimeout(()=>{
       screen.style.display='none';
-      showMusicChoice();
+      next();
     },400);
   } else {
-    showMusicChoice();
+    next();
   }
+}
+
+// ===== "PERSONNALISÉ" : sortir du wizard vers le panneau de réglages complet =====
+function openConfigFromWizard(){
+  document.body.classList.remove('wizard-active');
+  document.body.classList.remove('epured-mode'); // rendre le panneau latéral visible
+  // Fermer tous les écrans du wizard
+  ['modeChoiceScreen','timingChoiceScreen','musicChoiceScreen'].forEach(id=>{
+    const s=document.getElementById(id);
+    if(s) s.style.display='none';
+  });
+  // Afficher la bonne section selon le mode (EMOM => Config EMOM, Tabata => Config Tabata)
+  if(S.state==='idle'){
+    const tab=document.querySelector(`.mode-tab[onclick*="'${S.mode}'"]`);
+    if(tab){ try{ setMode(tab, S.mode); }catch(e){} }
+  }
+  // Le bouton du bandeau reflète que le panneau est ouvert
+  const btn=document.getElementById('customizeBtn');
+  if(btn) btn.innerHTML='✓ <span class="new-wod-label">TERMINÉ</span>';
+  window.scrollTo({top:0,behavior:'smooth'});
 }
 
 // ===== WIZARD : ÉCRAN 4 (MUSIQUE) =====
