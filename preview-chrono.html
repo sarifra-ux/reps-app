@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aperçu chrono REPS</title>
+<title>Aperçu REPS</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
@@ -13,56 +13,68 @@
     --glow-a:rgba(230,63,255,0.45);--glow-b:rgba(0,229,255,0.4);
   }
   *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);font-family:'DM Mono',monospace;padding:32px;display:flex;flex-direction:column;gap:32px;align-items:center;}
-  .label{color:var(--muted);font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;}
-  .timer-card{width:100%;max-width:760px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:32px 36px 24px;text-align:center;position:relative;overflow:hidden;}
-  .timer-card.playing{box-shadow:0 0 60px var(--glow-a),0 0 30px var(--glow-b);border-color:rgba(230,63,255,0.3);}
-  .timer-watermark{
-    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
-    font-family:'Bebas Neue',sans-serif;font-size:clamp(14rem,32vw,30rem);
-    line-height:1;pointer-events:none;user-select:none;z-index:0;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    -webkit-background-clip:text;background-clip:text;
-    -webkit-text-fill-color:transparent;color:transparent;
-    opacity:0.08;filter:drop-shadow(0 14px 40px rgba(0,0,0,0.7));
-  }
+  body{margin:0;background:var(--bg);font-family:'DM Mono',monospace;padding:32px;display:flex;flex-direction:column;gap:34px;align-items:center;}
+  .label{color:var(--muted);font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;align-self:flex-start;max-width:760px;width:100%;margin:0 auto;}
+
+  /* ===== Écran d'ouverture (splash) ===== */
+  .welcome{width:100%;max-width:760px;height:340px;position:relative;overflow:hidden;border-radius:18px;border:1px solid var(--border);
+    background:radial-gradient(ellipse at top left,rgba(230,63,255,0.15) 0%,transparent 50%),radial-gradient(ellipse at bottom right,rgba(0,229,255,0.12) 0%,transparent 50%),var(--bg);
+    display:flex;align-items:center;justify-content:center;}
+  .welcome-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .welcome-logo{font-family:'Bebas Neue',sans-serif;font-size:4.5rem;letter-spacing:14px;margin:0;line-height:1;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .welcome-logo-sub{font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:5px;color:var(--muted);text-transform:uppercase;}
+  .brand-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Bebas Neue',sans-serif;font-size:32rem;line-height:1;pointer-events:none;z-index:0;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;opacity:0.13;filter:drop-shadow(0 20px 60px rgba(0,0,0,0.8));}
+
+  /* ===== Carte chrono ===== */
+  .timer-card{width:100%;max-width:760px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:32px 36px 24px;text-align:center;position:relative;overflow:hidden;box-shadow:0 0 60px var(--glow-a),0 0 30px var(--glow-b);border-color:rgba(230,63,255,0.3);}
+  .timer-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Bebas Neue',sans-serif;font-size:clamp(14rem,32vw,30rem);line-height:1;pointer-events:none;z-index:0;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;opacity:0.18;filter:drop-shadow(0 14px 40px rgba(0,0,0,0.7));}
   .timer-card .timer-eyebrow,.timer-card .timer-clock,.timer-card .timer-status,.timer-card .prog-wrap,.timer-card .now-playing-bar{position:relative;z-index:1;}
   .now-playing-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;}
   .np-badge{background:rgba(230,63,255,0.08);border:1px solid rgba(230,63,255,0.25);border-radius:20px;padding:4px 14px;font-size:0.55rem;color:var(--accent);letter-spacing:2px;}
   .brian-badge{background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:20px;padding:4px 14px;font-size:0.55rem;color:var(--accent2);letter-spacing:2px;}
   .timer-eyebrow{font-size:0.58rem;letter-spacing:4px;color:var(--muted);margin-bottom:10px;}
-  .timer-clock{font-family:'Bebas Neue',sans-serif;font-size:clamp(5rem,13vw,10rem);letter-spacing:6px;line-height:0.9;color:var(--text);text-shadow:0 0 40px rgba(255,255,255,0.10),0 0 90px rgba(230,63,255,0.22);}
-  .timer-clock.danger{color:var(--accent);text-shadow:0 0 30px var(--glow-a);}
+  .timer-clock{font-family:'Bebas Neue',sans-serif;font-size:clamp(5rem,13vw,10rem);letter-spacing:6px;line-height:0.9;
+    background:linear-gradient(100deg,var(--accent) 0%,#c46bff 38%,var(--accent2) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 22px var(--glow-a)) drop-shadow(0 0 40px var(--glow-b));animation:clockPulse 2.4s ease-in-out infinite;}
+  @keyframes clockPulse{0%,100%{filter:drop-shadow(0 0 16px var(--glow-a)) drop-shadow(0 0 28px var(--glow-b));}50%{filter:drop-shadow(0 0 32px var(--glow-a)) drop-shadow(0 0 56px var(--glow-b));}}
+  .timer-clock.danger{-webkit-text-fill-color:var(--accent);background:none;filter:drop-shadow(0 0 30px var(--glow-a));animation:throb 0.4s ease-in-out infinite alternate;}
+  @keyframes throb{from{transform:scale(1)}to{transform:scale(1.03)}}
   .timer-status{font-size:0.6rem;color:var(--muted);letter-spacing:2px;margin-top:8px;min-height:16px;}
   .timer-status.danger{color:var(--accent);}
   .prog-wrap{margin-top:18px;}
   .prog-track{height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:visible;position:relative;box-shadow:inset 0 0 4px rgba(0,0,0,0.45);}
-  .prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width 1s linear;box-shadow:0 0 14px var(--glow-a),0 0 6px var(--glow-b);position:relative;}
+  .prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;box-shadow:0 0 14px var(--glow-a),0 0 6px var(--glow-b);position:relative;}
   .prog-fill::after{content:'';position:absolute;right:-3px;top:50%;transform:translateY(-50%);width:11px;height:11px;border-radius:50%;background:var(--accent2);box-shadow:0 0 12px var(--accent2),0 0 22px var(--glow-b);}
 </style>
 </head>
 <body>
 
-  <div class="label">État normal (prêt / en cours)</div>
-  <div class="timer-card playing">
-    <div class="timer-watermark" aria-hidden="true">R</div>
-    <div class="now-playing-bar">
-      <div class="np-badge">🎵 CYRIL GANE</div>
-      <div class="brian-badge">🎙️ BRIAN</div>
+  <div class="label">Écran d'ouverture — le R en filigrane derrière R·E·P·S</div>
+  <div class="welcome">
+    <div class="brand-watermark" aria-hidden="true">R</div>
+    <div class="welcome-content">
+      <h1 class="welcome-logo">R·E·P·S</h1>
+      <div class="welcome-logo-sub">Rhythm Engine Performance Sound</div>
     </div>
+  </div>
+
+  <div class="label">Chrono — état normal (chiffres dégradé + glow qui pulse)</div>
+  <div class="timer-card">
+    <div class="timer-watermark" aria-hidden="true">R</div>
+    <div class="now-playing-bar"><div class="np-badge">🎵 CYRIL GANE</div><div class="brian-badge">🎙️ BRIAN</div></div>
     <div class="timer-eyebrow">// TEMPS RESTANT</div>
     <div class="timer-clock">05:00</div>
     <div class="timer-status">▶ EMOM — CYRIL GANE</div>
     <div class="prog-wrap"><div class="prog-track"><div class="prog-fill" style="width:38%"></div></div></div>
   </div>
 
-  <div class="label">Dernières 10 secondes (le signal magenta reste)</div>
-  <div class="timer-card playing">
+  <div class="label">Chrono — dernières 10 s (signal magenta qui pulse)</div>
+  <div class="timer-card">
     <div class="timer-watermark" aria-hidden="true">R</div>
-    <div class="now-playing-bar">
-      <div class="np-badge">🎵 CYRIL GANE</div>
-      <div class="brian-badge">🎙️ BRIAN</div>
-    </div>
+    <div class="now-playing-bar"><div class="np-badge">🎵 CYRIL GANE</div><div class="brian-badge">🎙️ BRIAN</div></div>
     <div class="timer-eyebrow">// TEMPS RESTANT</div>
     <div class="timer-clock danger">00:08</div>
     <div class="timer-status danger">▶ EMOM — CYRIL GANE</div>

@@ -267,7 +267,7 @@
     background:linear-gradient(135deg,var(--accent),var(--accent2));
     -webkit-background-clip:text;background-clip:text;
     -webkit-text-fill-color:transparent;color:transparent;
-    opacity:0.08;filter:drop-shadow(0 14px 40px rgba(0,0,0,0.7));
+    opacity:0.18;filter:drop-shadow(0 14px 40px rgba(0,0,0,0.7));
   }
   /* Contenu du chrono au-dessus du filigrane */
   .timer-card .timer-eyebrow,.timer-card .timer-clock,.timer-card .timer-status,.timer-card .prog-wrap,.timer-card .now-playing-bar{position:relative;z-index:1;}
@@ -289,10 +289,11 @@
   .round-badge{position:absolute;top:14px;right:20px;font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);letter-spacing:2px;z-index:5;}
 
   .timer-eyebrow{font-family:'DM Mono',monospace;font-size:0.58rem;letter-spacing:4px;color:var(--muted);margin-bottom:10px;}
-  .timer-clock{font-family:'Bebas Neue',sans-serif;font-size:clamp(5rem,13vw,10rem);letter-spacing:6px;line-height:0.9;color:var(--text);transition:color 0.4s;text-shadow:0 0 40px rgba(255,255,255,0.10),0 0 90px rgba(230,63,255,0.22);}
-  .timer-clock.warn{color:var(--gold);text-shadow:0 0 30px rgba(255,214,0,0.5);}
-  .timer-clock.danger{color:var(--accent);text-shadow:0 0 30px var(--glow-a);animation:throb 0.4s ease-in-out infinite alternate;}
-  .timer-clock.rest{color:var(--accent2);text-shadow:0 0 30px var(--glow-b);}
+  .timer-clock{font-family:'Bebas Neue',sans-serif;font-size:clamp(5rem,13vw,10rem);letter-spacing:6px;line-height:0.9;color:var(--text);transition:color 0.4s;background:linear-gradient(100deg,var(--accent) 0%,#c46bff 38%,var(--accent2) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 22px var(--glow-a)) drop-shadow(0 0 40px var(--glow-b));animation:clockPulse 2.4s ease-in-out infinite;}
+  @keyframes clockPulse{0%,100%{filter:drop-shadow(0 0 16px var(--glow-a)) drop-shadow(0 0 28px var(--glow-b));}50%{filter:drop-shadow(0 0 32px var(--glow-a)) drop-shadow(0 0 56px var(--glow-b));}}
+  .timer-clock.warn{-webkit-text-fill-color:var(--gold);background:none;filter:drop-shadow(0 0 26px rgba(255,214,0,0.6));animation:none;}
+  .timer-clock.danger{-webkit-text-fill-color:var(--accent);background:none;filter:drop-shadow(0 0 30px var(--glow-a));animation:throb 0.4s ease-in-out infinite alternate;}
+  .timer-clock.rest{-webkit-text-fill-color:var(--accent2);background:none;filter:drop-shadow(0 0 28px var(--glow-b));animation:none;}
   @keyframes throb{from{transform:scale(1)}to{transform:scale(1.03)}}
   .timer-status{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:2px;margin-top:8px;min-height:16px;}
   .prog-wrap{margin-top:18px;}
@@ -606,6 +607,18 @@
   }
   .welcome.fade-out{opacity:0;}
   .welcome .welcome-content{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  /* Filigrane "R" géant derrière le logo à l'ouverture */
+  .welcome,.lang-choice{overflow:hidden;}
+  .welcome-content,.lang-choice-content{position:relative;z-index:1;}
+  .brand-watermark{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-family:'Bebas Neue',sans-serif;font-size:min(88vh,82vw);
+    line-height:1;pointer-events:none;user-select:none;z-index:0;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+    opacity:0.13;filter:drop-shadow(0 20px 60px rgba(0,0,0,0.8));
+  }
   @keyframes welcomeFadeIn{from{opacity:0}to{opacity:1}}
 
   /* ===== ÉCRAN CHOIX DE MODE ===== */
@@ -892,6 +905,7 @@
 
 <!-- ===== ÉCRAN CHOIX DE LANGUE (1ère visite uniquement) ===== -->
 <div id="langChoiceScreen" class="lang-choice" style="display:none">
+  <div class="brand-watermark" aria-hidden="true">R</div>
   <div class="lang-choice-content">
     <div class="welcome-logo-block">
       <h1 class="welcome-logo">R·E·P·S</h1>
@@ -917,6 +931,7 @@
 
 <!-- ===== SPLASH SCREEN (auto-dismiss après 2s) ===== -->
 <div id="welcomeScreen" class="welcome" style="display:none">
+  <div class="brand-watermark" aria-hidden="true">R</div>
   <div class="welcome-content">
     <h1 class="welcome-logo">R·E·P·S</h1>
   </div>
