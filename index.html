@@ -579,6 +579,19 @@
   }
   .lang-flag{font-size:2.4rem;}
   .lang-name{font-weight:400;}
+  /* ===== SPLASH LOGO REPS (à chaque ouverture) ===== */
+  .welcome{
+    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;
+    background:
+      radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0,229,255,0.12) 0%, transparent 50%),
+      var(--bg);
+    display:flex;align-items:center;justify-content:center;padding:24px;
+    animation:welcomeFadeIn 0.4s ease-out;
+    transition:opacity 0.5s ease;
+  }
+  .welcome.fade-out{opacity:0;}
+  .welcome .welcome-content{display:flex;flex-direction:column;align-items:center;gap:8px;}
   @keyframes welcomeFadeIn{from{opacity:0}to{opacity:1}}
 
   /* ===== ÉCRAN CHOIX DE MODE ===== */
@@ -880,6 +893,10 @@
         <span class="lang-flag">🇬🇧</span>
         <span class="lang-name">English</span>
       </button>
+      <button class="lang-choice-btn" onclick="chooseLanguage('pt')">
+        <span class="lang-flag">🇧🇷</span>
+        <span class="lang-name">Português</span>
+      </button>
     </div>
   </div>
 </div>
@@ -980,6 +997,7 @@
     <div class="lang-switch">
       <button class="lang-btn active" id="btnFR" onclick="setLang('fr')">🇫🇷 FR</button>
       <button class="lang-btn" id="btnEN" onclick="setLang('en')">🇬🇧 EN</button>
+      <button class="lang-btn" id="btnPT" onclick="setLang('pt')">🇧🇷 PT</button>
     </div>
     <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label">NOUVEAU</span></button>
     <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)">✏️ <span class="new-wod-label">PERSO</span></button>
@@ -1397,12 +1415,14 @@ const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'
 const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
 const COUNT_AUDIO_EN=['count-en-10.mp3','count-en-9.mp3','count-en-8.mp3','count-en-7.mp3','count-en-6.mp3','count-en-5.mp3','count-en-4.mp3','count-en-3.mp3','count-en-2.mp3','count-en-1.mp3','count-en-go.mp3'];
 const COUNT_AUDIO_FR=['count-fr-10.mp3','count-fr-9.mp3','count-fr-8.mp3','count-fr-7.mp3','count-fr-6.mp3','count-fr-5.mp3','count-fr-4.mp3','count-fr-3.mp3','count-fr-2.mp3','count-fr-1.mp3','count-fr-go.mp3'];
+const COUNT_AUDIO_PT=['count-pt-10.mp3','count-pt-9.mp3','count-pt-8.mp3','count-pt-7.mp3','count-pt-6.mp3','count-pt-5.mp3','count-pt-4.mp3','count-pt-3.mp3','count-pt-2.mp3','count-pt-1.mp3','count-pt-go.mp3'];
 const BEEP_AUDIO='beep.mp3';
 const TICK_AUDIO='tick.mp3';
 // Voix Brian découpée pour le décompte 5-4-3-2-1 par langue
 const COUNT_AUDIO={
   fr:{1:'fr-1.mp3',2:'fr-2.mp3',3:'fr-3.mp3',4:'fr-4.mp3',5:'fr-5.mp3'},
-  en:{1:'en-1.mp3',2:'en-2.mp3',3:'en-3.mp3',4:'en-4.mp3',5:'en-5.mp3'}
+  en:{1:'en-1.mp3',2:'en-2.mp3',3:'en-3.mp3',4:'en-4.mp3',5:'en-5.mp3'},
+  pt:{1:'pt-1.mp3',2:'pt-2.mp3',3:'pt-3.mp3',4:'pt-4.mp3',5:'pt-5.mp3'}
 };
 // Annonces "Round X" : version FR (Audrey) et version EN (Nayva)
 const ROUND_AUDIO={
@@ -1413,12 +1433,17 @@ const ROUND_AUDIO={
   fr:{
     2:'round-2-fr.mp3',3:'round-3-fr.mp3',4:'round-4-fr.mp3',5:'round-5-fr.mp3',
     6:'round-6-fr.mp3',7:'round-7-fr.mp3',8:'round-8-fr.mp3',9:'round-9-fr.mp3',10:'round-10-fr.mp3'
+  },
+  pt:{
+    2:'round-2-pt.mp3',3:'round-3-pt.mp3',4:'round-4-pt.mp3',5:'round-5-pt.mp3',
+    6:'round-6-pt.mp3',7:'round-7-pt.mp3',8:'round-8-pt.mp3',9:'round-9-pt.mp3',10:'round-10-pt.mp3'
   }
 };
 
 const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
-  en:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}]
+  en:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
+  pt:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}]
 };
 
 const TXT={
@@ -1445,6 +1470,18 @@ const TXT={
     rest:"Rest !",
     roundX:(n)=>`Round ${n}`,
     topMinute:(n)=>`Minute ${n} !`
+  },
+  pt:{
+    minLeft:(n)=>`Faltam ${n} minuto${n>1?'s':''} !`,
+    min3:"Faltam 3 minutos ! Vamos, força !",
+    min1:"Último minuto ! Dá tudo !",
+    s10:"10 segundos ! Não para !",
+    s5:'5 !',s4:'4 !',s3:'3 !',s2:'2 !',s1:'1 !',
+    time:"TIME ! Acabou ! Muito bom !",
+    work:"Vai vai vai !",
+    rest:"Descanso !",
+    roundX:(n)=>`Round ${n}`,
+    topMinute:(n)=>`Minuto ${n} !`
   }
 };
 
@@ -1480,10 +1517,21 @@ for(let i=0;i<36;i++){const b=document.createElement('div');b.className='wbar';b
 
 function setLang(l){
   S.lang=l;
-  document.getElementById('btnFR').className='lang-btn'+(l==='fr'?' active':'');
-  document.getElementById('btnEN').className='lang-btn'+(l==='en'?' active':'');
+  const bFR=document.getElementById('btnFR');
+  const bEN=document.getElementById('btnEN');
+  const bPT=document.getElementById('btnPT');
+  if(bFR) bFR.className='lang-btn'+(l==='fr'?' active':'');
+  if(bEN) bEN.className='lang-btn'+(l==='en'?' active':'');
+  if(bPT) bPT.className='lang-btn'+(l==='pt'?' active':'');
   try{localStorage.setItem('reps_lang',l);}catch(e){}
   renderSched();
+}
+
+// Helper de traduction 3 langues : L3(fr, en, pt)
+function L3(fr,en,pt){
+  if(S.lang==='pt') return (pt!==undefined?pt:en);
+  if(S.lang==='en') return en;
+  return fr;
 }
 
 // ===== MODE =====
@@ -2093,7 +2141,7 @@ let restBuffer={};
 async function loadRestBuffer(){
   if(restBuffer[S.lang]) return restBuffer[S.lang];
   try{
-    const src=(S.lang==='fr')?'rest-fr.mp3':'rest.mp3';
+    const src=S.lang==='fr'?'rest-fr.mp3':(S.lang==='pt'?'rest-pt.mp3':'rest.mp3');
     const resp=await fetch(src);
     const arr=await resp.arrayBuffer();
     restBuffer[S.lang]=await audioCtx.decodeAudioData(arr);
@@ -2165,7 +2213,11 @@ function speak(text, opts){
   const useFR=S.lang==='fr';
   const voices=window.speechSynthesis.getVoices();
   let voice=null;
-  if(useFR){
+  if(S.lang==='pt'){
+    const ptPrefs=['Google português do Brasil','Luciana','Felipe','pt-BR','pt_BR'];
+    for(const p of ptPrefs){const found=voices.find(v=>v.name.includes(p)||v.lang===p);if(found){voice=found;break;}}
+    if(!voice) voice=voices.find(v=>v.lang.startsWith('pt'));
+  } else if(useFR){
     const frPrefs=['Google français','Thomas','Amelie','Rémi','Nicolas','Microsoft Paul','fr-FR','fr_FR'];
     for(const p of frPrefs){const found=voices.find(v=>v.name.includes(p)||v.lang===p);if(found){voice=found;break;}}
     if(!voice) voice=voices.find(v=>v.lang.startsWith('fr'));
@@ -2177,7 +2229,7 @@ function speak(text, opts){
   if(!voice && voices.length) voice=voices[0];
   const u=new SpeechSynthesisUtterance(text);
   if(voice) u.voice=voice;
-  u.lang=useFR?'fr-FR':'en-US';
+  u.lang=S.lang==='pt'?'pt-BR':(useFR?'fr-FR':'en-US');
   const isShortNum=['5 !','4 !','3 !','2 !','1 !'].includes(text);
   const isTime=text.includes('TIME')||text.includes('fini');
   if(opts.emomCrunch){
@@ -2251,7 +2303,7 @@ function launch(){
   if(voiceAudio){try{voiceAudio.pause();}catch(e){}}
   // Nouveau système unifié EN/FR : 11 fichiers synchronisés sur le timer (1 par seconde)
   const vol=parseInt(document.getElementById('volVoice').value)/100;
-  const countAudioList=(S.lang==='fr')?COUNT_AUDIO_FR:COUNT_AUDIO_EN;
+  const countAudioList=S.lang==='fr'?COUNT_AUDIO_FR:(S.lang==='pt'?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
   S.cdAudioTimers=[];
   // Ducking musique pendant tout le décompte pour que la voix soit bien audible
   const vMus=parseInt(document.getElementById('volMusic').value)/100;
@@ -2586,13 +2638,8 @@ function openFavorites(){
   // Adapter les labels selon la langue
   const title=document.getElementById('favoritesModalTitle');
   const saveLbl=document.getElementById('btnSaveFavLabel');
-  if(S.lang==='en'){
-    if(title) title.textContent='Favorites';
-    if(saveLbl) saveLbl.textContent='Save this WOD';
-  } else {
-    if(title) title.textContent='Favoris';
-    if(saveLbl) saveLbl.textContent='Sauvegarder ce WOD';
-  }
+  if(title) title.textContent=L3('Favoris','Favorites','Favoritos');
+  if(saveLbl) saveLbl.textContent=L3('Sauvegarder ce WOD','Save this WOD','Salvar este WOD');
   renderFavsModal();
   modal.style.display='flex';
 }
@@ -2608,7 +2655,7 @@ function renderFavsModal(){
   if(!list) return;
   const favs=getFavs();
   if(!favs.length){
-    list.innerHTML='<div class="fav-modal-empty">'+(S.lang==='en'?'No saved WOD yet':'Aucun WOD sauvegardé')+'</div>';
+    list.innerHTML='<div class="fav-modal-empty">'+L3('Aucun WOD sauvegardé','No saved WOD yet','Nenhum WOD salvo')+'</div>';
     return;
   }
   list.innerHTML='';
@@ -2639,7 +2686,7 @@ function renderFavsModal(){
   });
 }
 function saveFavoriteFromModal(){
-  const promptText=S.lang==='en'?'Name this WOD:':'Nom du WOD :';
+  const promptText=L3('Nom du WOD :','Name this WOD:','Nome do WOD:');
   const name=prompt(promptText);
   if(!name) return;
   const fav={name,mode:S.mode,track:S.track,dur:S.dur,lang:S.lang};
@@ -2676,8 +2723,8 @@ function showWelcome(){
   if(w){
     w.style.display='flex';
     w.classList.remove('fade-out');
-    // Auto-fermeture après 0.5 seconde
-    setTimeout(()=>{closeWelcome();},500);
+    // Auto-fermeture après 1.2 seconde
+    setTimeout(()=>{closeWelcome();},1200);
   }
 }
 function closeWelcome(){
@@ -2745,15 +2792,9 @@ function openSettings(){
   const title=document.getElementById('settingsModalTitle');
   const musicLbl=document.getElementById('settingsMusicLabel');
   const voiceLbl=document.getElementById('settingsVoiceLabel');
-  if(S.lang==='en'){
-    if(title) title.textContent='Settings';
-    if(musicLbl) musicLbl.textContent='Music';
-    if(voiceLbl) voiceLbl.textContent='Voice';
-  } else {
-    if(title) title.textContent='Réglages';
-    if(musicLbl) musicLbl.textContent='Musique';
-    if(voiceLbl) voiceLbl.textContent='Voix';
-  }
+  if(title) title.textContent=L3('Réglages','Settings','Ajustes');
+  if(musicLbl) musicLbl.textContent=L3('Musique','Music','Música');
+  if(voiceLbl) voiceLbl.textContent=L3('Voix','Voice','Voz');
   // Synchroniser les sliders avec les valeurs actuelles de la sidebar
   const volMusic=document.getElementById('volMusic');
   const volVoice=document.getElementById('volVoice');
@@ -2821,13 +2862,8 @@ function showModeChoice(){
   // Adapter le titre selon la langue
   const title=document.getElementById('modeChoiceTitle');
   const hint=document.getElementById('modeChoiceHint');
-  if(S.lang==='en'){
-    if(title) title.textContent='Training mode';
-    if(hint) hint.textContent='Swipe left to continue';
-  } else {
-    if(title) title.textContent='Mode d\'entraînement';
-    if(hint) hint.textContent='Glisse vers la gauche pour continuer';
-  }
+  if(title) title.textContent=L3('Mode d\'entraînement','Training mode','Modo de treino');
+  if(hint) hint.textContent=L3('Glisse vers la gauche pour continuer','Swipe left to continue','Deslize para a esquerda');
   screen.style.display='flex';
   screen.style.opacity='1';
 }
@@ -2870,10 +2906,10 @@ function showTimingChoice(mode){
   } else if(mode==='tabata'){
     titleText='Tabata';
   } else {
-    titleText=S.lang==='en'?'Duration':'Durée';
+    titleText=L3('Durée','Duration','Duração');
   }
   if(title) title.textContent=titleText;
-  if(hint) hint.textContent=S.lang==='en'?'Swipe left to continue':'Glisse vers la gauche pour continuer';
+  if(hint) hint.textContent=L3('Glisse vers la gauche pour continuer','Swipe left to continue','Deslize para a esquerda');
   
   // Construire les boutons selon le mode
   btns.innerHTML='';
@@ -2881,13 +2917,13 @@ function showTimingChoice(mode){
     // Tabata : preset classique + custom
     const btnClassic=document.createElement('button');
     btnClassic.className='timing-btn';
-    btnClassic.textContent=S.lang==='en'?'CLASSIC (20/10 × 8)':'CLASSIQUE (20/10 × 8)';
+    btnClassic.textContent=L3('CLASSIQUE (20/10 × 8)','CLASSIC (20/10 × 8)','CLÁSSICO (20/10 × 8)');
     btnClassic.onclick=()=>chooseTiming('tabata-classic');
     btns.appendChild(btnClassic);
     
     const btnCustom=document.createElement('button');
     btnCustom.className='timing-btn timing-btn-custom';
-    btnCustom.textContent=S.lang==='en'?'Custom':'Personnalisé';
+    btnCustom.textContent=L3('Personnalisé','Custom','Personalizado');
     btnCustom.onclick=()=>chooseTiming('custom');
     btns.appendChild(btnCustom);
   } else {
@@ -2902,7 +2938,7 @@ function showTimingChoice(mode){
     });
     const btnCustom=document.createElement('button');
     btnCustom.className='timing-btn timing-btn-custom';
-    btnCustom.textContent=S.lang==='en'?'Custom':'Personnalisé';
+    btnCustom.textContent=L3('Personnalisé','Custom','Personalizado');
     btnCustom.onclick=()=>chooseTiming('custom');
     btns.appendChild(btnCustom);
   }
@@ -3109,8 +3145,8 @@ function showMusicChoice(){
   if(!screen) return;
   const title=document.getElementById('musicChoiceTitle');
   const hint=document.getElementById('musicChoiceHint');
-  if(title) title.textContent=S.lang==='en'?'Music':'Musique';
-  if(hint) hint.textContent=S.lang==='en'?'Random pick in the category':'Choix aléatoire dans la catégorie';
+  if(title) title.textContent=L3('Musique','Music','Música');
+  if(hint) hint.textContent=L3('Choix aléatoire dans la catégorie','Random pick in the category','Escolha aleatória na categoria');
   screen.style.display='flex';
   screen.style.opacity='1';
 }
@@ -3203,7 +3239,7 @@ function showWelcomeThenWizard(){
       // Tout déjà choisi : afficher l'app
       finishWizard();
     }
-  },1500);
+  },1800);
 }
 
 // Au chargement : vérifier si langue déjà choisie
@@ -3224,7 +3260,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     document.body.classList.add('epured-mode');
   }
   
-  if(savedLang==='fr'||savedLang==='en'){
+  if(savedLang==='fr'||savedLang==='en'||savedLang==='pt'){
     // Langue déjà choisie : appliquer et afficher le splash habituel
     setLang(savedLang);
     showWelcomeThenWizard();

@@ -1,5 +1,5 @@
 // R.E.P.S Service Worker — mode hors-ligne
-const CACHE_NAME = 'reps-v17';
+const CACHE_NAME = 'reps-v18';
 const ASSETS = [
   '/',
   '/index.html',
@@ -31,14 +31,26 @@ const ASSETS = [
     '/round-2-fr.mp3','/round-3-fr.mp3','/round-4-fr.mp3','/round-5-fr.mp3','/round-6-fr.mp3',
     '/round-7-fr.mp3','/round-8-fr.mp3','/round-9-fr.mp3','/round-10-fr.mp3',
     '/count-fr-10.mp3','/count-fr-9.mp3','/count-fr-8.mp3','/count-fr-7.mp3','/count-fr-6.mp3',
-    '/count-fr-5.mp3','/count-fr-4.mp3','/count-fr-3.mp3','/count-fr-2.mp3','/count-fr-1.mp3','/count-fr-go.mp3'
+    '/count-fr-5.mp3','/count-fr-4.mp3','/count-fr-3.mp3','/count-fr-2.mp3','/count-fr-1.mp3','/count-fr-go.mp3',
+    // ===== Portugais (BR) =====
+    '/count-pt-10.mp3','/count-pt-9.mp3','/count-pt-8.mp3','/count-pt-7.mp3','/count-pt-6.mp3',
+    '/count-pt-5.mp3','/count-pt-4.mp3','/count-pt-3.mp3','/count-pt-2.mp3','/count-pt-1.mp3','/count-pt-go.mp3',
+    '/pt-1.mp3','/pt-2.mp3','/pt-3.mp3','/pt-4.mp3','/pt-5.mp3',
+    '/round-2-pt.mp3','/round-3-pt.mp3','/round-4-pt.mp3','/round-5-pt.mp3','/round-6-pt.mp3',
+    '/round-7-pt.mp3','/round-8-pt.mp3','/round-9-pt.mp3','/round-10-pt.mp3',
+    '/rest-pt.mp3'
 ];
 
-// Installation : on précharge tous les fichiers
+// Installation : on précharge les fichiers un par un.
+// Si un fichier manque (404), on l'ignore au lieu de tout faire échouer.
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
+      return Promise.allSettled(
+        ASSETS.map((url) => cache.add(url).catch((err) => {
+          console.warn('SW: fichier non mis en cache (ignoré):', url);
+        }))
+      );
     })
   );
   self.skipWaiting();
