@@ -3,35 +3,29 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Aperçu REPS</title>
+<title>Aperçu REPS — motif R</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
+    --monogram:url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCIgdmlld0JveD0iMCAwIDgwIDgwIj48ZyBmb250LWZhbWlseT0iQXJpYWwgQmxhY2ssIEFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXdlaWdodD0iOTAwIiBmb250LXNpemU9IjMwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj48dGV4dCB4PSIyMSIgeT0iMzMiIGZpbGw9IiMwMDAwMDAiIGZpbGwtb3BhY2l0eT0iMC41NSI+UjwvdGV4dD48dGV4dCB4PSIyMCIgeT0iMzIiIGZpbGw9IiM3YTc2YWQiIGZpbGwtb3BhY2l0eT0iMC4yMiI+UjwvdGV4dD48dGV4dCB4PSI2MSIgeT0iNzMiIGZpbGw9IiMwMDAwMDAiIGZpbGwtb3BhY2l0eT0iMC41NSI+UjwvdGV4dD48dGV4dCB4PSI2MCIgeT0iNzIiIGZpbGw9IiM3YTc2YWQiIGZpbGwtb3BhY2l0eT0iMC4yMiI+UjwvdGV4dD48L2c+PC9zdmc+");
     --bg:#0a0814;--surface:#15131f;--card:#1c1a2e;--border:#2a2840;
-    --accent:#e63fff;--accent2:#00e5ff;--gold:#ffd600;
-    --text:#eeeef8;--muted:#6a6a8a;
+    --accent:#e63fff;--accent2:#00e5ff;--gold:#ffd600;--text:#eeeef8;--muted:#6a6a8a;
     --glow-a:rgba(230,63,255,0.45);--glow-b:rgba(0,229,255,0.4);
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);font-family:'DM Mono',monospace;padding:32px;display:flex;flex-direction:column;gap:34px;align-items:center;}
   .label{color:var(--muted);font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;align-self:flex-start;max-width:760px;width:100%;margin:0 auto;}
 
-  /* ===== Écran d'ouverture (splash) ===== */
   .welcome{width:100%;max-width:760px;height:340px;position:relative;overflow:hidden;border-radius:18px;border:1px solid var(--border);
-    background:radial-gradient(ellipse at top left,rgba(230,63,255,0.15) 0%,transparent 50%),radial-gradient(ellipse at bottom right,rgba(0,229,255,0.12) 0%,transparent 50%),var(--bg);
+    background:var(--monogram) 0 0/80px 80px,radial-gradient(ellipse at top left,rgba(230,63,255,0.15) 0%,transparent 50%),radial-gradient(ellipse at bottom right,rgba(0,229,255,0.12) 0%,transparent 50%),var(--bg);
     display:flex;align-items:center;justify-content:center;}
   .welcome-content{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:8px;}
   .welcome-logo{font-family:'Bebas Neue',sans-serif;font-size:4.5rem;letter-spacing:14px;margin:0;line-height:1;
-    background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
-  .welcome-logo-sub{font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:5px;color:var(--muted);text-transform:uppercase;}
-  .brand-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Bebas Neue',sans-serif;font-size:32rem;line-height:1;pointer-events:none;z-index:0;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;opacity:0.13;filter:drop-shadow(0 20px 60px rgba(0,0,0,0.8));}
+    background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;text-shadow:0 0 80px rgba(230,63,255,0.3);}
+  .welcome-logo-sub{font-size:0.7rem;letter-spacing:5px;color:var(--muted);text-transform:uppercase;}
 
-  /* ===== Carte chrono ===== */
-  .timer-card{width:100%;max-width:760px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:32px 36px 24px;text-align:center;position:relative;overflow:hidden;box-shadow:0 0 60px var(--glow-a),0 0 30px var(--glow-b);border-color:rgba(230,63,255,0.3);}
-  .timer-watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:"Bebas Neue",sans-serif;font-size:clamp(18rem,44vw,42rem);line-height:1;pointer-events:none;z-index:0;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;opacity:0.18;filter:drop-shadow(0 22px 55px rgba(0,0,0,0.9)) drop-shadow(0 8px 18px rgba(0,0,0,0.65));}
-  .timer-card .timer-eyebrow,.timer-card .timer-clock,.timer-card .timer-status,.timer-card .prog-wrap,.timer-card .now-playing-bar{position:relative;z-index:1;}
+  .timer-card{width:100%;max-width:760px;background:var(--monogram) 0 0/80px 80px,var(--card);border:1px solid var(--border);border-radius:18px;padding:32px 36px 24px;text-align:center;position:relative;overflow:hidden;box-shadow:0 0 60px var(--glow-a),0 0 30px var(--glow-b);border-color:rgba(230,63,255,0.3);}
+  .tc-in{position:relative;z-index:1;}
   .now-playing-bar{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;}
   .np-badge{background:rgba(230,63,255,0.08);border:1px solid rgba(230,63,255,0.25);border-radius:20px;padding:4px 14px;font-size:0.55rem;color:var(--accent);letter-spacing:2px;}
   .brian-badge{background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:20px;padding:4px 14px;font-size:0.55rem;color:var(--accent2);letter-spacing:2px;}
@@ -40,46 +34,31 @@
     background:linear-gradient(100deg,var(--accent) 0%,#c46bff 38%,var(--accent2) 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
     filter:drop-shadow(0 0 22px var(--glow-a)) drop-shadow(0 0 40px var(--glow-b));animation:clockPulse 2.4s ease-in-out infinite;}
   @keyframes clockPulse{0%,100%{filter:drop-shadow(0 0 16px var(--glow-a)) drop-shadow(0 0 28px var(--glow-b));}50%{filter:drop-shadow(0 0 32px var(--glow-a)) drop-shadow(0 0 56px var(--glow-b));}}
-  .timer-clock.danger{-webkit-text-fill-color:var(--accent);background:none;filter:drop-shadow(0 0 30px var(--glow-a));animation:throb 0.4s ease-in-out infinite alternate;}
-  @keyframes throb{from{transform:scale(1)}to{transform:scale(1.03)}}
-  .timer-status{font-size:0.6rem;color:var(--muted);letter-spacing:2px;margin-top:8px;min-height:16px;}
-  .timer-status.danger{color:var(--accent);}
+  .timer-status{font-size:0.6rem;color:var(--muted);letter-spacing:2px;margin-top:8px;}
   .prog-wrap{margin-top:18px;}
-  .prog-track{height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:visible;position:relative;box-shadow:inset 0 0 4px rgba(0,0,0,0.45);}
+  .prog-track{height:5px;background:rgba(255,255,255,0.06);border-radius:3px;position:relative;box-shadow:inset 0 0 4px rgba(0,0,0,0.45);}
   .prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;box-shadow:0 0 14px var(--glow-a),0 0 6px var(--glow-b);position:relative;}
   .prog-fill::after{content:'';position:absolute;right:-3px;top:50%;transform:translateY(-50%);width:11px;height:11px;border-radius:50%;background:var(--accent2);box-shadow:0 0 12px var(--accent2),0 0 22px var(--glow-b);}
 </style>
 </head>
 <body>
-
-  <div class="label">Écran d'ouverture — le R en filigrane derrière R·E·P·S</div>
+  <div class="label">Écran d'ouverture — motif R en fond</div>
   <div class="welcome">
-    <div class="brand-watermark" aria-hidden="true">R</div>
     <div class="welcome-content">
       <h1 class="welcome-logo">R·E·P·S</h1>
       <div class="welcome-logo-sub">Rhythm Engine Performance Sound</div>
     </div>
   </div>
 
-  <div class="label">Chrono — état normal (chiffres dégradé + glow qui pulse)</div>
+  <div class="label">Chrono — motif R en fond de carte</div>
   <div class="timer-card">
-    <div class="timer-watermark" aria-hidden="true">R</div>
-    <div class="now-playing-bar"><div class="np-badge">🎵 CYRIL GANE</div><div class="brian-badge">🎙️ BRIAN</div></div>
-    <div class="timer-eyebrow">// TEMPS RESTANT</div>
-    <div class="timer-clock">05:00</div>
-    <div class="timer-status">▶ EMOM — CYRIL GANE</div>
-    <div class="prog-wrap"><div class="prog-track"><div class="prog-fill" style="width:38%"></div></div></div>
+    <div class="tc-in">
+      <div class="now-playing-bar"><div class="np-badge">🎵 CYRIL GANE</div><div class="brian-badge">🎙️ BRIAN</div></div>
+      <div class="timer-eyebrow">// TEMPS RESTANT</div>
+      <div class="timer-clock">05:00</div>
+      <div class="timer-status">▶ EMOM — CYRIL GANE</div>
+      <div class="prog-wrap"><div class="prog-track"><div class="prog-fill" style="width:38%"></div></div></div>
+    </div>
   </div>
-
-  <div class="label">Chrono — dernières 10 s (signal magenta qui pulse)</div>
-  <div class="timer-card">
-    <div class="timer-watermark" aria-hidden="true">R</div>
-    <div class="now-playing-bar"><div class="np-badge">🎵 CYRIL GANE</div><div class="brian-badge">🎙️ BRIAN</div></div>
-    <div class="timer-eyebrow">// TEMPS RESTANT</div>
-    <div class="timer-clock danger">00:08</div>
-    <div class="timer-status danger">▶ EMOM — CYRIL GANE</div>
-    <div class="prog-wrap"><div class="prog-track"><div class="prog-fill" style="width:94%"></div></div></div>
-  </div>
-
 </body>
 </html>
