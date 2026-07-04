@@ -933,6 +933,11 @@
   .sc-input{flex:1;}
   .sc-grow{flex:2;}
   .sc-feedback{font-size:0.7rem;color:var(--green);min-height:0.9rem;}
+.settings-action-btn{display:flex;align-items:center;gap:12px;width:100%;background:var(--surface);
+    border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);
+    font-family:'DM Mono',monospace;font-size:0.85rem;cursor:pointer;text-align:left;}
+  .settings-action-btn:hover{border-color:var(--accent);}
+  .settings-action-btn .settings-icon{font-size:1.1rem;}
 </style>
 </head>
 <body>
@@ -1056,17 +1061,10 @@
     <div class="logo-sub">Rhythm Engine Performance Sound</div>
   </div>
   <div class="header-right">
-    <div class="lang-switch">
-      <button class="lang-btn active" id="btnFR" onclick="setLang('fr')">🇫🇷 FR</button>
-      <button class="lang-btn" id="btnEN" onclick="setLang('en')">🇬🇧 EN</button>
-      <button class="lang-btn" id="btnPT" onclick="setLang('pt')">🇧🇷 PT</button>
-    </div>
     <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label" data-i18n="nav.new">NOUVEAU</span></button>
     <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)">✏️ <span class="new-wod-label" data-i18n="nav.custom">PERSO</span></button>
-    <button class="favs-btn" onclick="openFavorites()" title="Favoris">⭐</button>
-    <button class="favs-btn" id="membersBtn" onclick="openMembers()" title="Adhérents & scores">👥</button>
+    <button class="new-wod-btn" id="membersBtn" onclick="openMembers()" title="Adhérents & scores">👥 <span class="new-wod-label" data-i18n="nav.scores">SCORES</span></button>
     <button class="settings-btn" onclick="openSettings()" title="Réglages">⚙</button>
-    <button class="fs-btn" onclick="toggleFullscreen()" title="Plein écran">⛶</button>
     <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText">READY</span></div>
   </div>
 </header>
@@ -1101,6 +1099,19 @@
           <span class="settings-val" id="settingsVolVoiceVal">100%</span>
         </div>
       </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <span class="settings-icon">🌐</span>
+          <span class="settings-name" data-i18n="settings.lang">Langue</span>
+        </div>
+        <div class="lang-switch">
+          <button class="lang-btn" id="btnFR" onclick="setLang('fr')">🇫🇷 FR</button>
+          <button class="lang-btn" id="btnEN" onclick="setLang('en')">🇬🇧 EN</button>
+          <button class="lang-btn" id="btnPT" onclick="setLang('pt')">🇧🇷 PT</button>
+        </div>
+      </div>
+      <button class="settings-action-btn" onclick="closeSettings();openFavorites();"><span class="settings-icon">⭐</span><span data-i18n="fav.modalTitle">Favoris</span></button>
+      <button class="settings-action-btn" onclick="closeSettings();toggleFullscreen();"><span class="settings-icon">⛶</span><span data-i18n="nav.fullscreen">Plein écran</span></button>
     </div>
   </div>
 </div>
@@ -1642,6 +1653,9 @@ const I18N={
   'nav.new':['NOUVEAU','NEW','NOVO'],
   'nav.custom':['PERSO','CUSTOM','PERSO'],
   'nav.done':['TERMINÉ','DONE','CONCLUÍDO'],
+  'nav.scores':['SCORES','SCORES','SCORES'],
+  'nav.fullscreen':['Plein écran','Fullscreen','Tela cheia'],
+  'settings.lang':['Langue','Language','Idioma'],
   'music.title':['Musique','Music','Música'],
   'timing.title':['Durée','Duration','Duração'],
   'help.fortime':['Tu fais le workout le plus vite possible. Le chrono compte le temps écoulé. L\'objectif : terminer toutes les répétitions avant la fin du temps imparti, ou le plus rapidement possible.','Do the workout as fast as possible. The clock counts up. The goal: finish all the reps before time runs out, or as fast as you can.','Faça o treino o mais rápido possível. O cronômetro conta o tempo. O objetivo: terminar todas as repetições antes do tempo acabar, ou o mais rápido possível.'],
