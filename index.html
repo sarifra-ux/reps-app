@@ -1987,14 +1987,22 @@ window.CATEGORY_TRACKS={
 window._mixCategory=null; // genre courant pour le mix auto (null = tous genres)
 let manualPicks=[]; // morceaux cochés par l'utilisateur en mode manuel
 let _shuffleCurrentKey=null;
+let _singleGenreMix=false; // vrai = on mixe dans le genre du morceau sans mode explicite
 
-// Activé par le wizard : mix auto restreint au genre choisi
+// Retrouve le genre d'un morceau
+function genreOfTrack(key){
+  const cats=window.CATEGORY_TRACKS||{};
+  for(const g in cats){ if(cats[g].indexOf(key)>=0) return g; }
+  return null;
+}
+
+// Appelé par le wizard : repart en mode par défaut (mix dans le genre choisi)
 function applyWizardMix(category){
-  mixMode='auto';
+  mixMode=null;
   window._mixCategory=category;
   manualPicks=[];
   document.body.classList.remove('mix-manual');
-  const ab=document.getElementById('mixAutoBtn'); if(ab) ab.classList.add('on');
+  const ab=document.getElementById('mixAutoBtn'); if(ab) ab.classList.remove('on');
   const mb=document.getElementById('mixManualBtn'); if(mb) mb.classList.remove('on');
 }
 
@@ -2038,6 +2046,7 @@ function pickRandomTrack(excludeKey, pool){
 function startMusic(){
   if(musicAudio){try{musicAudio.pause();}catch(e){}}
   let firstKey, loopMode;
+  _singleGenreMix=false;
   if(mixMode==='auto'){
     // Démarre avec la musique choisie, puis enchaîne en aléatoire
     firstKey=S.track;
@@ -2051,9 +2060,17 @@ function startMusic(){
     firstKey=manualPicks[0];
     loopMode=true;
   } else {
-    // Mode single : juste le morceau choisi en boucle
+    // Pas de mode explicite : on mixe dans le genre du morceau (par défaut)
     firstKey=S.track;
-    loopMode=true;
+    const g=genreOfTrack(firstKey);
+    const gTracks=g?window.CATEGORY_TRACKS[g]:null;
+    if(gTracks && gTracks.length>1){
+      window._mixCategory=g;
+      _singleGenreMix=true;
+      loopMode=false; // on enchaînera dans le genre
+    } else {
+      loopMode=true;  // genre à 1 seul morceau : boucle
+    }
   }
   _shuffleCurrentKey=firstKey;
   musicAudio=getCachedAudio('music_'+firstKey, MUSIC[firstKey]);
@@ -2065,17 +2082,16 @@ function startMusic(){
 }
 
 function playNextShuffle(){
-  if(!mixMode || S.state!=='playing') return;
+  if(S.state!=='playing') return;
+  if(!mixMode && !_singleGenreMix) return;
   let nextKey;
-  if(mixMode==='auto'){
-    // Aléatoire dans le genre choisi (ou tous si aucun genre défini)
-    const pool=(window._mixCategory && window.CATEGORY_TRACKS[window._mixCategory]) ? window.CATEGORY_TRACKS[window._mixCategory] : ALL_TRACK_KEYS;
-    nextKey=pickRandomTrack(_shuffleCurrentKey, pool);
-  } else if(mixMode==='manual'){
+  if(mixMode==='manual'){
     // Aléatoire dans les morceaux cochés
     nextKey=pickRandomTrack(_shuffleCurrentKey, manualPicks);
   } else {
-    return;
+    // Auto ou mix-genre par défaut : on pioche dans le genre (ou tous si non défini)
+    const pool=(window._mixCategory && window.CATEGORY_TRACKS[window._mixCategory]) ? window.CATEGORY_TRACKS[window._mixCategory] : ALL_TRACK_KEYS;
+    nextKey=pickRandomTrack(_shuffleCurrentKey, pool);
   }
   _shuffleCurrentKey=nextKey;
   musicAudio=getCachedAudio('music_'+nextKey, MUSIC[nextKey]);
@@ -2329,8 +2345,52 @@ function playRoundBufferNow(buf){
   source.start(0);
 }
 
+// ===== VOIX FÉMININE PAR FICHIERS (ElevenLabs), fallback voix du téléphone =====
+// Réutilise les noms déjà présents dans le cache du service worker.
+const VOICE_FILES={
+  fr:{min3:'three-min-fr.mp3',min1:'last-minute-fr.mp3',s10:'ten-sec-fr.mp3',time:'time-fr.mp3',rest:'rest-fr.mp3'},
+  en:{min3:'three-min.mp3',min1:'last-minute.mp3',s10:'ten-sec.mp3',time:'time.mp3',rest:'rest.mp3'},
+  pt:{min3:'three-min-pt.mp3',min1:'last-minute-pt.mp3',s10:'ten-sec-pt.mp3',time:'time-pt.mp3',rest:'rest-pt.mp3'}
+};
+function roundFile(n){return S.lang==='fr'?('round-'+n+'-fr.mp3'):(S.lang==='pt'?('round-'+n+'-pt.mp3'):('round-'+n+'.mp3'));}
+
+// Retrouve le fichier voix correspondant à une phrase (ou null -> voix téléphone)
+function voiceFileForText(text){
+  const L=S.lang, t=TXT[L]||{}, fx=VOICE_FILES[L]||{};
+  if(text===t.min3) return fx.min3;
+  if(text===t.min1) return fx.min1;
+  if(text===t.s10)  return fx.s10;
+  if(text===t.time) return fx.time;
+  if(text===t.rest) return fx.rest;
+  const rm=/round\s+(\d+)/i.exec(text||'');
+  if(rm) return roundFile(parseInt(rm[1],10));
+  return null; // minLeft (X minutes AMRAP) et topMinute non couverts -> voir note
+}
+
+// Joue un fichier voix avec ducking musique ; onFail si le fichier est absent
+function playVoiceFile(file, onFail){
+  try{
+    const volEl=document.getElementById('volVoice');
+    const vol=volEl?parseInt(volEl.value)/100:1;
+    const a=new Audio(file);
+    a.volume=Math.min(vol*2.0,1.0);
+    const vmEl=document.getElementById('volMusic');
+    const vMus=vmEl?parseInt(vmEl.value)/100:1;
+    if(musicAudio) musicAudio.volume=vMus*0.25;
+    const restore=()=>{ if(musicAudio) musicAudio.volume=vMus; };
+    a.onended=restore;
+    a.onerror=()=>{ restore(); if(onFail) onFail(); };
+    a.play().catch(()=>{ restore(); if(onFail) onFail(); });
+  }catch(e){ if(onFail) onFail(); }
+}
+
 function speak(text, opts){
   opts=opts||{};
+  // Voix féminine par fichier en priorité ; repli téléphone si le fichier manque
+  if(!opts._noFile){
+    const vf=voiceFileForText(text);
+    if(vf){ playVoiceFile(vf, ()=>speak(text, Object.assign({},opts,{_noFile:true}))); return; }
+  }
   if(!window.speechSynthesis)return;
   window.speechSynthesis.cancel();
   const useFR=S.lang==='fr';

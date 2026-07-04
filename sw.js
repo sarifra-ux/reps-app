@@ -1,5 +1,5 @@
 // R.E.P.S Service Worker — mode hors-ligne
-const CACHE_NAME = 'reps-v28';
+const CACHE_NAME = 'reps-v30';
 const ASSETS = [
   '/',
   '/index.html',
@@ -38,7 +38,8 @@ const ASSETS = [
     '/pt-1.mp3','/pt-2.mp3','/pt-3.mp3','/pt-4.mp3','/pt-5.mp3',
     '/round-2-pt.mp3','/round-3-pt.mp3','/round-4-pt.mp3','/round-5-pt.mp3','/round-6-pt.mp3',
     '/round-7-pt.mp3','/round-8-pt.mp3','/round-9-pt.mp3','/round-10-pt.mp3',
-    '/rest-pt.mp3'
+    '/rest-pt.mp3',
+    '/three-min-pt.mp3','/last-minute-pt.mp3','/ten-sec-pt.mp3','/time-pt.mp3'
 ];
 
 // Installation : on précharge les fichiers un par un.
