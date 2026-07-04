@@ -315,6 +315,7 @@
   body.fullscreen-mode aside,
   body.fullscreen-mode .bottom-row,
   body.fullscreen-mode .controls,
+  body.fullscreen-mode .score-capture,
   body.fullscreen-mode .waveform,
   body.fullscreen-mode .announce{display:none !important;}
   body.fullscreen-mode .app{grid-template-columns:1fr;}
@@ -887,6 +888,51 @@
     color:var(--accent);
     text-transform:uppercase;
   }
+
+  /* ===== ADHÉRENTS & SCORES ===== */
+  .mbr-history-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+    background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;
+    font-size:0.85rem;color:var(--text);cursor:pointer;}
+  .mbr-history-row input{width:20px;height:20px;accent-color:var(--accent);cursor:pointer;}
+  .mbr-history-hint{font-size:0.68rem;color:var(--muted);margin-top:-8px;line-height:1.4;}
+  .mbr-add-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .mbr-input,.sc-input{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    color:var(--text);padding:10px 12px;font-family:'DM Mono',monospace;font-size:0.82rem;min-width:0;}
+  .mbr-input{flex:1;}
+  .mbr-input:focus,.sc-input:focus{outline:none;border-color:var(--accent);}
+  .mbr-add-btn,.sc-save-btn{background:linear-gradient(100deg,var(--accent),var(--accent2));border:none;
+    color:#0a0814;font-weight:700;border-radius:10px;padding:10px 16px;cursor:pointer;
+    font-family:'DM Mono',monospace;font-size:0.78rem;letter-spacing:1px;white-space:nowrap;}
+  .mbr-add-btn:hover,.sc-save-btn:hover{filter:brightness(1.1);}
+  .mbr-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+  .mbr-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .mbr-name{font-size:0.92rem;color:var(--text);font-weight:500;}
+  .mbr-actions{display:flex;gap:6px;align-items:center;}
+  .mbr-count{font-size:0.62rem;color:var(--muted);letter-spacing:1px;}
+  .mbr-del{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:8px;
+    width:28px;height:28px;cursor:pointer;font-size:0.8rem;}
+  .mbr-del:hover{border-color:var(--accent-tabata);color:var(--accent-tabata);}
+  .mbr-scores{margin-top:10px;display:flex;flex-direction:column;gap:6px;}
+  .mbr-score{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 10px;font-size:0.76rem;}
+  .mbr-score-main{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .mbr-score-val{color:var(--accent2);font-weight:600;}
+  .mbr-score-meta{color:var(--muted);font-size:0.64rem;}
+  .mbr-score-del{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;padding:0 4px;}
+  .mbr-score-del:hover{color:var(--accent-tabata);}
+  .mbr-addscore-row{display:flex;gap:6px;margin-top:8px;}
+  .mbr-addscore-row .sc-input{flex:1;font-size:0.74rem;padding:8px 10px;}
+  .mbr-addscore-btn{background:rgba(230,63,255,0.12);border:1px solid rgba(230,63,255,0.3);
+    color:var(--accent);border-radius:8px;padding:0 12px;cursor:pointer;font-size:0.72rem;white-space:nowrap;}
+
+  /* Bloc score sur l'écran chrono */
+  .score-capture{width:100%;max-width:520px;margin:14px auto 0;background:var(--card);
+    border:1px solid var(--border);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;}
+  .sc-label{font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+  .sc-row{display:flex;gap:8px;}
+  .sc-input{flex:1;}
+  .sc-grow{flex:2;}
+  .sc-feedback{font-size:0.7rem;color:var(--green);min-height:0.9rem;}
 </style>
 </head>
 <body>
@@ -1018,6 +1064,7 @@
     <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label">NOUVEAU</span></button>
     <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)">✏️ <span class="new-wod-label">PERSO</span></button>
     <button class="favs-btn" onclick="openFavorites()" title="Favoris">⭐</button>
+    <button class="favs-btn" id="membersBtn" onclick="openMembers()" title="Adhérents & scores">👥</button>
     <button class="settings-btn" onclick="openSettings()" title="Réglages">⚙</button>
     <button class="fs-btn" onclick="toggleFullscreen()" title="Plein écran">⛶</button>
     <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText">READY</span></div>
@@ -1073,6 +1120,32 @@
   </div>
 </div>
 <input type="file" id="impFileInput2" accept="audio/*,video/*" multiple style="display:none" onchange="handleImportFiles(this.files)">
+
+<!-- ===== MODAL ADHÉRENTS & SCORES ===== -->
+<div id="membersModal" class="settings-modal" style="display:none" onclick="closeMembersBackdrop(event)">
+  <div class="settings-modal-content" onclick="event.stopPropagation()">
+    <div class="settings-modal-header">
+      <h3 class="settings-modal-title" id="membersModalTitle">Adhérents & scores</h3>
+      <button class="settings-modal-close" onclick="closeMembers()">✕</button>
+    </div>
+    <div class="settings-modal-body">
+      <label class="mbr-history-row">
+        <span id="membersHistoryLabel">Garder l'historique</span>
+        <input type="checkbox" id="membersHistoryToggle" onchange="toggleHistory(this.checked)">
+      </label>
+      <div class="mbr-history-hint" id="membersHistoryHint">Si désactivé, les données sont effacées à la fermeture de l'app.</div>
+
+      <div class="mbr-add-row">
+        <input type="text" id="mbrPrenom" class="mbr-input" placeholder="Prénom">
+        <input type="text" id="mbrNom" class="mbr-input" placeholder="Nom">
+        <button class="mbr-add-btn" onclick="addMember()">+ Ajouter</button>
+      </div>
+
+      <div id="membersList" style="display:flex;flex-direction:column;gap:10px;"></div>
+      <div class="imp-empty" id="membersEmpty">Aucun adhérent. Ajoute un prénom et un nom pour commencer.</div>
+    </div>
+  </div>
+</div>
 
 <!-- ===== MODAL FAVORIS ===== -->
 <div id="favoritesModal" class="settings-modal" style="display:none" onclick="closeFavoritesBackdrop(event)">
@@ -1408,6 +1481,19 @@
       <button class="btn-ctrl" onclick="resetTimer()">↺ RESET</button>
       <button class="btn-play" id="btnPlay" onclick="togglePlay()">▶</button>
       <button class="btn-ctrl" id="btnSkip" onclick="skipAhead()" style="display:none">⏭ –3MIN</button>
+    </div>
+
+    <div class="score-capture" id="scoreCapture">
+      <div class="sc-label" id="scoreCaptureLabel">Enregistrer un score</div>
+      <div class="sc-row">
+        <select class="sc-input" id="scoreMember"></select>
+        <input type="text" class="sc-input" id="scoreWod" placeholder="Type de WOD / exo">
+      </div>
+      <div class="sc-row">
+        <input type="text" class="sc-input sc-grow" id="scoreValue" placeholder="Score (12:34, 8+12, 100kg…)">
+        <button class="sc-save-btn" onclick="saveTimerScore()">Enregistrer</button>
+      </div>
+      <div class="sc-feedback" id="scoreFeedback"></div>
     </div>
 
     <div class="bottom-row">
@@ -1890,11 +1976,31 @@ function getCachedAudio(key, src){
 //          'manual' = enchaîne les morceaux cochés
 let mixMode=null;
 const ALL_TRACK_KEYS=['pogo','pleinfeu','techno','house','hymne','censured','cartier','crime','cyrilgane','introduction','vibes'];
+// Map catégorie -> morceaux (global, lisible depuis les 2 blocs script)
+window.CATEGORY_TRACKS={
+  'rap':['pogo','pleinfeu'],
+  'techno':['techno'],
+  'house':['house'],
+  'hymne':['hymne'],
+  'hiphop':['censured','cartier','crime','cyrilgane','introduction','vibes']
+};
+window._mixCategory=null; // genre courant pour le mix auto (null = tous genres)
 let manualPicks=[]; // morceaux cochés par l'utilisateur en mode manuel
 let _shuffleCurrentKey=null;
 
+// Activé par le wizard : mix auto restreint au genre choisi
+function applyWizardMix(category){
+  mixMode='auto';
+  window._mixCategory=category;
+  manualPicks=[];
+  document.body.classList.remove('mix-manual');
+  const ab=document.getElementById('mixAutoBtn'); if(ab) ab.classList.add('on');
+  const mb=document.getElementById('mixManualBtn'); if(mb) mb.classList.remove('on');
+}
+
 function setMixMode(mode){
   // Toggle : si on reclique sur le mode actif, on désactive
+  window._mixCategory=null; // toggle manuel = tous genres
   if(mixMode===mode){
     mixMode=null;
     document.body.classList.remove('mix-manual');
@@ -1962,8 +2068,9 @@ function playNextShuffle(){
   if(!mixMode || S.state!=='playing') return;
   let nextKey;
   if(mixMode==='auto'){
-    // Aléatoire dans tous les morceaux (sauf celui qu'on vient de jouer)
-    nextKey=pickRandomTrack(_shuffleCurrentKey, ALL_TRACK_KEYS);
+    // Aléatoire dans le genre choisi (ou tous si aucun genre défini)
+    const pool=(window._mixCategory && window.CATEGORY_TRACKS[window._mixCategory]) ? window.CATEGORY_TRACKS[window._mixCategory] : ALL_TRACK_KEYS;
+    nextKey=pickRandomTrack(_shuffleCurrentKey, pool);
   } else if(mixMode==='manual'){
     // Aléatoire dans les morceaux cochés
     nextKey=pickRandomTrack(_shuffleCurrentKey, manualPicks);
@@ -2346,6 +2453,7 @@ function startChrono(){
   document.getElementById('timerCard').classList.add('playing');
   const mName={wod:'WOD',amrap:'AMRAP',emom:'EMOM',tabata:'TABATA'}[S.mode];
   document.getElementById('timerStatus').textContent='▶ '+mName+' — '+TRACK_INFO[S.track].name;
+  try{const w=document.getElementById('scoreWod'); if(w) w.value=currentWodLabel();}catch(e){}
   if(S.mode!=='tabata') document.getElementById('btnSkip').style.display='';
   setStatus('playing','EN COURS');
 
@@ -3172,17 +3280,8 @@ function showMusicChoice(){
   screen.style.opacity='1';
 }
 
-// Mapping catégorie → tracks disponibles
-const CATEGORY_TRACKS={
-  'rap':['pogo','pleinfeu'],
-  'techno':['techno'],
-  'house':['house'],
-  'hymne':['hymne'],
-  'hiphop':['censured','cartier','crime','cyrilgane','introduction','vibes']
-};
-
 function chooseMusic(category){
-  const tracks=CATEGORY_TRACKS[category]||['pogo'];
+  const tracks=(window.CATEGORY_TRACKS[category])||['pogo'];
   // Une seule track : on applique direct, pas de clic inutile
   if(tracks.length<=1){ applyTrack(tracks[0],category); return; }
   // Plusieurs : on montre la liste des morceaux
@@ -3239,6 +3338,8 @@ function backToMusicCats(){
 // Applique le morceau choisi et termine le wizard
 function applyTrack(chosen,category){
   S.track=chosen;
+  // Mix auto restreint au genre choisi (démarre sur ce morceau, puis enchaîne dans le genre)
+  applyWizardMix(category);
   
   // Mettre à jour l'UI track dans l'app
   try{
@@ -3552,6 +3653,187 @@ function choosePersoTrack(id){
   }
 }
 window.addEventListener('DOMContentLoaded',impLoadAll);
+
+// ===== ADHÉRENTS & SCORES =====
+let MEMBERS=[];
+let KEEP_HISTORY=true;
+const MBR_KEY='reps_members';
+const HIST_KEY='reps_keep_history';
+
+function mbrUid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+
+function loadMembersData(){
+  try{ KEEP_HISTORY=(localStorage.getItem(HIST_KEY)!=='0'); }catch(e){ KEEP_HISTORY=true; }
+  if(KEEP_HISTORY){
+    try{ MEMBERS=JSON.parse(localStorage.getItem(MBR_KEY)||'[]'); }catch(e){ MEMBERS=[]; }
+  } else {
+    MEMBERS=[]; // pas d'historique : on repart vide à chaque ouverture d'app
+  }
+  if(!Array.isArray(MEMBERS)) MEMBERS=[];
+}
+
+function saveMembersData(){
+  if(!KEEP_HISTORY) return; // historique désactivé : rien n'est persisté
+  try{ localStorage.setItem(MBR_KEY,JSON.stringify(MEMBERS)); }catch(e){}
+}
+
+function toggleHistory(on){
+  KEEP_HISTORY=!!on;
+  try{ localStorage.setItem(HIST_KEY, on?'1':'0'); }catch(e){}
+  if(on){
+    saveMembersData(); // on persiste ce qui est en mémoire
+  } else {
+    try{ localStorage.removeItem(MBR_KEY); }catch(e){} // on efface le stock
+  }
+}
+
+function openMembers(){
+  const modal=document.getElementById('membersModal');
+  if(!modal) return;
+  document.getElementById('membersModalTitle').textContent=L3('Adhérents & scores','Members & scores','Membros & scores');
+  document.getElementById('membersHistoryLabel').textContent=L3('Garder l\'historique','Keep history','Manter histórico');
+  document.getElementById('membersHistoryHint').textContent=L3('Si désactivé, les données sont effacées à la fermeture de l\'app.','If off, data is cleared when the app closes.','Se desativado, os dados são apagados ao fechar o app.');
+  document.getElementById('membersHistoryToggle').checked=KEEP_HISTORY;
+  document.getElementById('mbrPrenom').placeholder=L3('Prénom','First name','Nome');
+  document.getElementById('mbrNom').placeholder=L3('Nom','Last name','Sobrenome');
+  renderMembers();
+  modal.style.display='flex';
+}
+function closeMembers(){const m=document.getElementById('membersModal');if(m)m.style.display='none';}
+function closeMembersBackdrop(e){if(e.target.id==='membersModal')closeMembers();}
+
+function addMember(){
+  const pEl=document.getElementById('mbrPrenom'), nEl=document.getElementById('mbrNom');
+  const prenom=(pEl.value||'').trim(), nom=(nEl.value||'').trim();
+  if(!prenom && !nom){ pEl.focus(); return; }
+  MEMBERS.push({id:mbrUid(),prenom,nom,scores:[]});
+  pEl.value='';nEl.value='';
+  saveMembersData();
+  renderMembers();
+  refreshScoreMemberSelect();
+  pEl.focus();
+}
+
+function deleteMember(id){
+  const m=MEMBERS.find(x=>x.id===id); if(!m) return;
+  const label=((m.prenom||'')+' '+(m.nom||'')).trim();
+  if(!confirm(L3('Supprimer '+label+' et ses scores ?','Delete '+label+' and their scores?','Excluir '+label+' e seus scores?'))) return;
+  MEMBERS=MEMBERS.filter(x=>x.id!==id);
+  saveMembersData();
+  renderMembers();
+  refreshScoreMemberSelect();
+}
+
+function addScoreFromModal(memberId){
+  const vEl=document.getElementById('addval_'+memberId);
+  const wEl=document.getElementById('addwod_'+memberId);
+  const value=(vEl.value||'').trim(), wod=(wEl.value||'').trim();
+  if(!value){ vEl.focus(); return; }
+  const m=MEMBERS.find(x=>x.id===memberId); if(!m) return;
+  m.scores.unshift({id:mbrUid(),value,wod,date:Date.now()});
+  saveMembersData();
+  renderMembers();
+}
+
+function deleteScore(memberId,scoreId){
+  const m=MEMBERS.find(x=>x.id===memberId); if(!m) return;
+  m.scores=m.scores.filter(s=>s.id!==scoreId);
+  saveMembersData();
+  renderMembers();
+}
+
+function fmtScoreDate(ts){
+  try{ const d=new Date(ts); return d.toLocaleDateString(S.lang==='en'?'en-GB':(S.lang==='pt'?'pt-BR':'fr-FR'),{day:'2-digit',month:'2-digit',year:'2-digit'}); }
+  catch(e){ return ''; }
+}
+
+function escapeHtml(s){return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));}
+
+function renderMembers(){
+  const list=document.getElementById('membersList');
+  const empty=document.getElementById('membersEmpty');
+  if(!list) return;
+  list.innerHTML='';
+  if(MEMBERS.length===0){ if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+  MEMBERS.forEach(m=>{
+    const name=escapeHtml(((m.prenom||'')+' '+(m.nom||'')).trim());
+    const card=document.createElement('div');
+    card.className='mbr-card';
+    let scoresHtml='';
+    if(m.scores.length){
+      scoresHtml=m.scores.map(s=>
+        '<div class="mbr-score"><div class="mbr-score-main"><span class="mbr-score-val">'+escapeHtml(s.value)+'</span>'+
+        '<span class="mbr-score-meta">'+escapeHtml(s.wod||'—')+' · '+fmtScoreDate(s.date)+'</span></div>'+
+        '<button class="mbr-score-del" onclick="deleteScore(\''+m.id+'\',\''+s.id+'\')">🗑</button></div>'
+      ).join('');
+    }
+    card.innerHTML=
+      '<div class="mbr-head"><span class="mbr-name">'+(name||'—')+'</span>'+
+      '<div class="mbr-actions"><span class="mbr-count">'+m.scores.length+' '+L3('score(s)','score(s)','score(s)')+'</span>'+
+      '<button class="mbr-del" onclick="deleteMember(\''+m.id+'\')">🗑</button></div></div>'+
+      '<div class="mbr-scores">'+scoresHtml+'</div>'+
+      '<div class="mbr-addscore-row">'+
+      '<input type="text" class="sc-input" id="addval_'+m.id+'" placeholder="'+L3('Score','Score','Score')+'">'+
+      '<input type="text" class="sc-input" id="addwod_'+m.id+'" placeholder="'+L3('Type de WOD / exo','WOD / lift type','Tipo de WOD / exo')+'">'+
+      '<button class="mbr-addscore-btn" onclick="addScoreFromModal(\''+m.id+'\')">+</button></div>';
+    list.appendChild(card);
+  });
+}
+
+// ---- Bloc score sur l'écran chrono ----
+function refreshScoreMemberSelect(){
+  const sel=document.getElementById('scoreMember');
+  if(!sel) return;
+  const prev=sel.value;
+  if(MEMBERS.length===0){
+    sel.innerHTML='<option value="">'+L3('Aucun adhérent','No member','Nenhum membro')+'</option>';
+  } else {
+    sel.innerHTML=MEMBERS.map(m=>{
+      const name=escapeHtml(((m.prenom||'')+' '+(m.nom||'')).trim())||'—';
+      return '<option value="'+m.id+'">'+name+'</option>';
+    }).join('');
+    if(prev && MEMBERS.some(m=>m.id===prev)) sel.value=prev;
+  }
+}
+
+function currentWodLabel(){
+  const mName={wod:'WOD',amrap:'AMRAP',emom:'EMOM',tabata:'TABATA'}[S.mode]||'WOD';
+  const mins=(S.dur?Math.round(S.dur/60):0);
+  return mins?(mName+' '+mins+' min'):mName;
+}
+
+function prefillScoreWod(){
+  const w=document.getElementById('scoreWod');
+  if(w && !w.value.trim()) w.value=currentWodLabel();
+}
+
+function saveTimerScore(){
+  const sel=document.getElementById('scoreMember');
+  const vEl=document.getElementById('scoreValue');
+  const wEl=document.getElementById('scoreWod');
+  const fb=document.getElementById('scoreFeedback');
+  const memberId=sel?sel.value:'';
+  const value=(vEl.value||'').trim();
+  const wod=(wEl.value||'').trim()||currentWodLabel();
+  if(!memberId){ if(fb){fb.style.color='var(--accent-tabata)';fb.textContent=L3('Ajoute d\'abord un adhérent (👥).','Add a member first (👥).','Adicione um membro primeiro (👥).');} return; }
+  if(!value){ if(fb){fb.style.color='var(--accent-tabata)';fb.textContent=L3('Entre un score.','Enter a score.','Digite um score.');} vEl.focus(); return; }
+  const m=MEMBERS.find(x=>x.id===memberId); if(!m) return;
+  m.scores.unshift({id:mbrUid(),value,wod,date:Date.now()});
+  saveMembersData();
+  const name=((m.prenom||'')+' '+(m.nom||'')).trim();
+  if(fb){ fb.style.color='var(--green)'; fb.textContent=L3('Enregistré pour ','Saved for ','Salvo para ')+name+' ✓'; setTimeout(()=>{if(fb)fb.textContent='';},3000); }
+  vEl.value='';
+}
+
+function membersInit(){
+  loadMembersData();
+  refreshScoreMemberSelect();
+  const labEl=document.getElementById('scoreCaptureLabel');
+  if(labEl) labEl.textContent=L3('Enregistrer un score','Save a score','Salvar um score');
+  prefillScoreWod();
+}
+window.addEventListener('DOMContentLoaded',membersInit);
 
 </script>
 </body>
