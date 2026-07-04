@@ -972,7 +972,7 @@
 <!-- ===== ÉCRAN 2 : CHOIX DU MODE WOD ===== -->
 <div id="modeChoiceScreen" class="mode-choice" style="display:none">
   <div class="mode-choice-content">
-    <h2 class="wizard-title" id="modeChoiceTitle">Mode d'entraînement</h2>
+    <h2 class="wizard-title" id="modeChoiceTitle" data-i18n="cfg.mode">Mode d'entraînement</h2>
     <div class="mode-choice-tiles">
       <button class="mode-tile mode-tile-fortime" onclick="chooseMode('wod')">
         <span class="mode-tile-icon">🏁</span>
@@ -998,7 +998,7 @@
 <!-- ===== ÉCRAN 3 : CHOIX DU TIMING ===== -->
 <div id="timingChoiceScreen" class="timing-choice" style="display:none">
   <div class="timing-choice-content">
-    <h2 class="wizard-title" id="timingChoiceTitle">Durée</h2>
+    <h2 class="wizard-title" id="timingChoiceTitle" data-i18n="timing.title">Durée</h2>
     <div class="timing-choice-buttons" id="timingChoiceButtons">
       <!-- Boutons remplis dynamiquement selon le mode -->
     </div>
@@ -1009,7 +1009,7 @@
 <!-- ===== ÉCRAN 4 : CHOIX DE LA MUSIQUE ===== -->
 <div id="musicChoiceScreen" class="music-choice" style="display:none">
   <div class="music-choice-content">
-    <h2 class="wizard-title" id="musicChoiceTitle">Musique</h2>
+    <h2 class="wizard-title" id="musicChoiceTitle" data-i18n="music.title">Musique</h2>
     <div class="music-choice-tiles" id="musicCatTiles">
       <button class="music-tile music-tile-rap" onclick="chooseMusic('rap')">
         <span class="music-tile-icon">🎤</span>
@@ -1025,7 +1025,7 @@
       </button>
       <button class="music-tile music-tile-hymne" onclick="chooseMusic('hymne')">
         <span class="music-tile-icon">🏆</span>
-        <span class="music-tile-name">HYMNE</span>
+        <span class="music-tile-name" data-i18n="tile.hymne">HYMNE</span>
       </button>
       <button class="music-tile music-tile-hiphop" onclick="chooseMusic('hiphop')">
         <span class="music-tile-icon">💿</span>
@@ -1033,21 +1033,21 @@
       </button>
       <button class="music-tile music-tile-perso" onclick="openPersoModal()">
         <span class="music-tile-icon">🎵</span>
-        <span class="music-tile-name">MES MORCEAUX</span>
+        <span class="music-tile-name" data-i18n="tile.mytracks">MES MORCEAUX</span>
       </button>
     </div>
     <div class="music-choice-tiles" id="musicTrackTiles" style="display:none"></div>
-    <div class="wizard-hint" id="musicChoiceHint">Choisis une catégorie</div>
+    <div class="wizard-hint" id="musicChoiceHint" data-i18n="music.hint">Choisis une catégorie</div>
   </div>
 </div>
 <!-- ===== ÉCRAN PERSONNALISÉ (par mode) ===== -->
 <div id="customScreen" class="timing-choice" style="display:none">
   <div class="timing-choice-content">
-    <h2 class="wizard-title" id="customScreenTitle">Personnalisé</h2>
+    <h2 class="wizard-title" id="customScreenTitle" data-i18n="cfg.customized">Personnalisé</h2>
     <div id="customScreenBody" style="display:flex;flex-direction:column;gap:14px;width:100%"></div>
     <div class="cs-summary" id="customScreenSummary"></div>
     <button class="cs-continue-btn" onclick="csContinue()">Continuer →</button>
-    <div class="wizard-hint">Règle, puis continue vers la musique</div>
+    <div class="wizard-hint" data-i18n="cfg.continue">Règle, puis continue vers la musique</div>
   </div>
 </div>
 <header>
@@ -1061,8 +1061,8 @@
       <button class="lang-btn" id="btnEN" onclick="setLang('en')">🇬🇧 EN</button>
       <button class="lang-btn" id="btnPT" onclick="setLang('pt')">🇧🇷 PT</button>
     </div>
-    <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label">NOUVEAU</span></button>
-    <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)">✏️ <span class="new-wod-label">PERSO</span></button>
+    <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label" data-i18n="nav.new">NOUVEAU</span></button>
+    <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)">✏️ <span class="new-wod-label" data-i18n="nav.custom">PERSO</span></button>
     <button class="favs-btn" onclick="openFavorites()" title="Favoris">⭐</button>
     <button class="favs-btn" id="membersBtn" onclick="openMembers()" title="Adhérents & scores">👥</button>
     <button class="settings-btn" onclick="openSettings()" title="Réglages">⚙</button>
@@ -1109,13 +1109,13 @@
 <div id="persoModal" class="settings-modal" style="display:none" onclick="closePersoModalBackdrop(event)">
   <div class="settings-modal-content" onclick="event.stopPropagation()">
     <div class="settings-modal-header">
-      <h3 class="settings-modal-title">Mes morceaux</h3>
+      <h3 class="settings-modal-title" data-i18n="perso.title">Mes morceaux</h3>
       <button class="settings-modal-close" onclick="closePersoModal()">✕</button>
     </div>
     <div class="settings-modal-body">
-      <button class="imp-add-btn" onclick="document.getElementById('impFileInput2').click()">+ Importer (musique ou vidéo)</button>
+      <button class="imp-add-btn" onclick="document.getElementById('impFileInput2').click()" data-i18n="perso.import">+ Importer (musique ou vidéo)</button>
       <div id="persoModalList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;"></div>
-      <div class="imp-empty" id="persoModalEmpty">Aucun morceau importé. Importe ta musique, ou un enregistrement d'écran d'une chanson.</div>
+      <div class="imp-empty" id="persoModalEmpty" data-i18n="perso.empty">Aucun morceau importé. Importe ta musique, ou un enregistrement d'écran d'une chanson.</div>
     </div>
   </div>
 </div>
@@ -1136,8 +1136,8 @@
       <div class="mbr-history-hint" id="membersHistoryHint">Si désactivé, les données sont effacées à la fermeture de l'app.</div>
 
       <div class="mbr-add-row">
-        <input type="text" id="mbrPrenom" class="mbr-input" placeholder="Prénom">
-        <input type="text" id="mbrNom" class="mbr-input" placeholder="Nom">
+        <input type="text" id="mbrPrenom" class="mbr-input" data-i18n-ph="ph.prenom" placeholder="Prénom">
+        <input type="text" id="mbrNom" class="mbr-input" data-i18n-ph="ph.nom" placeholder="Nom">
         <button class="mbr-add-btn" onclick="addMember()">+ Ajouter</button>
       </div>
 
@@ -1151,7 +1151,7 @@
 <div id="favoritesModal" class="settings-modal" style="display:none" onclick="closeFavoritesBackdrop(event)">
   <div class="settings-modal-content" onclick="event.stopPropagation()">
     <div class="settings-modal-header">
-      <h3 class="settings-modal-title" id="favoritesModalTitle">Favoris</h3>
+      <h3 class="settings-modal-title" id="favoritesModalTitle" data-i18n="fav.modalTitle">Favoris</h3>
       <button class="settings-modal-close" onclick="closeFavorites()">✕</button>
     </div>
     <div class="settings-modal-body">
@@ -1159,7 +1159,7 @@
         <!-- Liste remplie dynamiquement -->
       </div>
       <button class="btn-save-fav-modal" onclick="saveFavoriteFromModal()" id="btnSaveFavModal">
-        💾 <span id="btnSaveFavLabel">Sauvegarder ce WOD</span>
+        💾 <span id="btnSaveFavLabel" data-i18n="fav.saveTitle">Sauvegarder ce WOD</span>
       </button>
     </div>
   </div>
@@ -1169,7 +1169,7 @@
   <aside>
     <!-- 1. MODE TABS -->
     <div>
-      <div class="sec-label">Mode d'entraînement <button class="help-btn" onclick="showModeHelp()">?</button></div>
+      <div class="sec-label"><span data-i18n="cfg.mode">Mode d'entraînement</span> <button class="help-btn" onclick="showModeHelp()">?</button></div>
       <div class="mode-tabs">
         <button class="mode-tab active" onclick="setMode(this,'wod')">FOR TIME<small>WOD CLASSIQUE</small></button>
         <button class="mode-tab" onclick="setMode(this,'amrap')">AMRAP<small>MAX ROUNDS</small></button>
@@ -1182,24 +1182,24 @@
     <div id="modeHelpOverlay" class="help-overlay" style="display:none" onclick="hideModeHelp()">
       <div class="help-modal" onclick="event.stopPropagation()">
         <div class="help-modal-head">
-          <span>Les modes expliqués</span>
+          <span data-i18n="cfg.modesExplained">Les modes expliqués</span>
           <button class="help-close" onclick="hideModeHelp()">✕</button>
         </div>
         <div class="help-item">
           <div class="help-item-title" style="color:var(--accent-fortime)">⏱ FOR TIME</div>
-          <div class="help-item-desc">Tu fais le workout le plus vite possible. Le chrono compte le temps écoulé. L'objectif : terminer toutes les répétitions avant la fin du temps imparti, ou le plus rapidement possible.</div>
+          <div class="help-item-desc" data-i18n="help.fortime">Tu fais le workout le plus vite possible. Le chrono compte le temps écoulé. L'objectif : terminer toutes les répétitions avant la fin du temps imparti, ou le plus rapidement possible.</div>
         </div>
         <div class="help-item">
           <div class="help-item-title" style="color:var(--accent-amrap)">🔁 AMRAP</div>
-          <div class="help-item-desc">"As Many Rounds As Possible" (le plus de tours possible). Tu enchaînes un maximum de tours d'un circuit pendant une durée fixe. Plus tu en fais, mieux c'est.</div>
+          <div class="help-item-desc" data-i18n="help.amrap">"As Many Rounds As Possible" (le plus de tours possible). Tu enchaînes un maximum de tours d'un circuit pendant une durée fixe. Plus tu en fais, mieux c'est.</div>
         </div>
         <div class="help-item">
           <div class="help-item-title" style="color:var(--accent-emom)">⚡ EMOM</div>
-          <div class="help-item-desc">"Every Minute On the Minute" (chaque minute, à la minute). À chaque intervalle (ex: toutes les minutes), tu démarres une série d'exercices. Le temps restant dans l'intervalle = ta récup. Tu peux ajouter un temps de repos entre les tours.</div>
+          <div class="help-item-desc" data-i18n="help.emom">"Every Minute On the Minute" (chaque minute, à la minute). À chaque intervalle (ex: toutes les minutes), tu démarres une série d'exercices. Le temps restant dans l'intervalle = ta récup. Tu peux ajouter un temps de repos entre les tours.</div>
         </div>
         <div class="help-item">
           <div class="help-item-title" style="color:var(--accent-tabata)">🔥 TABATA</div>
-          <div class="help-item-desc">Intervalle haute intensité : un temps d'effort (ex: 20s) suivi d'un temps de repos (ex: 10s), répété plusieurs fois (souvent 8 tours). Court mais très intense.</div>
+          <div class="help-item-desc" data-i18n="help.tabata">Intervalle haute intensité : un temps d'effort (ex: 20s) suivi d'un temps de repos (ex: 10s), répété plusieurs fois (souvent 8 tours). Court mais très intense.</div>
         </div>
       </div>
     </div>
@@ -1218,7 +1218,7 @@
         <button class="dur-btn" onclick="selectDur(this,30)">30<small>MIN</small></button>
       </div>
       <div class="custom-dur" id="customDur" onclick="activateCustom()">
-        <div class="custom-label">⚙ Durée personnalisée</div>
+        <div class="custom-label" data-i18n="cfg.durCustom">⚙ Durée personnalisée</div>
         <div class="custom-row">
           <button class="custom-btn" onclick="event.stopPropagation();customStep(-1)">−</button>
           <div class="custom-display" id="customDisplay">10 MIN</div>
@@ -1231,7 +1231,7 @@
     <div id="emomSection" style="display:none">
       <div class="sec-label">⏱ Config EMOM</div>
       <div class="emom-interval">
-        <div class="emom-interval-label">⚡ Work (effort)</div>
+        <div class="emom-interval-label" data-i18n="cfg.work">⚡ Work (effort)</div>
         <div class="emom-pickers">
           <div class="emom-picker">
             <div class="emom-picker-label">MIN</div>
@@ -1251,7 +1251,7 @@
           </div>
         </div>
         <div class="emom-divider"></div>
-        <div class="emom-interval-label">😮‍💨 Rest (récup)</div>
+        <div class="emom-interval-label" data-i18n="cfg.rest">😮‍💨 Rest (récup)</div>
         <div class="emom-pickers">
           <div class="emom-picker">
             <div class="emom-picker-label">MIN</div>
@@ -1275,7 +1275,7 @@
           <div class="emom-interval-label" style="margin-bottom:4px">🔁 Tours calculés</div>
           <div class="emom-rounds-display">
             <span class="emom-rounds-num" id="emomRounds">5</span>
-            <span class="emom-rounds-hint">tours (auto-calculés depuis la durée)</span>
+            <span class="emom-rounds-hint" data-i18n="cfg.rounds">tours (auto-calculés depuis la durée)</span>
           </div>
         </div>
         <div class="emom-summary" id="emomSummary">→ 5 × (1:00 + 0:00) = 5:00</div>
@@ -1308,7 +1308,7 @@
             <span class="mix-btn-ic">✓</span>
             <div class="mix-btn-txt">
               <div class="mix-btn-title">MANUEL</div>
-              <div class="mix-btn-sub"><span id="mixManualCount">0</span> morceaux cochés</div>
+              <div class="mix-btn-sub"><span id="mixManualCount">0</span> <span data-i18n="mix.selected">morceaux cochés</span></div>
             </div>
           </button>
         </div>
@@ -1414,14 +1414,14 @@
         </div>
         <div class="track-cat" data-cat="perso">
           <button class="track-cat-head" onclick="toggleCat('perso')">
-            <span class="track-cat-label">🎵 MES MORCEAUX</span>
+            <span class="track-cat-label" data-i18n="perso.tracks">🎵 MES MORCEAUX</span>
             <span class="track-cat-count" id="persoCount">0</span>
             <span class="track-cat-arrow">▾</span>
           </button>
           <div class="track-cat-body">
-            <button class="imp-add-btn" onclick="document.getElementById('impFileInput').click()">+ Importer un morceau</button>
+            <button class="imp-add-btn" onclick="document.getElementById('impFileInput').click()" data-i18n="perso.importOne">+ Importer un morceau</button>
             <div id="persoTracks"></div>
-            <div class="imp-empty" id="persoEmpty">Aucun morceau importé. Ajoute tes propres musiques depuis ton téléphone.</div>
+            <div class="imp-empty" id="persoEmpty" data-i18n="perso.empty2">Aucun morceau importé. Ajoute tes propres musiques depuis ton téléphone.</div>
           </div>
         </div>
         <input type="file" id="impFileInput" accept="audio/*,video/*" multiple style="display:none" onchange="handleImportFiles(this.files)">
@@ -1430,9 +1430,9 @@
 
     <!-- FAVORITES (après track, avant mix) -->
     <div>
-      <div class="sec-label">⭐ WODs favoris</div>
+      <div class="sec-label" data-i18n="fav.title">⭐ WODs favoris</div>
       <div class="fav-list" id="favList"></div>
-      <button class="btn-save-fav" onclick="saveFavorite()">💾 SAUVEGARDER CE WOD</button>
+      <button class="btn-save-fav" onclick="saveFavorite()" data-i18n="fav.save">💾 SAUVEGARDER CE WOD</button>
     </div>
 
     <!-- MIX AUDIO -->
@@ -1487,10 +1487,10 @@
       <div class="sc-label" id="scoreCaptureLabel">Enregistrer un score</div>
       <div class="sc-row">
         <select class="sc-input" id="scoreMember"></select>
-        <input type="text" class="sc-input" id="scoreWod" placeholder="Type de WOD / exo">
+        <input type="text" class="sc-input" id="scoreWod" data-i18n-ph="ph.wodtype" placeholder="Type de WOD / exo">
       </div>
       <div class="sc-row">
-        <input type="text" class="sc-input sc-grow" id="scoreValue" placeholder="Score (12:34, 8+12, 100kg…)">
+        <input type="text" class="sc-input sc-grow" id="scoreValue" data-i18n-ph="ph.score" placeholder="Score (12:34, 8+12, 100kg…)">
         <button class="sc-save-btn" onclick="saveTimerScore()">Enregistrer</button>
       </div>
       <div class="sc-feedback" id="scoreFeedback"></div>
@@ -1626,6 +1626,7 @@ function setLang(l){
   if(bEN) bEN.className='lang-btn'+(l==='en'?' active':'');
   if(bPT) bPT.className='lang-btn'+(l==='pt'?' active':'');
   try{localStorage.setItem('reps_lang',l);}catch(e){}
+  applyI18n();
   renderSched();
 }
 
@@ -1634,6 +1635,90 @@ function L3(fr,en,pt){
   if(S.lang==='pt') return (pt!==undefined?pt:en);
   if(S.lang==='en') return en;
   return fr;
+}
+
+// ===== I18N : traductions des libellés statiques =====
+const I18N={
+  'nav.new':['NOUVEAU','NEW','NOVO'],
+  'nav.custom':['PERSO','CUSTOM','PERSO'],
+  'nav.done':['TERMINÉ','DONE','CONCLUÍDO'],
+  'music.title':['Musique','Music','Música'],
+  'timing.title':['Durée','Duration','Duração'],
+  'help.fortime':['Tu fais le workout le plus vite possible. Le chrono compte le temps écoulé. L\'objectif : terminer toutes les répétitions avant la fin du temps imparti, ou le plus rapidement possible.','Do the workout as fast as possible. The clock counts up. The goal: finish all the reps before time runs out, or as fast as you can.','Faça o treino o mais rápido possível. O cronômetro conta o tempo. O objetivo: terminar todas as repetições antes do tempo acabar, ou o mais rápido possível.'],
+  'help.amrap':['"As Many Rounds As Possible" (le plus de tours possible). Tu enchaînes un maximum de tours d\'un circuit pendant une durée fixe. Plus tu en fais, mieux c\'est.','"As Many Rounds As Possible." You do as many rounds of a circuit as you can within a fixed time. The more, the better.','"As Many Rounds As Possible" (o máximo de rounds). Você faz o máximo de rounds de um circuito num tempo fixo. Quanto mais, melhor.'],
+  'help.emom':['"Every Minute On the Minute" (chaque minute, à la minute). À chaque intervalle (ex: toutes les minutes), tu démarres une série d\'exercices. Le temps restant dans l\'intervalle = ta récup. Tu peux ajouter un temps de repos entre les tours.','"Every Minute On the Minute." At each interval (e.g. every minute) you start a set of exercises. The time left in the interval is your rest. You can add rest time between rounds.','"Every Minute On the Minute" (a cada minuto). A cada intervalo (ex: cada minuto) você começa uma série. O tempo restante do intervalo é seu descanso. Você pode adicionar descanso entre rounds.'],
+  'help.tabata':['Intervalle haute intensité : un temps d\'effort (ex: 20s) suivi d\'un temps de repos (ex: 10s), répété plusieurs fois (souvent 8 tours). Court mais très intense.','High-intensity intervals: a work period (e.g. 20s) followed by a rest period (e.g. 10s), repeated several times (often 8 rounds). Short but very intense.','Intervalos de alta intensidade: um tempo de esforço (ex: 20s) seguido de descanso (ex: 10s), repetido várias vezes (geralmente 8 rounds). Curto mas muito intenso.'],
+
+  'fav.modalTitle':['Favoris','Favorites','Favoritos'],
+  'mix.selected':['morceaux cochés','tracks selected','faixas selecionadas'],
+  'music.hint':['Choisis une catégorie','Pick a category','Escolha uma categoria'],
+  'tile.mytracks':['MES MORCEAUX','MY TRACKS','MINHAS FAIXAS'],
+  'tile.hymne':['HYMNE','ANTHEM','HINO'],
+  'lang.choose':['Choisis ta langue','Choose your language','Escolha seu idioma'],
+  'perso.title':['Mes morceaux','My tracks','Minhas faixas'],
+  'perso.import':['+ Importer (musique ou vidéo)','+ Import (music or video)','+ Importar (música ou vídeo)'],
+  'perso.importOne':['+ Importer un morceau','+ Import a track','+ Importar uma faixa'],
+  'perso.empty':['Aucun morceau importé. Importe ta musique, ou un enregistrement d\'écran d\'une chanson.','No imported track yet. Import your music, or a screen recording of a song.','Nenhuma faixa importada. Importe sua música, ou uma gravação de tela de uma canção.'],
+  'perso.empty2':['Aucun morceau importé. Ajoute tes propres musiques depuis ton téléphone.','No imported track yet. Add your own music from your phone.','Nenhuma faixa importada. Adicione sua música do seu telefone.'],
+  'perso.tracks':['🎵 MES MORCEAUX','🎵 MY TRACKS','🎵 MINHAS FAIXAS'],
+  'fav.title':['⭐ WODs favoris','⭐ Favorite WODs','⭐ WODs favoritos'],
+  'fav.save':['💾 SAUVEGARDER CE WOD','💾 SAVE THIS WOD','💾 SALVAR ESTE WOD'],
+  'fav.saveTitle':['Sauvegarder ce WOD','Save this WOD','Salvar este WOD'],
+  'cfg.mode':['Mode d\'entraînement','Training mode','Modo de treino'],
+  'cfg.modesExplained':['Les modes expliqués','Modes explained','Modos explicados'],
+  'cfg.durCustom':['⚙ Durée personnalisée','⚙ Custom duration','⚙ Duração personalizada'],
+  'cfg.customized':['Personnalisé','Custom','Personalizado'],
+  'cfg.work':['⚡ Work (effort)','⚡ Work (effort)','⚡ Work (esforço)'],
+  'cfg.rest':['😮‍💨 Rest (récup)','😮‍💨 Rest (recovery)','😮‍💨 Rest (descanso)'],
+  'cfg.rounds':['tours (auto-calculés depuis la durée)','rounds (auto-computed from duration)','rounds (calculados pela duração)'],
+  'cfg.continue':['Règle, puis continue vers la musique','Set it, then continue to music','Ajuste, depois continue para a música'],
+  'settings.title':['Réglages','Settings','Ajustes'],
+  'settings.music':['Musique','Music','Música'],
+  'settings.voice':['Voix','Voice','Voz'],
+  'members.title':['Adhérents & scores','Members & scores','Membros & scores'],
+  'members.keep':['Garder l\'historique','Keep history','Manter histórico'],
+  'members.add':['+ Ajouter','+ Add','+ Adicionar'],
+  'score.label':['Enregistrer un score','Save a score','Salvar um score'],
+  'score.save':['Enregistrer','Save','Salvar'],
+  'sched.wod':['Programme des annonces','Announcements schedule','Programa de avisos'],
+  'sched.amrap':['Annonces chaque minute','Every-minute callouts','Avisos a cada minuto'],
+  'sched.emom':['Top à chaque intervalle','Cue each interval','Sinal a cada intervalo'],
+  'sched.rounds':['Rounds','Rounds','Rounds'],
+  'ph.prenom':['Prénom','First name','Nome'],
+  'ph.nom':['Nom','Last name','Sobrenome'],
+  'ph.score':['Score (12:34, 8+12, 100kg…)','Score (12:34, 8+12, 100kg…)','Score (12:34, 8+12, 100kg…)'],
+  'ph.wodtype':['Type de WOD / exo','WOD / lift type','Tipo de WOD / exo']
+};
+function I18Nget(key){
+  const e=I18N[key]; if(!e) return null;
+  return S.lang==='pt'?(e[2]||e[1]):(S.lang==='en'?e[1]:e[0]);
+}
+
+// Applique toutes les traductions statiques + rafraîchit les libellés dynamiques
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const v=I18Nget(el.getAttribute('data-i18n')); if(v!=null) el.textContent=v;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const v=I18Nget(el.getAttribute('data-i18n-ph')); if(v!=null) el.setAttribute('placeholder',v);
+  });
+  refreshModeLabels();
+  // Statut chrono au repos
+  const st=document.getElementById('timerStatus');
+  if(st && (S.state==='idle'||!S.state)) st.textContent=L3('Prêt à démarrer','Ready to start','Pronto para começar');
+}
+
+// Libellés qui dépendent du mode courant (durée, eyebrow, planning)
+function refreshModeLabels(){
+  const lbl=document.getElementById('durLabel');
+  const eyebrow=document.getElementById('timerEyebrow');
+  const schedLbl=document.getElementById('schedLabel');
+  if(!eyebrow) return;
+  const m=S.mode;
+  if(m==='wod'){ if(lbl)lbl.textContent=L3('Durée WOD','WOD duration','Duração WOD'); eyebrow.textContent=L3('// TEMPS RESTANT','// TIME LEFT','// TEMPO RESTANTE'); if(schedLbl)schedLbl.textContent=I18Nget('sched.wod'); }
+  else if(m==='amrap'){ if(lbl)lbl.textContent=L3('Durée AMRAP','AMRAP duration','Duração AMRAP'); eyebrow.textContent=L3('// AMRAP, TEMPS RESTANT','// AMRAP, TIME LEFT','// AMRAP, TEMPO RESTANTE'); if(schedLbl)schedLbl.textContent=I18Nget('sched.amrap'); }
+  else if(m==='emom'){ if(lbl)lbl.textContent=L3('Durée EMOM','EMOM duration','Duração EMOM'); eyebrow.textContent=L3('// EMOM, TEMPS ÉCOULÉ','// EMOM, TIME ELAPSED','// EMOM, TEMPO DECORRIDO'); if(schedLbl)schedLbl.textContent=I18Nget('sched.emom'); }
+  else if(m==='tabata'){ eyebrow.textContent='// TABATA'; if(schedLbl)schedLbl.textContent=I18Nget('sched.rounds'); }
 }
 
 // ===== MODE =====
@@ -1652,15 +1737,12 @@ function setMode(btn,mode){
     const eyebrow=document.getElementById('timerEyebrow');
     const schedLbl=document.getElementById('schedLabel');
 
-    if(mode==='wod'){lbl.textContent='Durée WOD';eyebrow.textContent='// TEMPS RESTANT';schedLbl.textContent='Programme des annonces';}
-    else if(mode==='amrap'){lbl.textContent='Durée AMRAP';eyebrow.textContent='// AMRAP — TEMPS RESTANT';schedLbl.textContent='Annonces chaque minute';}
-    else if(mode==='emom'){lbl.textContent='Durée EMOM';eyebrow.textContent='// EMOM — TEMPS ÉCOULÉ';schedLbl.textContent='Top à chaque intervalle';document.getElementById('emomSection').style.display='';emomRecomputeRounds();}
+    if(mode==='emom'){document.getElementById('emomSection').style.display='';emomRecomputeRounds();}
     else if(mode==='tabata'){
       document.getElementById('durSection').style.display='none';
       document.getElementById('tabataSection').style.display='';
-      eyebrow.textContent='// TABATA';
-      schedLbl.textContent='Rounds';
     }
+    refreshModeLabels();
 
     updateTotalFromMode();
     renderSched();
@@ -2478,7 +2560,7 @@ function launch(){
   S.state='launching';
   document.getElementById('btnPlay').textContent='⏳';
   setStatus('launching','10·9·8…');
-  document.getElementById('timerStatus').textContent='Décompte…';
+  document.getElementById('timerStatus').textContent=L3('Décompte…','Countdown…','Contagem…');
   startMusic();
   document.getElementById('waveform').classList.add('active');
   startVisualCountdown();
@@ -2540,7 +2622,7 @@ function tabataPhaseEnd(){
     S.total=S.tabRestSec;
     S.remain=S.tabRestSec;
     speak(TXT[S.lang].rest);
-    showAnnounce('💧 REPOS');
+    showAnnounce(L3('💧 REPOS','💧 REST','💧 DESCANSO'));
     updateClock();
   } else {
     // Passage à work du round suivant
@@ -2558,7 +2640,7 @@ function checkAnnounce(){
   const r=S.remain;const t=TXT[S.lang];
 
   // Annonces communes: 10s, 5..1, 0 — décompte 5-4-3-2-1 en voix Brian Web Audio
-  if(r===10){showAnnounce('10 SECONDES !');speak(t.s10);return;}
+  if(r===10){showAnnounce(L3('10 SECONDES !','10 SECONDS !','10 SEGUNDOS !'));speak(t.s10);return;}
   if(r===3){showAnnounce('3');playCount(3);return;}
   if(r===2){showAnnounce('2');playCount(2);return;}
   if(r===1){showAnnounce('1');playCount(1);return;}
@@ -2569,15 +2651,15 @@ function checkAnnounce(){
 
   // WOD : annonces classiques
   if(S.mode==='wod'){
-    if(r===180){showAnnounce('IL RESTE 3 MIN');speak(t.min3);return;}
-    if(r===60){showAnnounce('DERNIÈRE MIN');speak(t.min1);return;}
+    if(r===180){showAnnounce(L3('IL RESTE 3 MIN','3 MIN LEFT','FALTAM 3 MIN'));speak(t.min3);return;}
+    if(r===60){showAnnounce(L3('DERNIÈRE MIN','LAST MIN','ÚLTIMO MIN'));speak(t.min1);return;}
     return;
   }
 
   // AMRAP : annonces toutes les minutes restantes
   if(S.mode==='amrap'){
-    if(r===180){showAnnounce('IL RESTE 3 MIN');speak(t.min3);return;}
-    if(r===60){showAnnounce('DERNIÈRE MIN');speak(t.min1);return;}
+    if(r===180){showAnnounce(L3('IL RESTE 3 MIN','3 MIN LEFT','FALTAM 3 MIN'));speak(t.min3);return;}
+    if(r===60){showAnnounce(L3('DERNIÈRE MIN','LAST MIN','ÚLTIMO MIN'));speak(t.min1);return;}
     if(r>60 && r%60===0){
       const min=r/60;
       showAnnounce(`${min} MIN LEFT`);
@@ -2611,7 +2693,7 @@ function checkAnnounce(){
       S.emomPhase=phase;
       if(phase==='rest'){
         // Début du REST : voix "Rest!"
-        showAnnounce('😮‍💨 REST');
+        showAnnounce(L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'));
         playRest();
         return;
       } else {
@@ -2656,7 +2738,7 @@ function checkAnnounce(){
       }
     }
 
-    if(r===60 && S.total>120){showAnnounce('DERNIÈRE MIN');speak(t.min1);return;}
+    if(r===60 && S.total>120){showAnnounce(L3('DERNIÈRE MIN','LAST MIN','ÚLTIMO MIN'));speak(t.min1);return;}
     return;
   }
 }
@@ -2666,7 +2748,7 @@ function pause(){
   document.getElementById('btnPlay').textContent='▶';
   document.getElementById('timerCard').classList.remove('playing');
   document.getElementById('waveform').classList.remove('active');
-  document.getElementById('timerStatus').textContent='⏸ En pause';
+  document.getElementById('timerStatus').textContent=L3('⏸ En pause','⏸ Paused','⏸ Pausado');
   setStatus('paused','PAUSE');
 }
 function resume(){startMusic();document.getElementById('waveform').classList.add('active');startChrono();}
@@ -2683,7 +2765,7 @@ function resetTimer(){
   document.getElementById('btnPlay').textContent='▶';
   document.getElementById('timerCard').classList.remove('playing');
   document.getElementById('waveform').classList.remove('active');
-  document.getElementById('timerStatus').textContent='Prêt à démarrer';
+  document.getElementById('timerStatus').textContent=L3('Prêt à démarrer','Ready to start','Pronto para começar');
   document.getElementById('progFill').style.width='0%';
   document.getElementById('announce').classList.remove('show');
   document.getElementById('btnSkip').style.display='none';
@@ -2702,14 +2784,14 @@ function end(){
   document.getElementById('phaseIndicator').className='phase-indicator';
   showAnnounce('🏁 TIME !');
   speak(TXT[S.lang].time);
-  document.getElementById('timerStatus').textContent='Entraînement terminé 💪';
+  document.getElementById('timerStatus').textContent=L3('Entraînement terminé 💪','Workout complete 💪','Treino concluído 💪');
   setStatus('','FINI');
 }
 
 function skipAhead(){
   if(S.remain>180&&S.state==='playing'&&S.mode!=='tabata'){
     S.remain=180;updateClock();
-    showAnnounce('IL RESTE 3 MIN');speak(TXT[S.lang].min3);
+    showAnnounce(L3('IL RESTE 3 MIN','3 MIN LEFT','FALTAM 3 MIN'));speak(TXT[S.lang].min3);
   }
 }
 
@@ -2888,6 +2970,7 @@ function saveFavoriteFromModal(){
 }
 
 // INIT
+applyI18n();
 renderFavs();
 updateClock();renderSched();
 </script>
@@ -2935,8 +3018,9 @@ function toggleConfigPanel(){
   const btn=document.getElementById('customizeBtn');
   if(btn){
     btn.innerHTML = epured
-      ? '✏️ <span class="new-wod-label">PERSO</span>'
-      : '✓ <span class="new-wod-label">TERMINÉ</span>';
+      ? '✏️ <span class="new-wod-label" data-i18n="nav.custom">PERSO</span>'
+      : '✓ <span class="new-wod-label" data-i18n="nav.done">TERMINÉ</span>';
+    applyI18n();
   }
   if(!epured){
     // Panneau ouvert : on resynchronise l'affichage avec le mode courant
@@ -3222,11 +3306,11 @@ function showCustomChoice(mode){
   }
   let html='';
   if(mode==='emom'){
-    html+='<div class="cs-block"><div class="cs-block-title">⚡ Work (effort)</div><div class="emom-pickers">'
+    html+='<div class="cs-block"><div class="cs-block-title">'+L3("⚡ Work (effort)","⚡ Work (effort)","⚡ Work (esforço)")+'</div><div class="emom-pickers">'
       + _csStepper('MIN','csv_wmin',"csEmom('work','min',-1)","csEmom('work','min',1)",Math.floor(CS.work/60))
       + _csStepper('SEC','csv_wsec',"csEmom('work','sec',-1)","csEmom('work','sec',1)",String(CS.work%60).padStart(2,'0'))
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">😮‍💨 Rest (récup)</div><div class="emom-pickers">'
+    html+='<div class="cs-block"><div class="cs-block-title">'+L3("😮‍💨 Rest (récup)","😮‍💨 Rest (recovery)","😮‍💨 Rest (descanso)")+'</div><div class="emom-pickers">'
       + _csStepper('MIN','csv_rmin',"csEmom('rest','min',-1)","csEmom('rest','min',1)",Math.floor(CS.rest/60))
       + _csStepper('SEC','csv_rsec',"csEmom('rest','sec',-1)","csEmom('rest','sec',1)",String(CS.rest%60).padStart(2,'0'))
       + '</div></div>';
