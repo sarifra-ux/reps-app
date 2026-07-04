@@ -1,5 +1,5 @@
 // R.E.P.S Service Worker — mode hors-ligne
-const CACHE_NAME = 'reps-v27';
+const CACHE_NAME = 'reps-v28';
 const ASSETS = [
   '/',
   '/index.html',

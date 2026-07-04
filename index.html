@@ -964,7 +964,7 @@
 <div id="musicChoiceScreen" class="music-choice" style="display:none">
   <div class="music-choice-content">
     <h2 class="wizard-title" id="musicChoiceTitle">Musique</h2>
-    <div class="music-choice-tiles">
+    <div class="music-choice-tiles" id="musicCatTiles">
       <button class="music-tile music-tile-rap" onclick="chooseMusic('rap')">
         <span class="music-tile-icon">🎤</span>
         <span class="music-tile-name">RAP</span>
@@ -990,7 +990,8 @@
         <span class="music-tile-name">MES MORCEAUX</span>
       </button>
     </div>
-    <div class="wizard-hint" id="musicChoiceHint">Choix aléatoire dans la catégorie</div>
+    <div class="music-choice-tiles" id="musicTrackTiles" style="display:none"></div>
+    <div class="wizard-hint" id="musicChoiceHint">Choisis une catégorie</div>
   </div>
 </div>
 <!-- ===== ÉCRAN PERSONNALISÉ (par mode) ===== -->
@@ -3161,23 +3162,82 @@ function showMusicChoice(){
   const title=document.getElementById('musicChoiceTitle');
   const hint=document.getElementById('musicChoiceHint');
   if(title) title.textContent=L3('Musique','Music','Música');
-  if(hint) hint.textContent=L3('Choix aléatoire dans la catégorie','Random pick in the category','Escolha aleatória na categoria');
+  if(hint) hint.textContent=L3('Choisis une catégorie','Pick a category','Escolha uma categoria');
+  // Toujours repartir sur les catégories
+  const cats=document.getElementById('musicCatTiles');
+  const box=document.getElementById('musicTrackTiles');
+  if(box){ box.style.display='none'; box.innerHTML=''; }
+  if(cats) cats.style.display='';
   screen.style.display='flex';
   screen.style.opacity='1';
 }
 
+// Mapping catégorie → tracks disponibles
+const CATEGORY_TRACKS={
+  'rap':['pogo','pleinfeu'],
+  'techno':['techno'],
+  'house':['house'],
+  'hymne':['hymne'],
+  'hiphop':['censured','cartier','crime','cyrilgane','introduction','vibes']
+};
+
 function chooseMusic(category){
-  // Mapping catégorie → tracks disponibles
-  const CATEGORY_TRACKS={
-    'rap':['pogo','pleinfeu'],
-    'techno':['techno'],
-    'house':['house'],
-    'hymne':['hymne'],
-    'hiphop':['censured','cartier','crime','cyrilgane','introduction','vibes']
-  };
   const tracks=CATEGORY_TRACKS[category]||['pogo'];
-  // Aléatoire dans la catégorie
-  const chosen=tracks[Math.floor(Math.random()*tracks.length)];
+  // Une seule track : on applique direct, pas de clic inutile
+  if(tracks.length<=1){ applyTrack(tracks[0],category); return; }
+  // Plusieurs : on montre la liste des morceaux
+  renderTrackPicker(category,tracks);
+}
+
+// Affiche la liste des morceaux d'une catégorie (+ Surprise aléatoire)
+function renderTrackPicker(category,tracks){
+  const cats=document.getElementById('musicCatTiles');
+  const box=document.getElementById('musicTrackTiles');
+  const hint=document.getElementById('musicChoiceHint');
+  const title=document.getElementById('musicChoiceTitle');
+  if(!box||!cats) return;
+  box.innerHTML='';
+  // Bouton retour
+  const back=document.createElement('button');
+  back.className='music-tile';
+  back.onclick=backToMusicCats;
+  back.innerHTML='<span class="music-tile-icon">↩︎</span><span class="music-tile-name">'+L3('Retour','Back','Voltar')+'</span>';
+  box.appendChild(back);
+  // Surprise (garde l'aléatoire)
+  const surprise=document.createElement('button');
+  surprise.className='music-tile';
+  surprise.onclick=()=>{ const r=tracks[Math.floor(Math.random()*tracks.length)]; applyTrack(r,category); };
+  surprise.innerHTML='<span class="music-tile-icon">🎲</span><span class="music-tile-name">'+L3('Surprise','Surprise','Surpresa')+'</span>';
+  box.appendChild(surprise);
+  // Un bouton par morceau
+  tracks.forEach(key=>{
+    const info=TRACK_INFO[key]||{name:key,emoji:'🎵'};
+    const b=document.createElement('button');
+    b.className='music-tile';
+    b.onclick=()=>applyTrack(key,category);
+    b.innerHTML='<span class="music-tile-icon">'+info.emoji+'</span><span class="music-tile-name">'+info.name.toUpperCase()+'</span>';
+    box.appendChild(b);
+  });
+  cats.style.display='none';
+  box.style.display='';
+  if(title) title.textContent=L3('Choisis ton morceau','Pick your track','Escolha sua faixa');
+  if(hint) hint.textContent=L3('Ou Surprise pour l\'aléatoire','Or Surprise for random','Ou Surpresa para aleatório');
+}
+
+// Retour aux catégories
+function backToMusicCats(){
+  const cats=document.getElementById('musicCatTiles');
+  const box=document.getElementById('musicTrackTiles');
+  const hint=document.getElementById('musicChoiceHint');
+  const title=document.getElementById('musicChoiceTitle');
+  if(box){ box.style.display='none'; box.innerHTML=''; }
+  if(cats) cats.style.display='';
+  if(title) title.textContent=L3('Musique','Music','Música');
+  if(hint) hint.textContent=L3('Choisis une catégorie','Pick a category','Escolha uma categoria');
+}
+
+// Applique le morceau choisi et termine le wizard
+function applyTrack(chosen,category){
   S.track=chosen;
   
   // Mettre à jour l'UI track dans l'app
