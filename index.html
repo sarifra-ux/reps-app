@@ -3,6 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<script>
+  // Détection iOS posée le plus tôt possible, sur <html>, pour que le CSS puisse
+  // masquer les curseurs de volume AVANT le premier affichage (pas de clignotement).
+  // Apple interdit de régler le volume par JavaScript sur iPhone/iPad : ces curseurs
+  // n'auraient aucun effet là-bas. Sur le web et Android, ils restent et fonctionnent.
+  (function(){
+    var ua=navigator.userAgent||'';
+    var isIOS=/iP(hone|od|ad)/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+    if(isIOS) document.documentElement.classList.add('is-ios');
+  })();
+</script>
 <title>R.E.P.S — Rhythm Engine Performance Sound</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#080810">
@@ -901,6 +912,25 @@
     display:none !important;
   }
 
+  /* ===== VOLUME SUR iOS ===== */
+  /* Apple bloque le réglage du volume par JavaScript sur iPhone/iPad : ces curseurs
+     bougeraient sans aucun effet sonore. On les retire et on indique d'utiliser les
+     boutons physiques. Sur web et Android, ils restent visibles et fonctionnels. */
+  html.is-ios .vol-row,
+  html.is-ios #settingsRowMusic,
+  html.is-ios #settingsRowVoice{
+    display:none !important;
+  }
+  html.is-ios .vol-section::before,
+  html.is-ios .settings-modal-body::before{
+    content:"🔊 " attr(data-iosvol);
+    display:block;
+    color:var(--muted);
+    font-size:0.8rem;
+    letter-spacing:1px;
+    padding:4px 0 10px;
+  }
+
   /* ===== ADHÉRENTS & SCORES ===== */
   .mbr-history-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
     background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;
@@ -1091,7 +1121,7 @@
       <button class="settings-modal-close" onclick="closeSettings()">✕</button>
     </div>
     <div class="settings-modal-body">
-      <div class="settings-row">
+      <div class="settings-row" id="settingsRowMusic">
         <div class="settings-row-label">
           <span class="settings-icon">🎵</span>
           <span class="settings-name" id="settingsMusicLabel">Musique</span>
@@ -1101,7 +1131,7 @@
           <span class="settings-val" id="settingsVolMusicVal">60%</span>
         </div>
       </div>
-      <div class="settings-row">
+      <div class="settings-row" id="settingsRowVoice">
         <div class="settings-row-label">
           <span class="settings-icon">🎙️</span>
           <span class="settings-name" id="settingsVoiceLabel">Voix</span>
@@ -1732,6 +1762,8 @@ function applyI18n(){
   // Statut chrono au repos
   const st=document.getElementById('timerStatus');
   if(st && (S.state==='idle'||!S.state)) st.textContent=L3('Prêt à démarrer','Ready to start','Pronto para começar');
+  // Garde le texte de l'indication volume iOS dans la bonne langue (défini plus bas)
+  if(typeof applyIOSVolumeUI==='function') applyIOSVolumeUI();
 }
 
 // Libellés qui dépendent du mode courant (durée, eyebrow, planning)
@@ -3864,33 +3896,18 @@ function choosePersoTrack(id){
   }
 }
 // ===== VOLUME SUR iOS =====
-// Apple interdit de régler le volume par JavaScript sur iPhone/iPad : la propriété
-// "volume" y est ignorée et renvoie toujours 1. Nos curseurs bougent donc à l'écran
-// sans aucun effet sonore. Plutôt que d'afficher un réglage fantôme, on les retire
-// et on indique à l'utilisateur d'utiliser les boutons physiques de son téléphone.
-// (Sur le web, les curseurs restent en place et fonctionnent normalement.)
+// Le masquage des curseurs est fait en CSS (classe .is-ios posée dans le <head>),
+// ce qui garantit qu'il s'applique dès le premier affichage, sans dépendre du JS.
+// Ici on ne fait qu'alimenter le texte de l'indication dans la langue choisie.
 function applyIOSVolumeUI(){
-  if(!_isIOS) return;
-  const hint=L3("🔊 Volume : boutons de l'iPhone",
-                "🔊 Volume: use your iPhone buttons",
-                "🔊 Volume: botões do iPhone");
-  // On masque les lignes de curseurs, dans la page comme dans la modale Réglages
-  [['volMusic','.vol-row'],['volVoice','.vol-row'],
-   ['settingsVolMusic','.settings-row'],['settingsVolVoice','.settings-row']].forEach(([id,sel])=>{
-    const el=document.getElementById(id);
-    if(el){const row=el.closest(sel); if(row) row.style.display='none';}
+  if(!document.documentElement.classList.contains('is-ios')) return;
+  var hint = (typeof L3==='function')
+    ? L3("Volume : boutons de l'iPhone","Volume: use your iPhone buttons","Volume: botões do iPhone")
+    : "Volume : boutons de l'iPhone";
+  ['.vol-section','.settings-modal-body'].forEach(function(sel){
+    var el=document.querySelector(sel);
+    if(el) el.setAttribute('data-iosvol', hint);
   });
-  // On insère l'indication à la place
-  const mk=(id)=>{
-    const d=document.createElement('div');
-    d.id=id; d.textContent=hint;
-    d.style.cssText='color:var(--muted);font-size:0.8rem;padding:10px 0 12px;letter-spacing:1px;';
-    return d;
-  };
-  const vs=document.querySelector('.vol-section');
-  if(vs && !document.getElementById('iosVolHint')) vs.insertBefore(mk('iosVolHint'), vs.firstChild);
-  const sb=document.querySelector('.settings-modal-body');
-  if(sb && !document.getElementById('iosVolHintSet')) sb.insertBefore(mk('iosVolHintSet'), sb.firstChild);
 }
 window.addEventListener('DOMContentLoaded',applyIOSVolumeUI);
 
