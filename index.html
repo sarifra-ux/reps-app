@@ -2853,8 +2853,22 @@ function setStatus(cls,txt){
   p.className='status-pill'+(cls?' '+cls:'');
   document.getElementById('statusText').textContent=txt;
 }
-function updateVolMusic(v){document.getElementById('volMusicVal').textContent=v+'%';if(musicAudio)musicAudio.volume=v/100;}
-function updateVolVoice(v){document.getElementById('volVoiceVal').textContent=v+'%';}
+function updateVolMusic(v){
+  document.getElementById('volMusicVal').textContent=v+'%';
+  // On respecte le ducking : si la voix parle, la musique reste baissée.
+  if(musicAudio){
+    const vol=parseInt(v)/100;
+    try{musicAudio.volume=(_duckCount>0 ? vol*0.25 : vol);}catch(e){}
+  }
+}
+function updateVolVoice(v){
+  document.getElementById('volVoiceVal').textContent=v+'%';
+  // Avant, ce curseur ne faisait que changer l'étiquette : il ne pilotait aucun son.
+  // On l'applique maintenant à la voix et au bip en cours de lecture.
+  const vol=parseInt(v)/100;
+  if(voiceAudio){try{voiceAudio.volume=vol;}catch(e){}}
+  if(beepAudio){try{beepAudio.volume=vol;}catch(e){}}
+}
 
 // ===== FULLSCREEN =====
 function toggleFullscreen(){
