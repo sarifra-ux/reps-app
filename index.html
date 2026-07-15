@@ -3863,6 +3863,37 @@ function choosePersoTrack(id){
     stopMusic(); startMusic();
   }
 }
+// ===== VOLUME SUR iOS =====
+// Apple interdit de régler le volume par JavaScript sur iPhone/iPad : la propriété
+// "volume" y est ignorée et renvoie toujours 1. Nos curseurs bougent donc à l'écran
+// sans aucun effet sonore. Plutôt que d'afficher un réglage fantôme, on les retire
+// et on indique à l'utilisateur d'utiliser les boutons physiques de son téléphone.
+// (Sur le web, les curseurs restent en place et fonctionnent normalement.)
+function applyIOSVolumeUI(){
+  if(!_isIOS) return;
+  const hint=L3("🔊 Volume : boutons de l'iPhone",
+                "🔊 Volume: use your iPhone buttons",
+                "🔊 Volume: botões do iPhone");
+  // On masque les lignes de curseurs, dans la page comme dans la modale Réglages
+  [['volMusic','.vol-row'],['volVoice','.vol-row'],
+   ['settingsVolMusic','.settings-row'],['settingsVolVoice','.settings-row']].forEach(([id,sel])=>{
+    const el=document.getElementById(id);
+    if(el){const row=el.closest(sel); if(row) row.style.display='none';}
+  });
+  // On insère l'indication à la place
+  const mk=(id)=>{
+    const d=document.createElement('div');
+    d.id=id; d.textContent=hint;
+    d.style.cssText='color:var(--muted);font-size:0.8rem;padding:10px 0 12px;letter-spacing:1px;';
+    return d;
+  };
+  const vs=document.querySelector('.vol-section');
+  if(vs && !document.getElementById('iosVolHint')) vs.insertBefore(mk('iosVolHint'), vs.firstChild);
+  const sb=document.querySelector('.settings-modal-body');
+  if(sb && !document.getElementById('iosVolHintSet')) sb.insertBefore(mk('iosVolHintSet'), sb.firstChild);
+}
+window.addEventListener('DOMContentLoaded',applyIOSVolumeUI);
+
 window.addEventListener('DOMContentLoaded',impLoadAll);
 
 // ===== ADHÉRENTS & SCORES =====
