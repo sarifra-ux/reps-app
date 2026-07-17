@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>REPS — Test niveau musique</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; padding:16px; padding-top:calc(16px + env(safe-area-inset-top));
+         background:#16161a; color:#e8e8e6; font:15px/1.5 -apple-system,system-ui,sans-serif; }
+  h1 { font-size:17px; font-weight:600; margin:0 0 4px; }
+  .sub { color:#8b8b88; font-size:13px; margin:0 0 18px; }
+  .card { background:#1f1f24; border:1px solid #2e2e35; border-radius:10px; padding:14px; margin-bottom:12px; }
+  .card h2 { font-size:11px; font-weight:600; margin:0 0 4px; color:#8b8b88; text-transform:uppercase; letter-spacing:.07em; }
+  .lvl { display:flex; align-items:center; gap:10px; padding:12px 0; border-bottom:1px solid #26262c; }
+  .lvl:last-child { border-bottom:0; }
+  .lvl .n { font:600 15px ui-monospace,Menlo,monospace; width:74px; }
+  .lvl .g { font-size:12px; color:#8b8b88; flex:1; }
+  .lvl button { width:auto; padding:10px 16px; margin:0; font-size:14px; }
+  button { padding:14px; font-size:16px; font-weight:600; background:#2f6fed; color:#fff; border:0; border-radius:9px; }
+  button.alt { background:#2e2e35; }
+  button.on { background:#4ade80; color:#0a2f18; }
+  .big { width:100%; margin-bottom:8px; }
+  .hint { font-size:12px; color:#6b6b68; line-height:1.5; margin-top:8px; }
+  .now { font:600 14px ui-monospace,Menlo,monospace; color:#4ade80; text-align:center; padding:8px 0; min-height:34px; }
+</style>
+</head>
+<body>
+
+<h1>REPS — Test niveau musique</h1>
+<p class="sub">À ouvrir <b>sur ton iPhone</b>. Aucun ducking : c'est exactement ce que fait iOS aujourd'hui.</p>
+
+<div class="card">
+  <h2>Comment faire</h2>
+  <p class="hint" style="margin:6px 0 0">Choisis un niveau, la musique démarre. Une annonce « ROUND 2 » tombe toutes les 5 secondes. Tu cherches <b>le niveau le plus fort auquel tu entends encore l'annonce distinctement</b>. Éloigne-toi de 2-3 mètres, comme pendant un WOD. Ne touche pas au volume de l'iPhone entre les essais.</p>
+</div>
+
+<div class="card">
+  <h2>Niveau de la musique</h2>
+  <div class="lvl">
+    <span class="n">−14 LUFS</span><span class="g">actuel · aucun écart</span>
+    <button class="alt" data-f="test-t14.mp3">Tester</button>
+  </div>
+  <div class="lvl">
+    <span class="n">−18 LUFS</span><span class="g">+4 dB pour la voix</span>
+    <button class="alt" data-f="test-t18.mp3">Tester</button>
+  </div>
+  <div class="lvl">
+    <span class="n">−20 LUFS</span><span class="g">+6 dB pour la voix</span>
+    <button class="alt" data-f="test-t20.mp3">Tester</button>
+  </div>
+  <div class="lvl">
+    <span class="n">−22 LUFS</span><span class="g">+8 dB pour la voix</span>
+    <button class="alt" data-f="test-t22.mp3">Tester</button>
+  </div>
+  <div class="now" id="now"></div>
+  <button class="big alt" id="stop">Tout arrêter</button>
+</div>
+
+<div class="card">
+  <h2>Contrôle</h2>
+  <button class="big alt" id="voiceOnly">Annonce seule (référence)</button>
+  <p class="hint" style="margin:8px 0 0">Sans musique, tu dois l'entendre parfaitement. Si ce n'est pas le cas, le problème n'est pas le niveau de la musique.</p>
+</div>
+
+<audio id="music" loop></audio>
+<audio id="voice" src="round-2-fr.mp3"></audio>
+
+<script>
+const $=id=>document.getElementById(id);
+const music=$('music'), voice=$('voice');
+let iv=null, current=null;
+
+function stopAll(){
+  if(iv){clearInterval(iv);iv=null;}
+  try{music.pause();}catch(e){}
+  music.removeAttribute('src'); music.load();
+  document.querySelectorAll('[data-f]').forEach(b=>{b.classList.remove('on');b.classList.add('alt');b.textContent='Tester';});
+  $('now').textContent=''; current=null;
+}
+$('stop').onclick=stopAll;
+
+document.querySelectorAll('[data-f]').forEach(btn=>{
+  btn.onclick=async()=>{
+    const f=btn.dataset.f;
+    if(current===f){ stopAll(); return; }
+    stopAll();
+    current=f;
+    btn.classList.add('on'); btn.classList.remove('alt'); btn.textContent='En cours';
+    $('now').textContent='▶ '+f.replace('test-t','').replace('.mp3','')+' LUFS — écoute';
+    music.src=f;
+    try{ await music.play(); }catch(e){ $('now').textContent='Erreur : '+e.message; return; }
+    const fire=()=>{ try{ voice.currentTime=0; voice.play(); }catch(e){} };
+    setTimeout(fire,1500);
+    iv=setInterval(fire,5000);
+  };
+});
+
+$('voiceOnly').onclick=()=>{ stopAll(); try{voice.currentTime=0;voice.play();}catch(e){} };
+</script>
+</body>
+</html>
