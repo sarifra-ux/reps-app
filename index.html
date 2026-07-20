@@ -2371,7 +2371,71 @@ async function preloadCountBuffers(){
   }
 }
 
+
+// ===== POOL D'ELEMENTS <audio> POUR LES ANNONCES =====
+// Pourquoi : la Web Audio API est muette quand l'iPhone est en mode silencieux,
+// alors que les elements <audio> continuent de sortir (c'est pour ca que "time"
+// et "10 secondes" s'entendaient, mais pas ROUND / REST / le decompte).
+// On bascule donc les annonces sur des elements <audio> debloques pendant le
+// geste utilisateur (bouton play). La Web Audio reste en repli.
+const _elPool={};
+function _elFor(src){
+  if(!_elPool[src]){
+    const a=new Audio(src);
+    a.preload='auto';
+    try{a.playsInline=true;a.setAttribute('playsinline','');}catch(e){}
+    _elPool[src]=a;
+  }
+  return _elPool[src];
+}
+// Tous les fichiers d'annonce de la langue courante
+function _announceFiles(){
+  const out=[];
+  const c=COUNT_AUDIO[S.lang]||{};
+  for(let n=1;n<=5;n++){ if(c[n]) out.push(c[n]); }
+  const r=ROUND_AUDIO[S.lang]||{};
+  for(let n=2;n<=10;n++){ if(r[n]) out.push(r[n]); }
+  out.push(S.lang==='fr'?'rest-fr.mp3':(S.lang==='pt'?'rest-pt.mp3':'rest.mp3'));
+  return out;
+}
+// A APPELER DANS UN GESTE UTILISATEUR : debloque tous les elements d'un coup.
+function unlockAnnounceEls(){
+  _announceFiles().forEach(src=>{
+    const a=_elFor(src);
+    try{
+      a.muted=true;
+      const p=a.play();
+      if(p&&p.then) p.then(()=>{try{a.pause();a.currentTime=0;}catch(e){}a.muted=false;})
+                     .catch(()=>{a.muted=false;});
+      else {try{a.pause();a.currentTime=0;}catch(e){}a.muted=false;}
+    }catch(e){ try{a.muted=false;}catch(e2){} }
+  });
+}
+// Joue une annonce via element <audio>. onFail = repli Web Audio.
+function playAnnounceEl(src, onFail){
+  if(!src) return false;
+  try{
+    const a=_elFor(src);
+    duckStart();
+    let done=false;
+    const finish=()=>{ if(done) return; done=true; duckEnd(); };
+    a.onended=finish;
+    a.onerror=()=>{ finish(); if(onFail) onFail(); };
+    try{a.currentTime=0;}catch(e){}
+    const p=a.play();
+    if(p&&p.then) p.catch(()=>{ finish(); if(onFail) onFail(); });
+    setTimeout(finish,4000); // filet si onended ne part pas
+    return true;
+  }catch(e){ if(onFail) onFail(); return false; }
+}
+
 function playCount(num){
+  const src=(COUNT_AUDIO[S.lang]||{})[num];
+  if(src && playAnnounceEl(src, ()=>playCountWA(num))) return;
+  playCountWA(num);
+}
+
+function playCountWA(num){
   const ctx=ensureAudioCtx();
   if(!ctx) return;
   const key=S.lang+'_'+num;
@@ -2447,6 +2511,12 @@ async function loadRestBuffer(){
 }
 
 function playRest(){
+  const src=S.lang==='fr'?'rest-fr.mp3':(S.lang==='pt'?'rest-pt.mp3':'rest.mp3');
+  if(playAnnounceEl(src, ()=>playRestWA())) return;
+  playRestWA();
+}
+
+function playRestWA(){
   const ctx=ensureAudioCtx();
   if(!ctx) return;
   if(!restBuffer[S.lang]){
@@ -2472,6 +2542,12 @@ function playRestBufferNow(buf){
 }
 
 function playRound(num){
+  const src=(ROUND_AUDIO[S.lang]||{})[num];
+  if(src && playAnnounceEl(src, ()=>playRoundWA(num))) return;
+  playRoundWA(num);
+}
+
+function playRoundWA(num){
   const ctx=ensureAudioCtx();
   if(!ctx) return;
   const key=S.lang+'_'+num;
@@ -2626,6 +2702,8 @@ function togglePlay(){
 function launch(){
   updateTotalFromMode();
   updateClock();
+  // Débloquer les éléments <audio> d'annonce PENDANT le geste utilisateur
+  unlockAnnounceEls();
   // Précharger les buffers (décompte + rounds) pendant le 10-9-8...
   ensureAudioCtx();
   preloadCountBuffers();
