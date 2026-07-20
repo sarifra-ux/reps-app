@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>REPS — Diagnostic voix iOS</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; padding:16px; padding-top:calc(16px + env(safe-area-inset-top));
+         background:#16161a; color:#e8e8e6; font:15px/1.5 -apple-system,system-ui,sans-serif; }
+  h1 { font-size:17px; font-weight:600; margin:0 0 4px; }
+  .sub { color:#8b8b88; font-size:13px; margin:0 0 16px; }
+  .card { background:#1f1f24; border:1px solid #2e2e35; border-radius:10px; padding:14px; margin-bottom:12px; }
+  .card h2 { font-size:11px; font-weight:600; margin:0 0 10px; color:#8b8b88; text-transform:uppercase; letter-spacing:.07em; }
+  button { width:100%; padding:14px; font-size:15px; font-weight:600; background:#2f6fed; color:#fff;
+           border:0; border-radius:9px; margin-bottom:8px; }
+  button.alt { background:#2e2e35; }
+  button:last-child { margin-bottom:0; }
+  .hint { font-size:12px; color:#6b6b68; margin:8px 0 0; }
+  #log { background:#0d0d10; border:1px solid #2e2e35; border-radius:8px; padding:10px;
+         font:12px/1.45 ui-monospace,Menlo,monospace; white-space:pre-wrap; word-break:break-word;
+         min-height:160px; max-height:50vh; overflow:auto; }
+  .ok { color:#4ade80; } .ko { color:#f87171; } .info { color:#8b8b88; }
+</style>
+</head>
+<body>
+
+<h1>REPS — Diagnostic voix iOS</h1>
+<p class="sub">Cette page affiche les <b>vraies erreurs</b>. Fais les tests <b>dans l'ordre</b> et envoie-moi le log.</p>
+
+<div class="card">
+  <h2>Étape 0 — repartir propre</h2>
+  <button class="alt" id="nuke">Vider le cache et le service worker</button>
+  <p class="hint">Supprime le service worker et tous les caches, puis recharge. À faire en premier, une seule fois.</p>
+</div>
+
+<div class="card">
+  <h2>Étape 1 — les tests</h2>
+  <button id="t1">Test 1 · lecture directe au clic</button>
+  <button id="t2">Test 2 · new Audio() au clic</button>
+  <button id="t3">Test 3 · new Audio() en différé (1,5 s)</button>
+  <button id="t4">Test 4 · élément préchargé en différé (1,5 s)</button>
+  <button id="t5">Test 5 · voix PAR-DESSUS la musique</button>
+  <button class="alt" id="stop">Tout arrêter</button>
+</div>
+
+<div class="card">
+  <h2>Log</h2>
+  <div id="log"></div>
+  <button class="alt" id="copy" style="margin-top:10px">Copier le log</button>
+</div>
+
+<audio id="voiceEl" src="round-2-fr.mp3" preload="auto" playsinline></audio>
+<audio id="musicEl" src="test-t14.mp3" preload="auto" playsinline loop></audio>
+
+<script>
+const $ = id => document.getElementById(id);
+const logEl = $('log');
+let unlocked = null;
+
+function log(msg, cls) {
+  const t = new Date().toISOString().substr(14, 9);
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = t + '  ' + msg;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function describe(a) {
+  const err = a.error ? ('MediaError code=' + a.error.code) : 'aucune';
+  return 'readyState=' + a.readyState + ' dur=' + (isNaN(a.duration) ? 'NaN' : a.duration.toFixed(2))
+       + ' vol=' + a.volume + ' muted=' + a.muted + ' paused=' + a.paused + ' err=' + err;
+}
+
+// Tente une lecture et rapporte precisement ce qui se passe.
+function tryPlay(a, label) {
+  log(label + ' → avant play : ' + describe(a), 'info');
+  let heard = false;
+  const onPlaying = () => { heard = true; log(label + ' → PLAYING (le son sort)', 'ok'); };
+  a.addEventListener('playing', onPlaying, { once: true });
+  a.addEventListener('error', () => log(label + ' → ERREUR de chargement : ' + describe(a), 'ko'), { once: true });
+  try { a.currentTime = 0; } catch (e) { log(label + ' → currentTime refusé : ' + e.message, 'ko'); }
+  const p = a.play();
+  if (p && p.then) {
+    p.then(() => log(label + ' → play() résolu', 'ok'))
+     .catch(e => log(label + ' → play() REJETÉ : ' + e.name + ' — ' + e.message, 'ko'));
+  } else {
+    log(label + ' → play() ne renvoie pas de promesse (vieux WebKit)', 'info');
+  }
+  setTimeout(() => {
+    if (!heard) log(label + ' → pas d\'évènement "playing" après 1,5 s : ' + describe(a), 'ko');
+  }, 1500);
+}
+
+$('nuke').onclick = async () => {
+  log('Nettoyage…', 'info');
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) { await r.unregister(); log('service worker supprimé', 'ok'); }
+      if (!regs.length) log('aucun service worker actif', 'info');
+    }
+    if (window.caches) {
+      const keys = await caches.keys();
+      for (const k of keys) { await caches.delete(k); log('cache supprimé : ' + k, 'ok'); }
+      if (!keys.length) log('aucun cache', 'info');
+    }
+    log('Rechargement dans 2 s…', 'info');
+    setTimeout(() => location.reload(true), 2000);
+  } catch (e) { log('nettoyage échoué : ' + e.message, 'ko'); }
+};
+
+// Test 1 : element statique, clic direct. Le cas le plus permissif d'iOS.
+$('t1').onclick = () => { log('--- TEST 1 ---'); tryPlay($('voiceEl'), 'T1 statique/clic'); };
+
+// Test 2 : element cree a la volee, mais toujours dans le geste utilisateur.
+$('t2').onclick = () => {
+  log('--- TEST 2 ---');
+  const a = new Audio('round-2-fr.mp3');
+  a.playsInline = true;
+  tryPlay(a, 'T2 new Audio/clic');
+};
+
+// Test 3 : element cree a la volee, HORS geste. C'est ce que fait l'app aujourd'hui.
+$('t3').onclick = () => {
+  log('--- TEST 3 --- (attends 1,5 s)');
+  setTimeout(() => {
+    const a = new Audio('round-2-fr.mp3');
+    a.playsInline = true;
+    tryPlay(a, 'T3 new Audio/différé');
+  }, 1500);
+};
+
+// Test 4 : element deja debloque par un geste, rejoue HORS geste. C'est le correctif propose.
+$('t4').onclick = () => {
+  log('--- TEST 4 --- (déblocage puis attente 1,5 s)');
+  if (!unlocked) {
+    unlocked = new Audio('round-2-fr.mp3');
+    unlocked.playsInline = true;
+    unlocked.muted = true;
+    unlocked.play().then(() => {
+      unlocked.pause(); unlocked.currentTime = 0; unlocked.muted = false;
+      log('T4 déblocage OK', 'ok');
+    }).catch(e => log('T4 déblocage REJETÉ : ' + e.name, 'ko'));
+  }
+  setTimeout(() => tryPlay(unlocked, 'T4 préchargé/différé'), 1500);
+};
+
+// Test 5 : voix par-dessus la musique. Verifie si iOS accepte deux flux simultanes.
+$('t5').onclick = () => {
+  log('--- TEST 5 --- musique puis voix toutes les 3 s');
+  const m = $('musicEl');
+  m.play().then(() => log('T5 musique lancée', 'ok'))
+          .catch(e => log('T5 musique REJETÉE : ' + e.name, 'ko'));
+  let n = 0;
+  const iv = setInterval(() => {
+    if (++n > 4) { clearInterval(iv); return; }
+    tryPlay($('voiceEl'), 'T5 voix #' + n);
+  }, 3000);
+  window._iv = iv;
+};
+
+$('stop').onclick = () => {
+  if (window._iv) clearInterval(window._iv);
+  [$('musicEl'), $('voiceEl')].forEach(a => { try { a.pause(); } catch (e) {} });
+  log('arrêt', 'info');
+};
+
+$('copy').onclick = async () => {
+  try { await navigator.clipboard.writeText(logEl.innerText); log('log copié', 'ok'); }
+  catch (e) { log('copie refusée, fais une capture d\'écran', 'ko'); }
+};
+
+log('Prêt. UA : ' + navigator.userAgent, 'info');
+log('Commence par l\'étape 0.', 'info');
+</script>
+</body>
+</html>
