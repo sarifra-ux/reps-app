@@ -2396,6 +2396,9 @@ function _announceFiles(){
   const r=ROUND_AUDIO[S.lang]||{};
   for(let n=2;n<=10;n++){ if(r[n]) out.push(r[n]); }
   out.push(S.lang==='fr'?'rest-fr.mp3':(S.lang==='pt'?'rest-pt.mp3':'rest.mp3'));
+  // décompte de départ 10..GO : joué depuis un timer, donc à débloquer aussi
+  const cd=S.lang==='fr'?COUNT_AUDIO_FR:(S.lang==='pt'?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
+  cd.forEach(f=>out.push(f));
   return out;
 }
 // A APPELER DANS UN GESTE UTILISATEUR : debloque tous les elements d'un coup.
@@ -2416,6 +2419,7 @@ function playAnnounceEl(src, onFail){
   if(!src) return false;
   try{
     const a=_elFor(src);
+    DBG('play <audio> '+src);
     duckStart();
     let done=false;
     const finish=()=>{ if(done) return; done=true; duckEnd(); };
@@ -2423,7 +2427,7 @@ function playAnnounceEl(src, onFail){
     a.onerror=()=>{ finish(); if(onFail) onFail(); };
     try{a.currentTime=0;}catch(e){}
     const p=a.play();
-    if(p&&p.then) p.catch(()=>{ finish(); if(onFail) onFail(); });
+    if(p&&p.then) p.catch(e=>{ DBG('REJETE '+src+' : '+e.name); finish(); if(onFail) onFail(); });
     setTimeout(finish,4000); // filet si onended ne part pas
     return true;
   }catch(e){ if(onFail) onFail(); return false; }
@@ -2674,22 +2678,20 @@ function startVisualCountdown(){
   const subEl=document.getElementById('cdSub');
   overlay.classList.add('show');
   S.cdTimers=[];
-  timings.forEach(step=>{
-    const t=setTimeout(()=>{
+  const visSteps=timings.map(step=>({t:step.t,fn:()=>{
       const isGo=step.n==='GO';
       numEl.textContent=isGo?'GO !':step.n;
       numEl.className='cd-num'+(isGo?' go':'');
       numEl.style.animation='none';void numEl.offsetWidth;
       numEl.style.animation='pop 0.15s ease-out';
       subEl.textContent=isGo?"C'EST PARTI !":'';
-    },step.t);
-    S.cdTimers.push(t);
-  });
+  }}));
   const lastT=timings[timings.length-1].t;
-  S.cdTimers.push(setTimeout(()=>overlay.classList.remove('show'),lastT+500));
+  visSteps.push({t:lastT+500,fn:()=>overlay.classList.remove('show')});
+  S.cdVisSched=runAbsSchedule(visSteps);
 }
 
-function clearCd(){S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}document.getElementById('cdOverlay').classList.remove('show');}
+function clearCd(){if(S.cdSched){clearInterval(S.cdSched);S.cdSched=null;}if(S.cdVisSched){clearInterval(S.cdVisSched);S.cdVisSched=null;}S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}document.getElementById('cdOverlay').classList.remove('show');}
 
 // ===== SEQUENCE =====
 function togglePlay(){
@@ -2697,6 +2699,42 @@ function togglePlay(){
   if(S.state==='idle') launch();
   else if(S.state==='playing') pause();
   else if(S.state==='paused') resume();
+}
+
+// ===== PANNEAU DE DEBUG (activé par ?debug=1 dans l'URL) =====
+const DEBUG_ON=/[?&]debug=1/.test(location.search);
+let _dbgEl=null;
+function DBG(msg){
+  if(!DEBUG_ON) return;
+  if(!_dbgEl){
+    _dbgEl=document.createElement('div');
+    _dbgEl.style.cssText='position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;'+
+      'z-index:99999;background:rgba(0,0,0,.88);color:#0f0;font:11px/1.35 ui-monospace,Menlo,monospace;'+
+      'padding:6px;white-space:pre-wrap;';
+    document.body.appendChild(_dbgEl);
+  }
+  const d=new Date();
+  const t=String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')+'.'+String(d.getMilliseconds()).padStart(3,'0');
+  const line=document.createElement('div');
+  line.textContent=t+'  '+msg;
+  _dbgEl.appendChild(line);
+  _dbgEl.scrollTop=_dbgEl.scrollHeight;
+}
+
+// ===== ORDONNANCEUR SUR HORLOGE ABSOLUE =====
+// Les setTimeout/setInterval d'iOS peuvent être ralentis : on ne compte plus les
+// battements, on lit l'heure réelle à chaque passage et on rattrape le retard.
+function runAbsSchedule(steps){
+  const t0=Date.now(); let i=0;
+  const iv=setInterval(()=>{
+    const el=Date.now()-t0;
+    while(i<steps.length && steps[i].t<=el){
+      try{ steps[i].fn(); }catch(e){ DBG('sched err: '+e.message); }
+      i++;
+    }
+    if(i>=steps.length) clearInterval(iv);
+  },50);
+  return iv;
 }
 
 function launch(){
@@ -2725,20 +2763,22 @@ function launch(){
   // Ducking musique pendant tout le décompte pour que la voix soit bien audible
   const vMus=parseInt(document.getElementById('volMusic').value)/100;
   if(musicAudio) musicAudio.volume=vMus*0.05;
+  const cdSteps=[];
   countAudioList.forEach((file,i)=>{
-    const t=setTimeout(()=>{
-      const a=new Audio(file);
-      a.volume=Math.min(vol*2.0, 1.0);
-      a.play().catch(err=>console.warn('count audio',err));
-    },i*1000);
-    S.cdAudioTimers.push(t);
+    cdSteps.push({t:i*1000,fn:()=>{
+      const a=_elFor(file);
+      try{a.volume=Math.min(vol*2.0,1.0);}catch(e){}
+      try{a.currentTime=0;}catch(e){}
+      const pr=a.play();
+      if(pr&&pr.catch) pr.catch(err=>DBG('countdown '+file+' REJETE '+err.name));
+      else DBG('countdown '+file);
+    }});
   });
-  // Restaurer le volume musique normal après le "Go!"
-  S.cdAudioTimers.push(setTimeout(()=>{
-    if(musicAudio) musicAudio.volume=vMus;
-  },10800));
-  // Démarrer le chrono pile après le "Go!" (à 10s + 500ms pour laisser le mot finir)
-  S.cdAudioTimers.push(setTimeout(()=>startChrono(),10500));
+  cdSteps.push({t:10500,fn:()=>startChrono()});
+  cdSteps.push({t:10800,fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }});
+  cdSteps.sort((a,b)=>a.t-b.t);
+  DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
+  S.cdSched=runAbsSchedule(cdSteps);
 }
 
 function startChrono(){
@@ -2752,15 +2792,26 @@ function startChrono(){
   if(S.mode!=='tabata') document.getElementById('btnSkip').style.display='';
   setStatus('playing','EN COURS');
 
+  // Chrono calé sur l'horloge réelle : si iOS ralentit les timers, on rattrape
+  // les secondes manquées une par une pour ne perdre aucune annonce.
+  S.t0=Date.now();
+  S.startRemain=S.remain;
   S.iv=setInterval(()=>{
-    S.remain--;
-    updateClock();
-    checkAnnounce();
+    const target=S.startRemain-Math.floor((Date.now()-S.t0)/1000);
+    if(target>=S.remain) return;
+    let guard=0;
+    while(S.remain>target && guard++<3600){
+      S.remain--;
+      updateClock();
+      checkAnnounce();
+      if(S.remain<=0) break;
+    }
+    if(guard>1) DBG('rattrapage de '+guard+' s (timer iOS ralenti)');
     if(S.remain<=0){
-      if(S.mode==='tabata') tabataPhaseEnd();
+      if(S.mode==='tabata'){ tabataPhaseEnd(); S.t0=Date.now(); S.startRemain=S.remain; }
       else end();
     }
-  },1000);
+  },200);
 }
 
 function tabataPhaseEnd(){
@@ -2789,8 +2840,41 @@ function tabataPhaseEnd(){
   }
 }
 
+// Bascule de phase EMOM. Renvoie true si une annonce a été émise.
+// Doit passer AVANT les annonces communes : sinon un "return" sur r===10/3/2/1
+// mangeait le REST ou le ROUND qui tombait au même moment.
+function emomPhaseCheck(){
+  const work=S.emomIntervalSec||60;
+  const rest=S.emomRestSec||0;
+  const cycleSec=work+rest;
+  if(cycleSec<=0) return false;
+  const elapsed=S.total-S.remain;
+  if(elapsed<=0) return false;
+  const inCycle=elapsed%cycleSec;
+  const currentRound=Math.floor(elapsed/cycleSec)+1;
+  const phase=(inCycle<work)?'work':'rest';
+  if(S.emomPhase===phase) return false;
+  S.emomPhase=phase;
+  S.emomCurrentRound=currentRound;
+  if(phase==='rest'){
+    showAnnounce(L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'));
+    DBG('EMOM -> REST (elapsed='+elapsed+'s)');
+    playRest();
+    return true;
+  }
+  if(currentRound>1){
+    showAnnounce('🔔 ROUND '+currentRound);
+    DBG('EMOM -> ROUND '+currentRound+' (elapsed='+elapsed+'s)');
+    if(ROUND_AUDIO[S.lang]&&ROUND_AUDIO[S.lang][currentRound]) playRound(currentRound);
+    else { playTick(); speak('Round '+currentRound+' !',{emomCrunch:true}); }
+    return true;
+  }
+  return false;
+}
+
 function checkAnnounce(){
   const r=S.remain;const t=TXT[S.lang];
+  if(S.mode==='emom' && emomPhaseCheck()) return;
 
   // Annonces communes: 10s, 5..1, 0 — décompte 5-4-3-2-1 en voix Brian Web Audio
   if(r===10){showAnnounce(L3('10 SECONDES !','10 SECONDS !','10 SEGUNDOS !'));speak(t.s10);return;}
