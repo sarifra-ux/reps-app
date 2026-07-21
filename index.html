@@ -2088,10 +2088,12 @@ function updateClock(){
   if(S.mode==='tabata' && S.state!=='idle'){
     rb.textContent=`ROUND ${S.tabRound}/${S.tabTotalRounds}`;
   } else if(S.mode==='emom' && S.state!=='idle'){
-    const interval=S.emomIntervalSec||60;
-    const totalRounds=Math.floor(S.total/interval);
+    // Un round = un cycle complet work + rest (et non le work seul :
+    // c'est ce qui affichait "6/6" au lieu de "3/3" sur un 10s/10s en 1 min)
+    const cycle=(S.emomIntervalSec||60)+(S.emomRestSec||0);
+    const totalRounds=S.emomRounds||Math.max(1,Math.floor(S.total/cycle));
     const elapsed=S.total-r;
-    const currentRound=Math.min(totalRounds, Math.floor(elapsed/interval)+1);
+    const currentRound=Math.min(totalRounds, Math.floor(elapsed/cycle)+1);
     rb.textContent=`ROUND ${currentRound}/${totalRounds}`;
   } else rb.textContent='';
 
@@ -3060,6 +3062,9 @@ function end(){
   showAnnounce('🏁 TIME !');
   speak(TXT[S.lang].time);
   document.getElementById('timerStatus').textContent=L3('Entraînement terminé 💪','Workout complete 💪','Treino concluído 💪');
+  // Ne pas laisser figé le dernier "REST — ROUND 3/3" du WOD
+  const _eb=document.getElementById('timerEyebrow');
+  if(_eb) _eb.textContent=L3('// TERMINÉ','// DONE','// CONCLUÍDO');
   setStatus('','FINI');
 }
 
