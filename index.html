@@ -2856,6 +2856,13 @@ function emomPhaseCheck(){
   if(S.emomPhase===phase) return false;
   S.emomPhase=phase;
   S.emomCurrentRound=currentRound;
+  // Fin du WOD : on laisse la main à l'annonce "TIME"
+  if(S.remain<=0){ DBG('EMOM: fin, pas de bascule'); return false; }
+  // Pas de round fantôme au-delà du nombre de tours configuré
+  if(phase==='work' && S.emomRounds && currentRound>S.emomRounds){
+    DBG('EMOM: round '+currentRound+' ignoré (max '+S.emomRounds+')');
+    return false;
+  }
   if(phase==='rest'){
     showAnnounce(L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'));
     DBG('EMOM -> REST (elapsed='+elapsed+'s)');
