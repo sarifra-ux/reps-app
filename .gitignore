@@ -1,0 +1,24 @@
+# Dépendances
+node_modules/
+
+# macOS
+.DS_Store
+
+# Xcode / CocoaPods
+ios/App/Pods/
+ios/App/build/
+ios/App/App/public/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+
+# Logs et secrets
+*.log
+.env
+.env.*
+
+# Documents de travail — NE JAMAIS publier : le repo est public
+REPS-*.md
+*-etat-des-lieux.md
+*-specs.md
+notes/
