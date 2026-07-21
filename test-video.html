@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>REPS — Test capture vidéo</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 16px calc(16px + env(safe-area-inset-left)) 40px;
+    padding-top: calc(16px + env(safe-area-inset-top));
+    background: #16161a; color: #e8e8e6;
+    font: 15px/1.5 -apple-system, system-ui, sans-serif;
+  }
+  h1 { font-size: 17px; font-weight: 600; margin: 0 0 4px; }
+  .sub { color: #8b8b88; font-size: 13px; margin: 0 0 20px; }
+  .card { background: #1f1f24; border: 1px solid #2e2e35; border-radius: 10px; padding: 14px; margin-bottom: 12px; }
+  .card h2 { font-size: 13px; font-weight: 600; margin: 0 0 10px; color: #8b8b88; text-transform: uppercase; letter-spacing: .06em; }
+  .row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; font-size: 14px; border-bottom: 1px solid #26262c; }
+  .row:last-child { border-bottom: 0; }
+  .row b { font-weight: 500; color: #a8a8a4; }
+  .ok { color: #4ade80; } .ko { color: #f87171; } .warn { color: #fbbf24; }
+  button {
+    width: 100%; padding: 15px; margin-bottom: 8px; font-size: 16px; font-weight: 600;
+    background: #2f6fed; color: #fff; border: 0; border-radius: 10px;
+  }
+  button:disabled { background: #333; color: #777; }
+  button.alt { background: #2e2e35; }
+  #log { font: 12px/1.6 ui-monospace, Menlo, monospace; color: #b9b9b5; white-space: pre-wrap; word-break: break-word; }
+  video { width: 100%; border-radius: 8px; background: #000; margin-top: 8px; display: block; }
+  .big { font-size: 26px; font-weight: 700; text-align: center; padding: 10px 0; }
+</style>
+</head>
+<body>
+
+<h1>REPS — Test capture vidéo</h1>
+<p class="sub">À ouvrir <b>dans l'app REPS</b> (WKWebView), pas seulement dans Safari. Les deux ne se comportent pas pareil.</p>
+
+<div class="card">
+  <h2>1. Support des API</h2>
+  <div id="support"></div>
+</div>
+
+<div class="card">
+  <h2>2. Musique</h2>
+  <div class="row"><b>Fichier</b><span>techno.mp3</span></div>
+  <div class="row"><b>État</b><span id="musicState">arrêtée</span></div>
+  <button id="btnMusic" class="alt">Lancer la musique</button>
+</div>
+
+<div class="card">
+  <h2>3. Capture — 10 secondes</h2>
+  <p class="sub" style="margin:0 0 10px">Lance la musique d'abord. Observe si elle continue quand la caméra démarre.</p>
+  <button id="btnRecA" disabled>A · capture réglages par défaut</button>
+  <button id="btnRecB" class="alt" disabled>B · capture SANS annulation d'écho</button>
+  <div class="big" id="countdown"></div>
+  <div class="row"><b>Musique pendant capture</b><span id="musicDuring">—</span></div>
+  <div class="row"><b>echoCancellation demandé</b><span id="ecAsked">—</span></div>
+  <div class="row"><b>echoCancellation appliqué</b><span id="ecReal">—</span></div>
+  <div class="row"><b>Niveau audio capté</b><span id="rms">—</span></div>
+  <video id="preview" playsinline muted></video>
+</div>
+
+<div class="card">
+  <h2>4. Résultat</h2>
+  <p class="sub" style="margin:0 0 10px">Écoute la vidéo. La musique est-elle audible ? Si non → annulation d'écho.</p>
+  <video id="result" playsinline controls></video>
+  <div class="row"><b>Taille</b><span id="size">—</span></div>
+  <div class="row"><b>Type</b><span id="type">—</span></div>
+</div>
+
+<div class="card">
+  <h2>Journal</h2>
+  <div id="log"></div>
+</div>
+
+<audio id="music" src="techno.mp3" loop></audio>
+
+<script>
+const $ = id => document.getElementById(id);
+const log = m => { $('log').textContent += m + '\n'; };
+const row = (k, v, cls) => `<div class="row"><b>${k}</b><span class="${cls||''}">${v}</span></div>`;
+
+const MIMES = [
+  'video/mp4', 'video/mp4;codecs=avc1', 'video/mp4;codecs=h264',
+  'video/webm', 'video/webm;codecs=vp8', 'video/webm;codecs=vp9,opus'
+];
+
+let html = '';
+const hasGUM = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+const hasMR = typeof MediaRecorder !== 'undefined';
+html += row('getUserMedia', hasGUM ? 'présent' : 'ABSENT', hasGUM ? 'ok' : 'ko');
+html += row('MediaRecorder', hasMR ? 'présent' : 'ABSENT', hasMR ? 'ok' : 'ko');
+html += row('Contexte sécurisé', window.isSecureContext ? 'oui' : 'NON (https requis)', window.isSecureContext ? 'ok' : 'ko');
+
+let supported = [];
+if (hasMR && MediaRecorder.isTypeSupported) {
+  supported = MIMES.filter(m => { try { return MediaRecorder.isTypeSupported(m); } catch(e){ return false; } });
+  html += row('Formats supportés', supported.length ? supported.length : 'AUCUN', supported.length ? 'ok' : 'ko');
+  supported.forEach(m => { html += row('→', m, 'ok'); });
+}
+const isCap = !!(window.Capacitor);
+html += row('Contexte', isCap ? 'app Capacitor (WKWebView)' : 'navigateur', isCap ? 'ok' : 'warn');
+$('support').innerHTML = html;
+
+log('UA: ' + navigator.userAgent);
+log('getUserMedia: ' + hasGUM + ' | MediaRecorder: ' + hasMR);
+log('Formats: ' + (supported.join(', ') || 'aucun'));
+
+const music = $('music');
+$('btnMusic').onclick = async () => {
+  try {
+    if (music.paused) {
+      await music.play();
+      $('musicState').textContent = 'en lecture';
+      $('musicState').className = 'ok';
+      $('btnMusic').textContent = 'Arrêter la musique';
+      $('btnRecA').disabled = !(hasGUM && hasMR);
+      $('btnRecB').disabled = !(hasGUM && hasMR);
+      log('Musique: play OK');
+    } else {
+      music.pause();
+      $('musicState').textContent = 'arrêtée';
+      $('musicState').className = '';
+      $('btnMusic').textContent = 'Lancer la musique';
+      log('Musique: pause');
+    }
+  } catch (e) { log('ERREUR musique: ' + e.name + ' — ' + e.message); }
+};
+
+// Mesure objective du niveau audio du fichier produit : si l'annulation d'écho
+// s'active, la musique du haut-parleur est retirée du micro et le niveau s'effondre.
+async function mesureNiveau(blob){
+  try{
+    const Ctx=window.AudioContext||window.webkitAudioContext;
+    if(!Ctx){ return null; }
+    const ctx=new Ctx();
+    const buf=await ctx.decodeAudioData(await blob.arrayBuffer());
+    const d=buf.getChannelData(0);
+    let sum=0;
+    for(let i=0;i<d.length;i++) sum+=d[i]*d[i];
+    const rms=Math.sqrt(sum/d.length);
+    ctx.close();
+    return rms>0 ? 20*Math.log10(rms) : -99;
+  }catch(e){ log('mesure niveau impossible: '+e.message); return null; }
+}
+
+async function runCapture(ec){
+  $('btnRecA').disabled = true; $('btnRecB').disabled = true;
+  $('ecAsked').textContent = (ec===false) ? 'false (désactivé)' : 'défaut (non précisé)';
+  let stream;
+  try {
+    log('--- getUserMedia (echoCancellation=' + (ec===false?'false':'défaut') + ') ---');
+    const audio = (ec===false)
+      ? { echoCancellation:false, autoGainControl:false, noiseSuppression:false }
+      : true;
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }, audio: audio
+    });
+    log('Flux obtenu. Pistes: ' + stream.getTracks().map(t => t.kind).join(', '));
+    const at = stream.getAudioTracks()[0];
+    if (at && at.getSettings) {
+      const st = at.getSettings();
+      log('Réglages audio réels: ' + JSON.stringify(st));
+      const real = ('echoCancellation' in st) ? String(st.echoCancellation) : 'non exposé';
+      $('ecReal').textContent = real;
+      $('ecReal').className = (real==='false') ? 'ok' : (real==='true' ? 'ko' : 'warn');
+    } else { $('ecReal').textContent = 'non exposé'; }
+  } catch (e) {
+    log('ERREUR getUserMedia: ' + e.name + ' — ' + e.message);
+    $('btnRecA').disabled = false; $('btnRecB').disabled = false;
+    return;
+  }
+
+  setTimeout(() => {
+    const playing = !music.paused && !music.ended;
+    $('musicDuring').textContent = playing ? 'continue' : 'COUPÉE';
+    $('musicDuring').className = playing ? 'ok' : 'ko';
+    log('Musique après démarrage caméra: ' + (playing ? 'continue' : 'COUPÉE'));
+  }, 700);
+
+  $('preview').srcObject = stream;
+  $('preview').play().catch(e => log('preview: ' + e.message));
+
+  const mime = supported[0];
+  let rec;
+  try {
+    rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    log('MediaRecorder créé. mimeType: ' + rec.mimeType);
+  } catch (e) {
+    log('ERREUR MediaRecorder: ' + e.name + ' — ' + e.message);
+    stream.getTracks().forEach(t => t.stop());
+    $('btnRecA').disabled = false; $('btnRecB').disabled = false;
+    return;
+  }
+
+  const chunks = [];
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onerror = e => log('ERREUR rec: ' + (e.error ? e.error.name : 'inconnue'));
+  rec.onstop = () => {
+    stream.getTracks().forEach(t => t.stop());
+    $('preview').srcObject = null;
+    const blob = new Blob(chunks, { type: rec.mimeType || 'video/mp4' });
+    $('result').src = URL.createObjectURL(blob);
+    $('size').textContent = (blob.size / 1024).toFixed(0) + ' Ko';
+    $('type').textContent = blob.type || '—';
+    log('Fichier: ' + (blob.size/1024).toFixed(0) + ' Ko, type ' + blob.type);
+    mesureNiveau(blob).then(db=>{
+      if(db===null){ $('rms').textContent='non mesurable'; return; }
+      $('rms').textContent = db.toFixed(1) + ' dB';
+      // Repères : une captation micro correcte d'un haut-parleur tourne autour
+      // de -30 dB. En dessous de -50 dB, il ne reste quasiment rien.
+      const cls = db>-40 ? 'ok' : (db>-50 ? 'warn' : 'ko');
+      $('rms').className = cls;
+      log('Niveau moyen capté: ' + db.toFixed(1) + ' dB ' +
+          (db>-40 ? '(la musique est bien dans le fichier)'
+                  : db>-50 ? '(faible, à écouter)'
+                           : '(quasi silence — annulation d\'écho probable)'));
+    });
+    log('--- ÉCOUTE AUSSI LA VIDÉO ---');
+    $('btnRecA').disabled = false; $('btnRecB').disabled = false;
+    $('countdown').textContent = '';
+  };
+
+  rec.start();
+  log('Enregistrement démarré');
+  let n = 10;
+  $('countdown').textContent = n;
+  const iv = setInterval(() => {
+    n--;
+    $('countdown').textContent = n > 0 ? n : '';
+    if (n <= 0) { clearInterval(iv); if (rec.state !== 'inactive') rec.stop(); }
+  }, 1000);
+}
+
+$('btnRecA').onclick = () => runCapture(undefined);
+$('btnRecB').onclick = () => runCapture(false);
+</script>
+</body>
+</html>
