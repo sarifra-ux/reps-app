@@ -2702,8 +2702,29 @@ function togglePlay(){
 }
 
 // ===== PANNEAU DE DEBUG (activé par ?debug=1 dans l'URL) =====
-const DEBUG_ON=/[?&]debug=1/.test(location.search);
+// Activation : ?debug=1 dans l'URL (web) OU 5 appuis rapides sur le logo (app iOS,
+// où il n'y a pas d'URL à modifier).
+let DEBUG_ON=/[?&]debug=1/.test(location.search);
 let _dbgEl=null;
+(function(){
+  let taps=0, last=0;
+  document.addEventListener('DOMContentLoaded',()=>{
+    const logo=document.querySelector('.logo');
+    if(!logo) return;
+    logo.style.cursor='pointer';
+    logo.addEventListener('click',()=>{
+      const now=Date.now();
+      taps=(now-last<800)?taps+1:1;
+      last=now;
+      if(taps>=5){
+        taps=0;
+        DEBUG_ON=!DEBUG_ON;
+        if(!DEBUG_ON && _dbgEl){ _dbgEl.remove(); _dbgEl=null; }
+        else DBG('debug ON — 5 appuis sur le logo pour couper');
+      }
+    });
+  });
+})();
 function DBG(msg){
   if(!DEBUG_ON) return;
   if(!_dbgEl){
