@@ -71,11 +71,24 @@
 </div>
 
 <div class="card">
+  <h2>5. Chrono incrusté — canvas.captureStream</h2>
+  <p class="sub" style="margin:0 0 10px">Le vrai test : on dessine la caméra dans un canvas, on y pose le bloc chrono, et on enregistre <b>le canvas</b> avec l'audio du micro.</p>
+  <button id="btnOverlay" disabled>Capture avec chrono incrusté (10 s)</button>
+  <div class="row"><b>captureStream</b><span id="csSupport">—</span></div>
+  <div class="row"><b>Images par seconde</b><span id="fps">—</span></div>
+  <div class="row"><b>Pistes enregistrées</b><span id="tracks">—</span></div>
+  <div class="row"><b>Niveau audio</b><span id="rms2">—</span></div>
+  <canvas id="cv" style="width:100%;border-radius:8px;background:#000;margin-top:8px;display:block"></canvas>
+  <video id="result2" playsinline controls></video>
+</div>
+
+<div class="card">
   <h2>Journal</h2>
   <div id="log"></div>
 </div>
 
 <audio id="music" src="techno.mp3" loop></audio>
+<video id="camsrc" playsinline muted style="display:none"></video>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -100,6 +113,8 @@ if (hasMR && MediaRecorder.isTypeSupported) {
   html += row('Formats supportés', supported.length ? supported.length : 'AUCUN', supported.length ? 'ok' : 'ko');
   supported.forEach(m => { html += row('→', m, 'ok'); });
 }
+const hasCS = typeof document.createElement('canvas').captureStream === 'function';
+html += row('canvas.captureStream', hasCS ? 'présent' : 'ABSENT', hasCS ? 'ok' : 'ko');
 const isCap = !!(window.Capacitor);
 html += row('Contexte', isCap ? 'app Capacitor (WKWebView)' : 'navigateur', isCap ? 'ok' : 'warn');
 $('support').innerHTML = html;
@@ -118,6 +133,7 @@ $('btnMusic').onclick = async () => {
       $('btnMusic').textContent = 'Arrêter la musique';
       $('btnRecA').disabled = !(hasGUM && hasMR);
       $('btnRecB').disabled = !(hasGUM && hasMR);
+      $('btnOverlay').disabled = !(hasGUM && hasMR && hasCS);
       log('Musique: play OK');
     } else {
       music.pause();
@@ -257,6 +273,123 @@ async function runCapture(ec){
 
 $('btnRecA').onclick = () => runCapture(undefined);
 $('btnRecB').onclick = () => runCapture(false);
+
+// ===== TEST 5 : chrono incrusté via canvas =====
+// Reprend les décisions de design du doc specs : police monospace (sinon le bloc
+// saute à chaque seconde), bloc en bas à gauche, contexte au-dessus du temps,
+// marque REPS discrète en bas à droite, rouge sur les 3 dernières secondes.
+function dessineBloc(ctx, W, H, texteHaut, temps, alerte){
+  const pad = Math.round(W*0.022);
+  const tailleTemps = Math.round(H*0.075);
+  const tailleHaut  = Math.round(H*0.028);
+  ctx.font = tailleHaut+'px ui-monospace, Menlo, monospace';
+  const wHaut = ctx.measureText(texteHaut).width;
+  ctx.font = '700 '+tailleTemps+'px ui-monospace, Menlo, monospace';
+  const wTemps = ctx.measureText(temps).width;
+  const bw = Math.max(wHaut, wTemps) + pad*2;
+  const bh = tailleHaut + tailleTemps + pad*2.2;
+  const x = pad, y = H - bh - pad;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  ctx.beginPath();
+  const r = Math.round(W*0.012);
+  ctx.moveTo(x+r,y); ctx.arcTo(x+bw,y,x+bw,y+bh,r); ctx.arcTo(x+bw,y+bh,x,y+bh,r);
+  ctx.arcTo(x,y+bh,x,y,r); ctx.arcTo(x,y,x+bw,y,r); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#9fe8ff';
+  ctx.font = tailleHaut+'px ui-monospace, Menlo, monospace';
+  ctx.fillText(texteHaut, x+pad, y+pad+tailleHaut*0.85);
+  ctx.fillStyle = alerte ? '#ff5470' : '#ffffff';
+  ctx.font = '700 '+tailleTemps+'px ui-monospace, Menlo, monospace';
+  ctx.fillText(temps, x+pad, y+pad+tailleHaut+tailleTemps*0.92);
+  ctx.fillStyle = 'rgba(255,255,255,0.55)';
+  ctx.font = Math.round(H*0.026)+'px ui-monospace, Menlo, monospace';
+  const m = 'REPS';
+  ctx.fillText(m, W - ctx.measureText(m).width - pad, H - pad);
+}
+
+$('btnOverlay').onclick = async () => {
+  $('btnOverlay').disabled = true;
+  if (music.paused) { try { await music.play(); } catch(e){} }
+  let stream;
+  try {
+    log('--- TEST 5 : canvas.captureStream ---');
+    stream = await navigator.mediaDevices.getUserMedia({ video:{facingMode:'environment'}, audio:true });
+  } catch(e){ log('ERREUR getUserMedia: '+e.name); $('btnOverlay').disabled=false; return; }
+
+  const cam = $('camsrc');
+  cam.srcObject = stream;
+  try { await cam.play(); } catch(e){ log('camsrc play: '+e.message); }
+  await new Promise(res=>{ if(cam.videoWidth) return res(); cam.onloadedmetadata=()=>res(); });
+
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  cv.width = cam.videoWidth || 1280;
+  cv.height = cam.videoHeight || 720;
+  log('Résolution caméra: '+cv.width+'x'+cv.height);
+
+  let frames = 0, stop = false;
+  const t0 = Date.now();
+  (function boucle(){
+    if (stop) return;
+    ctx.drawImage(cam, 0, 0, cv.width, cv.height);
+    const el = Math.floor((Date.now()-t0)/1000);
+    const restant = 10 - (el % 10);
+    const mm = String(Math.floor(el/60)).padStart(2,'0');
+    const ss = String(el%60).padStart(2,'0');
+    dessineBloc(ctx, cv.width, cv.height, 'EMOM 10s/10s  ROUND '+(Math.floor(el/20)+1)+'/3', mm+':'+ss, restant<=3);
+    frames++;
+    requestAnimationFrame(boucle);
+  })();
+
+  let cstream;
+  try {
+    cstream = cv.captureStream(30);
+    $('csSupport').textContent='OK'; $('csSupport').className='ok';
+  } catch(e){
+    log('ERREUR captureStream: '+e.name+' — '+e.message);
+    $('csSupport').textContent='ÉCHEC'; $('csSupport').className='ko';
+    stop=true; stream.getTracks().forEach(t=>t.stop()); $('btnOverlay').disabled=false; return;
+  }
+  const at = stream.getAudioTracks()[0];
+  if (at) { try { cstream.addTrack(at); log('Piste micro ajoutée au flux canvas'); }
+            catch(e){ log('addTrack REFUSÉ: '+e.name+' — la vidéo sera muette'); } }
+  $('tracks').textContent = cstream.getTracks().map(t=>t.kind).join(' + ') || 'aucune';
+  $('tracks').className = cstream.getAudioTracks().length ? 'ok' : 'ko';
+
+  const mime2 = supported[0];
+  let rec2;
+  try { rec2 = mime2 ? new MediaRecorder(cstream,{mimeType:mime2}) : new MediaRecorder(cstream); }
+  catch(e){ log('ERREUR MediaRecorder canvas: '+e.name); stop=true; stream.getTracks().forEach(t=>t.stop()); $('btnOverlay').disabled=false; return; }
+
+  const ch2=[];
+  rec2.ondataavailable = e => { if(e.data && e.data.size) ch2.push(e.data); };
+  rec2.onerror = e => log('ERREUR rec canvas: '+(e.error?e.error.name:'inconnue'));
+  rec2.onstop = async () => {
+    stop = true;
+    stream.getTracks().forEach(t=>t.stop());
+    const dur=(Date.now()-t0)/1000;
+    $('fps').textContent = (frames/dur).toFixed(1)+' i/s';
+    $('fps').className = (frames/dur)>=20?'ok':((frames/dur)>=12?'warn':'ko');
+    const b2 = new Blob(ch2, {type: rec2.mimeType || 'video/mp4'});
+    $('result2').src = URL.createObjectURL(b2);
+    log('Fichier canvas: '+(b2.size/1024).toFixed(0)+' Ko, '+b2.type);
+    log('Images par seconde: '+(frames/dur).toFixed(1));
+    const db = await mesureNiveau(b2);
+    if (db===null) { $('rms2').textContent='non mesurable'; }
+    else {
+      $('rms2').textContent = db.toFixed(1)+' dB';
+      $('rms2').className = db>-40?'ok':(db>-50?'warn':'ko');
+      log('Niveau audio du fichier canvas: '+db.toFixed(1)+' dB');
+    }
+    log('--- REGARDE LA VIDÉO : le chrono est-il incrusté ? ---');
+    $('btnOverlay').disabled = false;
+    $('countdown').textContent='';
+  };
+
+  rec2.start();
+  log('Enregistrement canvas démarré');
+  let n2=10; $('countdown').textContent=n2;
+  const iv2=setInterval(()=>{ n2--; $('countdown').textContent=n2>0?n2:'';
+    if(n2<=0){ clearInterval(iv2); if(rec2.state!=='inactive') rec2.stop(); } },1000);
+};
 </script>
 </body>
 </html>
