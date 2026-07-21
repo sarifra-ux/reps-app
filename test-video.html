@@ -148,6 +148,19 @@ async function mesureNiveau(blob){
 
 async function runCapture(ec){
   $('btnRecA').disabled = true; $('btnRecB').disabled = true;
+  // Sans musique, la mesure ne veut rien dire : on la relance avant de filmer.
+  if (music.paused) {
+    log('Musique à l\'arrêt : relance avant capture');
+    try { await music.play(); }
+    catch(e){
+      log('IMPOSSIBLE de relancer la musique: ' + e.name + ' — test annulé');
+      $('btnRecA').disabled = false; $('btnRecB').disabled = false;
+      return;
+    }
+  }
+  $('musicState').textContent='en lecture'; $('musicState').className='ok';
+  $('btnMusic').textContent='Arrêter la musique';
+  log('Musique avant capture: ' + (music.paused?'ARRÊTÉE':'en lecture') + ' (t=' + music.currentTime.toFixed(1) + 's)');
   $('ecAsked').textContent = (ec===false) ? 'false (désactivé)' : 'défaut (non précisé)';
   let stream;
   try {
@@ -173,6 +186,11 @@ async function runCapture(ec){
     return;
   }
 
+  let musiqueOk = true;
+  const suivi = setInterval(() => {
+    const playing = !music.paused && !music.ended;
+    if (!playing) musiqueOk = false;
+  }, 250);
   setTimeout(() => {
     const playing = !music.paused && !music.ended;
     $('musicDuring').textContent = playing ? 'continue' : 'COUPÉE';
@@ -205,10 +223,13 @@ async function runCapture(ec){
     $('result').src = URL.createObjectURL(blob);
     $('size').textContent = (blob.size / 1024).toFixed(0) + ' Ko';
     $('type').textContent = blob.type || '—';
+    clearInterval(suivi);
+    log('Musique en fin de capture: ' + (music.paused?'ARRÊTÉE':'en lecture'));
+    if (!musiqueOk) log('⚠️ LA MUSIQUE S\'EST INTERROMPUE PENDANT LA CAPTURE — mesure NON VALIDE, refaire');
     log('Fichier: ' + (blob.size/1024).toFixed(0) + ' Ko, type ' + blob.type);
     mesureNiveau(blob).then(db=>{
       if(db===null){ $('rms').textContent='non mesurable'; return; }
-      $('rms').textContent = db.toFixed(1) + ' dB';
+      $('rms').textContent = db.toFixed(1) + ' dB' + (musiqueOk?'':' (NON VALIDE)');
       // Repères : une captation micro correcte d'un haut-parleur tourne autour
       // de -30 dB. En dessous de -50 dB, il ne reste quasiment rien.
       const cls = db>-40 ? 'ok' : (db>-50 ? 'warn' : 'ko');
