@@ -1533,6 +1533,7 @@
     <div class="controls">
       <button class="btn-ctrl" onclick="resetTimer()">↺ RESET</button>
       <button class="btn-play" id="btnPlay" onclick="togglePlay()">▶</button>
+      <button class="btn-ctrl" id="btnRec" onclick="toggleRec()">🎥 REC</button>
       <button class="btn-ctrl" id="btnSkip" onclick="skipAhead()" style="display:none">⏭ –3MIN</button>
     </div>
 
@@ -1565,7 +1566,36 @@
   </main>
 </div>
 
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v60</div>
 <script>
+// ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
+// Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
+// stopAllAudio() coupe absolument tout son en cours, quelle que soit sa source
+// (pool d'annonces, voix TIME/round, musique, GO, bip…). Impossible qu'un son
+// d'un WOD précédent déborde sur le suivant.
+(function(){
+  const _NativeAudio = window.Audio;
+  window.__repsAudios = [];
+  function Wrapped(src){
+    const a = (src===undefined) ? new _NativeAudio() : new _NativeAudio(src);
+    try{
+      window.__repsAudios.push(a);
+      a.addEventListener('ended', function(){
+        const i = window.__repsAudios.indexOf(a); if(i>=0) window.__repsAudios.splice(i,1);
+      });
+    }catch(e){}
+    return a;
+  }
+  Wrapped.prototype = _NativeAudio.prototype;
+  window.Audio = Wrapped;
+})();
+function stopAllAudio(){
+  const list = window.__repsAudios || [];
+  for(let i=list.length-1; i>=0; i--){
+    const a=list[i];
+    try{ a.pause(); a.currentTime=0; }catch(e){}
+  }
+}
 const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'house.mp3',hymne:'hymne.mp3',censured:'censured.mp3',cartier:'cartier.mp3',crime:'crime.mp3',cyrilgane:'cyrilgane.mp3',introduction:'introduction.mp3',vibes:'vibes.mp3'};
 const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
 const COUNT_AUDIO_EN=['count-en-10.mp3','count-en-9.mp3','count-en-8.mp3','count-en-7.mp3','count-en-6.mp3','count-en-5.mp3','count-en-4.mp3','count-en-3.mp3','count-en-2.mp3','count-en-1.mp3','count-en-go.mp3'];
@@ -1665,6 +1695,7 @@ const S={
   tabPhase:'work',tabRound:1,tabTotalRounds:8,tabWorkSec:20,tabRestSec:10
 };
 let musicAudio=null,voiceAudio=null,beepAudio=null;
+let _activeVoices=[]; // éléments <audio> voix créés par playVoiceFile, pour pouvoir les couper
 
 // Waveform
 const wf=document.getElementById('waveform');
@@ -2390,6 +2421,23 @@ function _elFor(src){
   }
   return _elPool[src];
 }
+// Coupe et rembobine toutes les annonces du pool (résidus d'un WOD précédent)
+function stopAllAnnounces(){
+  try{
+    for(const k in _elPool){
+      const a=_elPool[k];
+      if(a){ try{ a.pause(); a.currentTime=0; a.muted=false; a.onended=null; a.onerror=null; }catch(e){} }
+    }
+  }catch(e){}
+  // Voix créées par playVoiceFile (TIME, rounds…) : les couper aussi.
+  try{
+    _activeVoices.forEach(a=>{ try{ a.pause(); a.currentTime=0; a.onended=null; a.onerror=null; }catch(e){} });
+  }catch(e){}
+  _activeVoices=[];
+  // Filet ultime : couper TOUT son enregistré, quelle que soit sa source.
+  try{ stopAllAudio(); }catch(e){}
+  _duckCount=0;
+}
 // Tous les fichiers d'annonce de la langue courante
 function _announceFiles(){
   const out=[];
@@ -2611,13 +2659,15 @@ function playVoiceFile(file, onFail){
     const vol=volEl?parseInt(volEl.value)/100:1;
     const a=new Audio(file);
     a.volume=Math.min(vol*2.0,1.0);
+    _activeVoices.push(a); // traçable pour pouvoir la couper au WOD suivant
+    const drop=()=>{ const i=_activeVoices.indexOf(a); if(i>=0) _activeVoices.splice(i,1); };
     const vmEl=document.getElementById('volMusic');
     const vMus=vmEl?parseInt(vmEl.value)/100:1;
     if(musicAudio) musicAudio.volume=vMus*0.25;
     const restore=()=>{ if(musicAudio) musicAudio.volume=vMus; };
-    a.onended=restore;
-    a.onerror=()=>{ restore(); if(onFail) onFail(); };
-    a.play().catch(()=>{ restore(); if(onFail) onFail(); });
+    a.onended=()=>{ restore(); drop(); };
+    a.onerror=()=>{ restore(); drop(); if(onFail) onFail(); };
+    a.play().catch(()=>{ restore(); drop(); if(onFail) onFail(); });
   }catch(e){ if(onFail) onFail(); }
 }
 
@@ -2761,6 +2811,14 @@ function runAbsSchedule(steps){
 }
 
 function launch(){
+  if(S.state!=='idle') return; // garde-fou : pas de double-lancement (intervalle orphelin)
+  // Ardoise propre : couper tout résidu d'un WOD précédent avant de repartir.
+  clearInterval(S.iv);
+  clearCd();
+  stopAllAnnounces();
+  stopMusic();
+  S.gen=(S.gen||0)+1; // invalide tout intervalle orphelin encore en vie
+  if(window.speechSynthesis){ try{ speechSynthesis.cancel(); }catch(e){} }
   updateTotalFromMode();
   updateClock();
   // Débloquer les éléments <audio> d'annonce PENDANT le geste utilisateur
@@ -2770,6 +2828,7 @@ function launch(){
   preloadCountBuffers();
   preloadRoundBuffers();
   S.state='launching';
+  try{ if(window.REC) REC._onLaunch(); }catch(e){}
   document.body.classList.add('wod-live');
   document.getElementById('btnPlay').textContent='⏳';
   setStatus('launching','10·9·8…');
@@ -2801,6 +2860,7 @@ function launch(){
   cdSteps.push({t:10800,fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }});
   cdSteps.sort((a,b)=>a.t-b.t);
   DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
+  S.cdT0=Date.now(); // top réel du décompte, pour caler l'overlay vidéo dessus
   S.cdSched=runAbsSchedule(cdSteps);
 }
 
@@ -2819,7 +2879,10 @@ function startChrono(){
   // les secondes manquées une par une pour ne perdre aucune annonce.
   S.t0=Date.now();
   S.startRemain=S.remain;
-  S.iv=setInterval(()=>{
+  const myGen=S.gen||0;
+  let myIv;
+  myIv=setInterval(()=>{
+    if(myGen!==(S.gen||0)){ clearInterval(myIv); return; } // intervalle orphelin d'un WOD périmé
     const target=S.startRemain-Math.floor((Date.now()-S.t0)/1000);
     if(target>=S.remain) return;
     let guard=0;
@@ -2835,6 +2898,7 @@ function startChrono(){
       else end();
     }
   },200);
+  S.iv=myIv;
 }
 
 function tabataPhaseEnd(){
@@ -2911,7 +2975,7 @@ function checkAnnounce(){
   if(r===3){showAnnounce('3');playCount(3);return;}
   if(r===2){showAnnounce('2');playCount(2);return;}
   if(r===1){showAnnounce('1');playCount(1);return;}
-  if(r===0 && S.mode!=='tabata'){showAnnounce('🏁 TIME !');speak(t.time);return;}
+  // r===0 : l'annonce TIME est faite une seule fois par end() (évite la double voix)
 
   // Tabata : pas d'annonces horaires (trop court)
   if(S.mode==='tabata') return;
@@ -3029,7 +3093,9 @@ function resume(){
 }
 
 function resetTimer(){
-  clearInterval(S.iv);clearCd();stopMusic();musicWasPlaying=false;
+  try{ if(window.REC) REC._onStop(); }catch(e){}
+  clearInterval(S.iv);clearCd();stopMusic();stopAllAnnounces();musicWasPlaying=false;
+  S.gen=(S.gen||0)+1; // tue tout intervalle orphelin
   if(voiceAudio){voiceAudio.pause();voiceAudio=null;}
   window.speechSynthesis&&window.speechSynthesis.cancel();
   S.state='idle';
@@ -3051,7 +3117,10 @@ function resetTimer(){
 }
 
 function end(){
-  clearInterval(S.iv);stopMusic();
+  try{ if(window.REC) REC._onStop(); }catch(e){}
+  clearInterval(S.iv);clearCd();stopMusic();stopAllAnnounces();
+  S.gen=(S.gen||0)+1; // tue tout intervalle orphelin
+  if(voiceAudio){try{voiceAudio.pause();}catch(e){}voiceAudio=null;}
   S.state='idle';S.remain=0;
   document.body.classList.remove('wod-live');
   document.getElementById('btnPlay').textContent='▶';
@@ -4289,6 +4358,277 @@ function membersInit(){
 }
 window.addEventListener('DOMContentLoaded',membersInit);
 
+</script>
+
+<!-- ===== CAPTURE VIDÉO (v1) — caméra + chrono réel incrusté ===== -->
+<style>
+  #btnRec.on{background:#e6394b;border-color:#e6394b;color:#fff;}
+  #capStage{position:fixed;inset:0;z-index:90000;background:#000;display:none;}
+  #capStage.on{display:block;}
+  #capCanvas{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
+  #capBar{position:fixed;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));display:flex;gap:12px;justify-content:center;align-items:center;z-index:90002;}
+  #capBar button{padding:14px 18px;border:0;border-radius:12px;font:700 15px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(28,26,46,0.9);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);}
+  #capBar #capPlay{background:#2f6fed;min-width:64px;font-size:20px;}
+  #capBar #capStop{background:#e6394b;}
+  #capHint{position:fixed;left:0;right:0;top:calc(14px + env(safe-area-inset-top,0px));text-align:center;z-index:90002;color:#fff;font:600 13px/1.4 -apple-system,system-ui,sans-serif;text-shadow:0 1px 4px rgba(0,0,0,.8);pointer-events:none;padding:0 20px;}
+  #capResult{position:fixed;inset:0;z-index:90003;background:rgba(0,0,0,.94);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;}
+  #capResult.on{display:flex;}
+  #capResult video{max-width:100%;max-height:70vh;border-radius:12px;background:#000;}
+  #capResult a,#capResult button{padding:14px 20px;border:0;border-radius:12px;font:700 15px/1 -apple-system,sans-serif;color:#fff;background:#2f6fed;text-decoration:none;}
+</style>
+
+<div id="capStage">
+  <canvas id="capCanvas"></canvas>
+  <div id="capHint">Cale ton téléphone, cadre la scène, puis ▶ pour lancer le WOD</div>
+  <div id="capBar">
+    <button id="capClose" onclick="REC.cancel()">✕</button>
+    <button id="capPlay" onclick="togglePlay()">▶</button>
+    <button id="capStop" onclick="resetTimer()">⏹ Terminer</button>
+  </div>
+</div>
+<div id="capResult">
+  <video id="capResultVid" playsinline controls></video>
+  <pre id="capDiag" style="max-width:100%;max-height:26vh;overflow:auto;margin:0;padding:10px;background:rgba(0,0,0,.5);border-radius:8px;color:#8fe;font:11px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;"></pre>
+  <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
+    <a id="capDownload" download="reps-wod.mp4">⬇︎ Télécharger</a>
+    <button onclick="document.getElementById('capResult').classList.remove('on')">Fermer</button>
+  </div>
+</div>
+<video id="capCamSrc" playsinline muted style="display:none"></video>
+
+<script>
+// ===== CAPTURE VIDÉO — module REC =====
+// Décisions specs : bloc bas gauche, police monospace (sinon il saute chaque
+// seconde), contexte au-dessus du temps, rouge sur les 3 dernières s, marque REPS
+// en bas à droite, décompte plein écran centré au départ. 720p, ~30 i/s.
+(function(){
+  const MIMES=['video/mp4','video/mp4;codecs=avc1','video/webm;codecs=vp9,opus','video/webm'];
+  function pickMime(){
+    if(typeof MediaRecorder==='undefined'||!MediaRecorder.isTypeSupported) return '';
+    for(const m of MIMES){ try{ if(MediaRecorder.isTypeSupported(m)) return m; }catch(e){} }
+    return '';
+  }
+  const REC={armed:false,recording:false,stream:null,rec:null,chunks:[],raf:null,launchTs:0,drawing:false,diag:[]};
+
+  function el(id){return document.getElementById(id);}
+  function dlog(m){
+    const t=REC.launchTs?((Date.now()-REC.launchTs)/1000).toFixed(1):'--';
+    REC.diag.push('t+'+t+'s  '+m);
+    try{ if(window.DBG) DBG(m); }catch(e){}
+  }
+
+  REC.supported=function(){
+    return !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)&&typeof MediaRecorder!=='undefined'
+      && typeof document.createElement('canvas').captureStream==='function';
+  };
+
+  REC.arm=async function(){
+    REC.diag=[]; REC.launchTs=0; REC._drawErr=0;
+    if(!REC.supported()){ alert("La capture vidéo n'est pas disponible sur cet appareil."); return; }
+    try{
+      // Pas de micro : ouvrir le micro forcerait iOS en playAndRecord, ce qui
+      // étouffe le son de l'app et rend l'enregistrement muet. Vidéo seule = fiable.
+      REC.stream=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}},
+        audio:false
+      });
+    }catch(e){ alert("Accès caméra refusé : "+e.name); return; }
+    // Diagnostic : surveiller les pistes (une session audio iOS qui change peut les tuer)
+    (REC.stream.getTracks()||[]).forEach(t=>{
+      dlog('piste '+t.kind+' = '+t.readyState);
+      t.onended=()=>dlog('⚠️ piste '+t.kind+' ENDED');
+      t.onmute=()=>dlog('piste '+t.kind+' MUTE');
+      t.onunmute=()=>dlog('piste '+t.kind+' UNMUTE');
+    });
+    const cam=el('capCamSrc'); cam.srcObject=REC.stream;
+    try{ await cam.play(); }catch(e){}
+    await new Promise(res=>{ if(cam.videoWidth) return res(); cam.onloadedmetadata=()=>res(); });
+    const cv=el('capCanvas'), ctx=cv.getContext('2d');
+    cv.width=cam.videoWidth||1280; cv.height=cam.videoHeight||720;
+    REC.armed=true;
+    el('capStage').classList.add('on');
+    el('btnRec').classList.add('on');
+    el('btnRec').textContent='🎥 ON';
+    REC.startDraw(cam,cv,ctx);
+  };
+
+  REC.startDraw=function(cam,cv,ctx){
+    REC.drawing=true;
+    let last=0;
+    (function loop(){
+      if(!REC.drawing) return;
+      REC.raf=requestAnimationFrame(loop);
+      const now=Date.now();
+      if(now-last<32) return; // ~30 i/s
+      last=now;
+      try{ ctx.drawImage(cam,0,0,cv.width,cv.height); REC.frames=(REC.frames||0)+1; }
+      catch(e){ if(!REC._drawErr){ REC._drawErr=1; dlog('⚠️ drawImage échoue: '+e.name); } }
+      // Décompte de départ, plein écran centré (uniquement pendant 'launching')
+      if(typeof S!=='undefined' && S.state==='launching' && (S.cdT0||REC.launchTs)){
+        // Calé sur le VRAI top du décompte (S.cdT0) : "10" à t=0, "9" à t=1s… "GO" à t=10s.
+        const base=S.cdT0||REC.launchTs;
+        const e=now-base;
+        const n=10-Math.floor(e/1000);
+        drawCountdown(ctx,cv.width,cv.height, (e>=10000||n<=0)?'GO':String(Math.min(n,10)));
+      } else {
+        const info=overlayInfo();
+        if(info) drawBlock(ctx,cv.width,cv.height,info.ctx,info.time,info.alert);
+      }
+      // synchro du bouton play/pause de la scène
+      const cp=el('capPlay');
+      if(cp && typeof S!=='undefined'){
+        cp.textContent=(S.state==='playing')?'⏸':(S.state==='launching')?'⏳':'▶';
+      }
+    })();
+  };
+
+  function overlayInfo(){
+    if(typeof S==='undefined') return null;
+    const r=S.remain;
+    const p=n=>String(n).padStart(2,'0');
+    let time,cx,alert=false;
+    if(S.mode==='emom'){
+      const elapsed=S.total-r;
+      time=p(Math.floor(elapsed/60))+':'+p(elapsed%60);
+      const cycle=(S.emomIntervalSec||60)+(S.emomRestSec||0);
+      const totalRounds=S.emomRounds||Math.max(1,Math.floor(S.total/cycle));
+      const cur=Math.min(totalRounds,Math.floor(elapsed/cycle)+1);
+      cx='EMOM · ROUND '+cur+'/'+totalRounds+(S.emomPhase==='rest'?' · REST':'');
+      const into=elapsed%cycle, work=S.emomIntervalSec||60;
+      const segLeft=(into<work)?(work-into):(cycle-into);
+      alert=(S.state==='playing')&&segLeft<=3&&segLeft>0;
+    } else if(S.mode==='tabata'){
+      time=p(Math.floor(r/60))+':'+p(r%60);
+      cx='TABATA · ROUND '+(S.tabRound||1)+'/'+(S.tabTotalRounds||8)+(S.tabPhase==='rest'?' · REST':'');
+      alert=(S.state==='playing')&&r<=3;
+    } else {
+      time=p(Math.floor(r/60))+':'+p(r%60);
+      cx={wod:'FOR TIME',amrap:'AMRAP'}[S.mode]||'';
+      alert=(S.state==='playing')&&r<=3&&S.mode!=='wod';
+    }
+    return {time:time,ctx:cx,alert:alert};
+  }
+
+  function drawBlock(ctx,W,H,texteHaut,temps,alerte){
+    const pad=Math.round(W*0.022);
+    const tTemps=Math.round(H*0.075), tHaut=Math.round(H*0.028);
+    ctx.font=tHaut+'px ui-monospace,Menlo,monospace';
+    const wHaut=texteHaut?ctx.measureText(texteHaut).width:0;
+    ctx.font='700 '+tTemps+'px ui-monospace,Menlo,monospace';
+    const wTemps=ctx.measureText(temps).width;
+    const bw=Math.max(wHaut,wTemps)+pad*2, bh=tHaut+tTemps+pad*2.2;
+    const x=pad, y=H-bh-pad, r=Math.round(W*0.012);
+    ctx.fillStyle='rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+bw,y,x+bw,y+bh,r); ctx.arcTo(x+bw,y+bh,x,y+bh,r);
+    ctx.arcTo(x,y+bh,x,y,r); ctx.arcTo(x,y,x+bw,y,r); ctx.closePath(); ctx.fill();
+    if(texteHaut){
+      ctx.fillStyle='#9fe8ff';
+      ctx.font=tHaut+'px ui-monospace,Menlo,monospace';
+      ctx.fillText(texteHaut,x+pad,y+pad+tHaut*0.85);
+    }
+    ctx.fillStyle=alerte?'#ff5470':'#ffffff';
+    ctx.font='700 '+tTemps+'px ui-monospace,Menlo,monospace';
+    ctx.fillText(temps,x+pad,y+pad+tHaut+tTemps*0.92);
+    ctx.fillStyle='rgba(255,255,255,0.6)';
+    ctx.font='700 '+Math.round(H*0.026)+'px ui-monospace,Menlo,monospace';
+    const m='REPS';
+    ctx.fillText(m,W-ctx.measureText(m).width-pad,H-pad);
+  }
+
+  function drawCountdown(ctx,W,H,txt){
+    ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.font='700 '+Math.round(H*0.28)+'px ui-monospace,Menlo,monospace';
+    ctx.fillText(txt,W/2,H/2);
+    ctx.textAlign='start'; ctx.textBaseline='alphabetic';
+  }
+
+  // Démarrage de l'enregistrement (appelé depuis launch())
+  REC._onLaunch=function(){
+    if(!REC.armed||REC.recording||!REC.stream) return;
+    REC.launchTs=Date.now();
+    const cv=el('capCanvas');
+    let cstream;
+    try{ cstream=cv.captureStream(30); }catch(e){ return; }
+    const at=REC.stream.getAudioTracks()[0];
+    if(at){ try{ cstream.addTrack(at); }catch(e){} }
+    const mime=pickMime();
+    dlog('start: mime='+(mime||'défaut')+' | piste audio ajoutée='+!!at);
+    const opts={audioBitsPerSecond:128000}; if(mime) opts.mimeType=mime;
+    try{ REC.rec=new MediaRecorder(cstream,opts); }catch(e){ dlog('⚠️ MediaRecorder KO '+e.name); return; }
+    REC.chunks=[]; REC.frames=0; REC._drawErr=0;
+    REC.rec.ondataavailable=e=>{ if(e.data&&e.data.size) REC.chunks.push(e.data); };
+    REC.rec.onerror=e=>dlog('⚠️ MediaRecorder error '+(e.error&&e.error.name));
+    REC.rec.onstop=()=>{
+      const blob=new Blob(REC.chunks,{type:(REC.rec&&REC.rec.mimeType)||'video/mp4'});
+      dlog('stop: '+REC.chunks.length+' chunks, '+(REC.frames||0)+' frames, '+(blob.size/1024).toFixed(0)+' Ko');
+      REC.save(blob);
+    };
+    try{ REC.rec.start(1000); REC.recording=true; el('capHint').style.display='none'; }catch(e){ dlog('⚠️ rec.start KO '+e.name); }
+    // Battement de diagnostic : état des pistes + i/s, chaque seconde
+    if(REC.hb) clearInterval(REC.hb);
+    REC.hb=setInterval(()=>{
+      const v=REC.stream&&REC.stream.getVideoTracks()[0], a=REC.stream&&REC.stream.getAudioTracks()[0];
+      dlog('vid='+(v?v.readyState:'—')+' aud='+(a?a.readyState:'—')+' rec='+(REC.rec?REC.rec.state:'—')+' frames='+(REC.frames||0));
+    },1000);
+  };
+
+  // Arrêt (appelé depuis end() et resetTimer())
+  REC._onStop=function(){
+    if(!REC.recording) return;
+    REC.recording=false;
+    try{ if(REC.rec&&REC.rec.state!=='inactive') REC.rec.stop(); }catch(e){}
+    // save() est déclenché par onstop, puis on désarme
+    setTimeout(()=>REC.teardown(),300);
+  };
+
+  REC.save=function(blob){
+    const fname='reps-wod-'+Date.now()+'.mp4';
+    try{
+      const file=new File([blob],fname,{type:blob.type||'video/mp4'});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:'REPS WOD'}).catch(()=>showResult(blob,fname));
+        return;
+      }
+    }catch(e){}
+    showResult(blob,fname);
+  };
+
+  function showResult(blob,fname){
+    const url=URL.createObjectURL(blob);
+    el('capResultVid').src=url;
+    const dl=el('capDownload'); dl.href=url; dl.download=fname||'reps-wod.mp4';
+    const d=el('capDiag'); if(d) d.textContent=(REC.diag||[]).join('\n');
+    el('capResult').classList.add('on');
+  }
+
+  REC.teardown=function(){
+    REC.drawing=false;
+    if(REC.hb){ clearInterval(REC.hb); REC.hb=null; }
+    if(REC.raf) cancelAnimationFrame(REC.raf);
+    if(REC.stream){ REC.stream.getTracks().forEach(t=>{try{t.stop();}catch(e){}}); REC.stream=null; }
+    REC.armed=false; REC.rec=null; REC.chunks=[];
+    el('capStage').classList.remove('on');
+    el('capHint').style.display='';
+    el('btnRec').classList.remove('on');
+    el('btnRec').textContent='🎥 REC';
+  };
+
+  // ✕ : annuler sans enregistrer (si un WOD tourne, on le stoppe aussi)
+  REC.cancel=function(){
+    REC.recording=false; // pas de sauvegarde
+    try{ if(REC.rec&&REC.rec.state!=='inactive'){ REC.rec.onstop=null; REC.rec.stop(); } }catch(e){}
+    if(typeof S!=='undefined' && S.state!=='idle'){ try{ resetTimer(); }catch(e){} }
+    REC.teardown();
+  };
+
+  window.REC=REC;
+  window.toggleRec=function(){
+    if(REC.armed) REC.cancel();
+    else REC.arm();
+  };
+})();
 </script>
 </body>
 </html>
