@@ -1566,7 +1566,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v60</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v61</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -2469,6 +2469,7 @@ function playAnnounceEl(src, onFail){
   if(!src) return false;
   try{
     const a=_elFor(src);
+    try{a.muted=false;}catch(e){} // garantir non-muet malgré un déverrouillage async en cours
     DBG('play <audio> '+src);
     duckStart();
     let done=false;
@@ -2849,6 +2850,7 @@ function launch(){
   countAudioList.forEach((file,i)=>{
     cdSteps.push({t:i*1000,fn:()=>{
       const a=_elFor(file);
+      try{a.muted=false;}catch(e){} // sinon le déverrouillage async laisse le "10" muet au 1er WOD
       try{a.volume=Math.min(vol*2.0,1.0);}catch(e){}
       try{a.currentTime=0;}catch(e){}
       const pr=a.play();
