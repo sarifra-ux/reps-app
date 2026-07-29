@@ -139,7 +139,7 @@
   .mode-tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;margin:14px 0;box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);}
   .help-btn{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:0.6rem;cursor:pointer;margin-left:6px;padding:0;line-height:1;transition:all 0.2s;}
   .help-btn:hover{border-color:var(--accent2);color:var(--accent2);}
-  .help-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99998;background:rgba(8,6,16,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;animation:welcomeFadeIn 0.25s ease-out;}
+  .help-overlay{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:99998;background:rgba(8,6,16,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;animation:welcomeFadeIn 0.25s ease-out;}
   .help-modal{background:linear-gradient(135deg,var(--surface),var(--card));border:1.5px solid var(--border);border-radius:18px;padding:22px;max-width:440px;width:100%;max-height:80vh;overflow-y:auto;}
   .help-modal-head{display:flex;align-items:center;justify-content:space-between;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px;color:var(--text);margin-bottom:18px;}
   .help-close{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:0.9rem;line-height:1;}
@@ -345,7 +345,7 @@
 
   /* ===== MODAL SETTINGS ===== */
   .settings-modal{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;
     z-index:99995;
     background:rgba(8,6,16,0.85);
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
@@ -534,7 +534,7 @@
 
   /* ===== ÉCRAN CHOIX DE LANGUE ===== */
   .lang-choice{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:99999;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -601,7 +601,7 @@
   .lang-name{font-weight:400;}
   /* ===== SPLASH LOGO REPS (à chaque ouverture) ===== */
   .welcome{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:99999;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -619,7 +619,7 @@
 
   /* ===== ÉCRAN CHOIX DE MODE ===== */
   .mode-choice{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99998;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:99998;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -702,7 +702,7 @@
   body.wizard-active::before{
     content:'';
     position:fixed;
-    top:0;left:0;width:100vw;height:100vh;
+    top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -714,7 +714,7 @@
 
   /* ===== ÉCRAN CHOIX DU TIMING ===== */
   .timing-choice{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99997;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:99997;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -780,7 +780,7 @@
 
   /* ===== ÉCRAN CHOIX DE LA MUSIQUE ===== */
   .music-choice{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99996;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;z-index:99996;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -1566,7 +1566,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v66</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v67</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -3899,6 +3899,10 @@ function csContinue(){
 function showMusicChoice(){
   const screen=document.getElementById('musicChoiceScreen');
   if(!screen) return;
+  // Masquer les autres écrans du wizard pour éviter tout empilement visible
+  ['modeChoiceScreen','timingChoiceScreen','customScreen'].forEach(id=>{
+    const s=document.getElementById(id); if(s) s.style.display='none';
+  });
   const title=document.getElementById('musicChoiceTitle');
   const hint=document.getElementById('musicChoiceHint');
   if(title) title.textContent=L3('Musique','Music','Música');
