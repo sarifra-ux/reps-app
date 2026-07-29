@@ -1566,7 +1566,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v64</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v65</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -2402,7 +2402,7 @@ function ensureRecBus(){
   }
   return recBus;
 }
-function busActivate(){ _busActive=true; ensureRecBus(); }
+function busActivate(){ _busActive=true; ensureRecBus(); try{ preloadRecCountdown(); }catch(e){} }
 function busDeactivate(){ _busActive=false; }
 // Route un element <audio> (musique, annonce, voix) vers sortie normale + bus.
 function busAttachEl(el){
@@ -2437,6 +2437,39 @@ function busAttachGain(gain){
   if(!_busActive||!gain) return;
   const bus=ensureRecBus(); if(!bus) return;
   try{ gain.connect(bus); }catch(e){}
+}
+
+// ===== LECTURE PAR BUFFER (uniquement pendant l'enregistrement) =====
+// Pourquoi : au tout début, le déblocage des <audio> laisse fuir une rafale sur iOS,
+// et router un <audio> via createMediaElementSource est capricieux sur iPhone. Pendant
+// un enregistrement, on joue donc le décompte via des AudioBuffer décodés (chemin propre,
+// déjà utilisé pour les annonces WA), branchés direct sur la sortie + le bus.
+const _recBuf={}; // cache AudioBuffer par src
+async function _loadRecBuf(src){
+  if(_recBuf[src]) return _recBuf[src];
+  const ctx=ensureAudioCtx(); if(!ctx) return null;
+  try{ const r=await fetch(src); const a=await r.arrayBuffer(); _recBuf[src]=await ctx.decodeAudioData(a); return _recBuf[src]; }
+  catch(e){ return null; }
+}
+function _playRecBuf(buf, vol){
+  const ctx=audioCtx; if(!ctx||!buf) return;
+  const s=ctx.createBufferSource(); s.buffer=buf;
+  const g=ctx.createGain(); g.gain.value=(isFinite(vol)?vol:1);
+  s.connect(g); g.connect(ctx.destination); busAttachGain(g);
+  try{ s.start(0); }catch(e){}
+}
+// Joue un fichier via buffer. Renvoie true si pris en charge (toujours, pendant enregistrement).
+function playFileViaBus(src, vol){
+  if(!ensureAudioCtx()) return false;
+  const buf=_recBuf[src];
+  if(buf){ _playRecBuf(buf, vol); return true; }
+  _loadRecBuf(src).then(b=>{ if(b) _playRecBuf(b, vol); }); // chargé à la volée si pas préchargé
+  return true;
+}
+// Précharge le décompte de départ (10..GO) de la langue courante, appelé à l'armement.
+async function preloadRecCountdown(){
+  const list=(typeof S!=='undefined' && S.lang==='fr')?COUNT_AUDIO_FR:((typeof S!=='undefined'&&S.lang==='pt')?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
+  for(const f of list){ await _loadRecBuf(f); }
 }
 
 async function loadCountBuffer(lang, num){
@@ -2515,6 +2548,10 @@ function _announceFiles(){
 }
 // A APPELER DANS UN GESTE UTILISATEUR : debloque tous les elements d'un coup.
 function unlockAnnounceEls(){
+  // Pendant un enregistrement : on NE débloque PAS les <audio> (c'est cette rafale
+  // qui bavait au début). Les annonces + le décompte passent alors par des buffers
+  // Web Audio (voir playFileViaBus / playCountWA / playRoundWA / playRestWA).
+  if(_busActive) return;
   _announceFiles().forEach(src=>{
     const a=_elFor(src);
     try{
@@ -2554,6 +2591,7 @@ function playAnnounceEl(src, onFail){
 }
 
 function playCount(num){
+  if(_busActive){ playCountWA(num); return; } // enregistrement : chemin Web Audio propre
   const src=(COUNT_AUDIO[S.lang]||{})[num];
   if(src && playAnnounceEl(src, ()=>playCountWA(num))) return;
   playCountWA(num);
@@ -2636,6 +2674,7 @@ async function loadRestBuffer(){
 }
 
 function playRest(){
+  if(_busActive){ playRestWA(); return; } // enregistrement : chemin Web Audio propre
   const src=S.lang==='fr'?'rest-fr.mp3':(S.lang==='pt'?'rest-pt.mp3':'rest.mp3');
   if(playAnnounceEl(src, ()=>playRestWA())) return;
   playRestWA();
@@ -2668,6 +2707,7 @@ function playRestBufferNow(buf){
 }
 
 function playRound(num){
+  if(_busActive){ playRoundWA(num); return; } // enregistrement : chemin Web Audio propre
   const src=(ROUND_AUDIO[S.lang]||{})[num];
   if(src && playAnnounceEl(src, ()=>playRoundWA(num))) return;
   playRoundWA(num);
@@ -2922,9 +2962,10 @@ function launch(){
   const cdSteps=[];
   countAudioList.forEach((file,i)=>{
     cdSteps.push({t:i*1000,fn:()=>{
+      // Pendant un enregistrement : décompte joué via buffer Web Audio (propre, capturé).
+      if(_busActive){ playFileViaBus(file, Math.min(vol*2.0,1.0)); DBG('countdown(bus) '+file); return; }
       const a=_elFor(file);
       try{a.muted=false;}catch(e){} // sinon le déverrouillage async laisse le "10" muet au 1er WOD
-      busAttachEl(a);
       try{a.volume=Math.min(vol*2.0,1.0);}catch(e){}
       try{a.currentTime=0;}catch(e){}
       const pr=a.play();
