@@ -1566,7 +1566,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v65</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v66</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -3234,11 +3234,11 @@ function resetTimer(){
 }
 
 function end(){
-  try{ if(window.REC) REC._onStop(); }catch(e){}
   clearInterval(S.iv);clearCd();stopMusic();stopAllAnnounces();
   S.gen=(S.gen||0)+1; // tue tout intervalle orphelin
   if(voiceAudio){try{voiceAudio.pause();}catch(e){}voiceAudio=null;}
   S.state='idle';S.remain=0;
+  updateClock(); // fige l'affichage sur la valeur finale (EMOM: 1:00 au lieu de 0:59 ; sinon 0:00)
   document.body.classList.remove('wod-live');
   document.getElementById('btnPlay').textContent='▶';
   document.getElementById('timerCard').classList.remove('playing');
@@ -3252,6 +3252,9 @@ function end(){
   const _eb=document.getElementById('timerEyebrow');
   if(_eb) _eb.textContent=L3('// TERMINÉ','// DONE','// CONCLUÍDO');
   setStatus('','FINI');
+  // Enregistrement vidéo : on laisse tourner ~1s de plus pour capturer la frame finale
+  // (le 1:00 figé + l'annonce TIME) AVANT de couper. Sinon la vidéo s'arrête à 0:59.
+  try{ if(window.REC) setTimeout(()=>{ try{ REC._onStop(); }catch(e){} }, 1000); }catch(e){}
 }
 
 function skipAhead(){
@@ -3772,6 +3775,11 @@ function _csStepper(label,valId,minusCall,plusCall,valText){
     + '</div></div>';
 }
 function showCustomChoice(mode){
+  // Masquer les autres écrans du wizard : sinon celui d'avant (ex: réglages EMOM)
+  // reste affiché derrière et on voit deux écrans superposés.
+  ['modeChoiceScreen','timingChoiceScreen','musicChoiceScreen'].forEach(id=>{
+    const s=document.getElementById(id); if(s) s.style.display='none';
+  });
   CS={
     mode:mode,
     work:S.emomIntervalSec||60, rest:S.emomRestSec||0, rounds:S.emomRounds||5,
