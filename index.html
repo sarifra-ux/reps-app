@@ -1566,7 +1566,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v63</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v64</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -2517,11 +2517,14 @@ function _announceFiles(){
 function unlockAnnounceEls(){
   _announceFiles().forEach(src=>{
     const a=_elFor(src);
-    // Déjà routé dans la Web Audio = déjà débloqué : le rejouer déclencherait une
-    // rafale audible (le mute de l'element est ignoré une fois routé). On saute.
-    if(_busRouted.has(a)) return;
     try{
       a.muted=true;
+      // Pendant un enregistrement : router l'element AVANT de le jouer. Son son passe
+      // alors par un gain à 0 (puisque muted=true) => déblocage 100% silencieux, même si
+      // iOS laisse fuir un transitoire sur un <audio> muté. C'est ce qui rend le décompte
+      // propre dès le TOUT PREMIER enregistrement (avant, les elements n'étaient pas encore
+      // routés au moment du déblocage, donc la rafale passait).
+      busAttachEl(a);
       const p=a.play();
       if(p&&p.then) p.then(()=>{try{a.pause();a.currentTime=0;}catch(e){}a.muted=false;})
                      .catch(()=>{a.muted=false;});
