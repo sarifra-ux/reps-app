@@ -1580,7 +1580,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v76</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v77</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -2904,7 +2904,7 @@ function startVisualCountdown(){
   S.cdVisSched=runAbsSchedule(visSteps);
 }
 
-function clearCd(){if(S.cdSched){clearInterval(S.cdSched);S.cdSched=null;}if(S.cdVisSched){clearInterval(S.cdVisSched);S.cdVisSched=null;}S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}document.getElementById('cdOverlay').classList.remove('show');}
+function clearCd(){if(S.cdSched){clearInterval(S.cdSched);S.cdSched=null;}if(S.cdVisSched){clearInterval(S.cdVisSched);S.cdVisSched=null;}S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}if(S.cdWA){S.cdWA.forEach(s=>{try{s.stop();}catch(e){}});S.cdWA=[];}document.getElementById('cdOverlay').classList.remove('show');}
 
 // ===== SEQUENCE =====
 function togglePlay(){
@@ -3006,16 +3006,53 @@ function launch(){
   // Ducking musique pendant tout le décompte pour que la voix soit bien audible
   const vMus=parseInt(document.getElementById('volMusic').value)/100;
   if(musicAudio) musicAudio.volume=vMus*0.05;
-  const cdSteps=[];
   // Calibrage : on cale le mot sur la seconde en compensant le silence de tête de chaque
   // fichier (cf. COUNT_ONSET). attaque0 = ancre du "10" (on ne peut pas jouer avant t=0).
   const _onsets=COUNT_ONSET[S.lang]||[];
   const _onset0=_onsets[0]||0;
+
+  if(_busActive){
+    // ENREGISTREMENT : le thread principal est saturé (dessin canvas 30 i/s + encodage vidéo),
+    // donc un décompte piloté par setInterval dérive de façon irrégulière (mesuré sur une vraie
+    // vidéo : écarts de 737 à 1147 ms au lieu de 1000). On planifie chaque chiffre sur l'HORLOGE
+    // Web Audio (`source.start(when)`), précise à l'échantillon et indépendante du thread.
+    // Buffers déjà préchargés par preloadRecCountdown() à l'armement de la caméra.
+    const ctx=ensureAudioCtx();
+    const lead=0.12;                              // petite marge pour armer les sources
+    const anchor=ctx?ctx.currentTime+lead:0;
+    const gainVol=Math.min(vol*2.0,1.0);
+    S.cdWA=[];
+    const startBuf=(buf,when)=>{
+      if(!ctx||!buf) return;
+      try{
+        const s=ctx.createBufferSource(); s.buffer=buf;
+        const g=ctx.createGain(); g.gain.value=gainVol;
+        s.connect(g); g.connect(ctx.destination); busAttachGain(g);
+        s.start(when); S.cdWA.push(s);
+      }catch(e){ DBG('cd WA start KO '+e.name); }
+    };
+    countAudioList.forEach((file,i)=>{
+      const when=anchor + Math.max(0, i*1000 - (_onsets[i]||0) + _onset0)/1000;
+      const b=_recBuf[file];
+      if(b) startBuf(b, when);
+      else _loadRecBuf(file).then(bb=>startBuf(bb, when)); // filet si pas préchargé
+    });
+    const leadMs=Math.round(lead*1000);
+    S.cdT0=Date.now()+leadMs;                     // overlay vidéo calé sur l'audio
+    // Chrono + remontée musique : tolèrent la gigue, restent sur runAbsSchedule (décalés du lead).
+    S.cdSched=runAbsSchedule([
+      {t:leadMs+10500+_onset0, fn:()=>startChrono()},
+      {t:leadMs+10800+_onset0, fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }}
+    ]);
+    DBG('launch(décompte horloge audio): mode='+S.mode+' total='+S.total+'s');
+    return;
+  }
+
+  // HORS enregistrement : chemin d'origine (éléments <audio>, thread libre, déjà régulier).
+  const cdSteps=[];
   countAudioList.forEach((file,i)=>{
     const _t=Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
     cdSteps.push({t:_t,fn:()=>{
-      // Pendant un enregistrement : décompte joué via buffer Web Audio (propre, capturé).
-      if(_busActive){ playFileViaBus(file, Math.min(vol*2.0,1.0)); DBG('countdown(bus) '+file); return; }
       const a=_elFor(file);
       try{a.muted=false;}catch(e){} // sinon le déverrouillage async laisse le "10" muet au 1er WOD
       try{a.volume=Math.min(vol*2.0,1.0);}catch(e){}
