@@ -699,8 +699,15 @@
     opacity:0 !important;
     pointer-events:none !important;
   }
+  /* Même fond que les panneaux du wizard : les écrans fixes ne couvrent pas 100% de la
+     largeur sur iOS, donc on peint le body avec le MÊME dégradé pour que la bande non
+     couverte (à droite) soit identique au panneau. Jointure invisible. */
   body.wizard-active{
-    background:var(--bg) !important;
+    background:
+      var(--monogram) 0 0/60px 60px,
+      radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0,229,255,0.12) 0%, transparent 50%),
+      var(--bg-grad) !important;
   }
   body.wizard-active::before{
     content:'';
@@ -1569,7 +1576,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v73</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v74</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
