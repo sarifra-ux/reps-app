@@ -49,6 +49,10 @@
     --glow-tabata:rgba(255,59,111,0.4);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
+  /* iOS : si un élément déborde en largeur, Safari dézoome la page (shrink-to-fit) et
+     les écrans fixes en 100vw ne couvrent plus toute la largeur visible (bande à droite
+     dans le wizard). overflow-x:hidden sur HTML (pas seulement body) bloque ce dézoom. */
+  html{overflow-x:hidden;width:100%;}
   body{
     background:
       radial-gradient(ellipse at top left, rgba(230,63,255,0.08) 0%, transparent 50%),
@@ -1576,7 +1580,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v74</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v75</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
