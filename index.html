@@ -1580,7 +1580,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v75</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v76</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -4577,7 +4577,7 @@ window.addEventListener('DOMContentLoaded',membersInit);
   <video id="capResultVid" playsinline controls></video>
   <pre id="capDiag" style="max-width:100%;max-height:26vh;overflow:auto;margin:0;padding:10px;background:rgba(0,0,0,.5);border-radius:8px;color:#8fe;font:11px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;"></pre>
   <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-    <a id="capDownload" download="reps-wod.mp4">⬇︎ Télécharger</a>
+    <button id="capDownload" onclick="REC.shareFile()">⬇︎ Enregistrer / Partager</button>
     <button onclick="document.getElementById('capResult').classList.remove('on')">Fermer</button>
   </div>
 </div>
@@ -4787,20 +4787,39 @@ window.addEventListener('DOMContentLoaded',membersInit);
 
   REC.save=function(blob){
     const fname='reps-wod-'+Date.now()+'.mp4';
+    let file=null;
+    try{ file=new File([blob],fname,{type:blob.type||'video/mp4'}); }catch(e){}
+    // Mémorisé pour le bouton "Enregistrer / Partager" de l'écran résultat.
+    REC.lastFile=file; REC.lastBlob=blob; REC.lastName=fname;
+    // Tentative de partage natif immédiat (feuille iOS : Enregistrer la vidéo / Fichiers).
     try{
-      const file=new File([blob],fname,{type:blob.type||'video/mp4'});
-      if(navigator.canShare && navigator.canShare({files:[file]})){
-        navigator.share({files:[file],title:'REPS WOD'}).catch(()=>showResult(blob,fname));
+      if(file && navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:'REPS WOD'}).then(()=>{}).catch(()=>showResult(blob,fname));
         return;
       }
     }catch(e){}
     showResult(blob,fname);
   };
 
+  // Partage / enregistrement déclenché par le bouton (donc dans un geste utilisateur, requis
+  // par iOS). Le <a download> ne marche pas dans le WKWebView : on passe par la feuille native.
+  REC.shareFile=function(){
+    const f=REC.lastFile;
+    try{
+      if(f && navigator.canShare && navigator.canShare({files:[f]})){
+        navigator.share({files:[f],title:'REPS WOD'}).catch(()=>{});
+        return;
+      }
+      if(f && navigator.share){ navigator.share({files:[f]}).catch(()=>{}); return; }
+    }catch(e){}
+    // Repli : ouvrir la vidéo seule, l'utilisateur fait un appui long → Enregistrer la vidéo.
+    try{ if(REC.lastUrl) window.open(REC.lastUrl,'_blank'); }catch(e){}
+  };
+
   function showResult(blob,fname){
     const url=URL.createObjectURL(blob);
+    REC.lastUrl=url;
     el('capResultVid').src=url;
-    const dl=el('capDownload'); dl.href=url; dl.download=fname||'reps-wod.mp4';
     const d=el('capDiag'); if(d) d.textContent=(REC.diag||[]).join('\n');
     el('capResult').classList.add('on');
   }
