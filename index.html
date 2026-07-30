@@ -1566,7 +1566,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v71</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v72</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -3646,6 +3646,12 @@ function chooseLanguage(lang){
 function showModeChoice(){
   const screen=document.getElementById('modeChoiceScreen');
   if(!screen) return;
+  // Nettoyage capture vidéo : au retour dans le wizard juste après une capture, un écran
+  // de capture (capStage / capResult) pouvait rester affiché en fond et transparaître par
+  // le bord (les écrans wizard ne couvrent pas 100% du viewport iOS). On force sa fermeture.
+  try{ if(window.REC && (REC.armed||REC.recording)) REC.cancel(); }catch(e){}
+  ['capStage','capResult'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('on'); });
+  try{ const _cc=document.getElementById('capCamSrc'); if(_cc){ _cc.pause(); _cc.srcObject=null; } }catch(e){}
   // Cacher l'app pendant le wizard
   document.body.classList.add('wizard-active');
   // Adapter le titre selon la langue
