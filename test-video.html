@@ -85,12 +85,32 @@
 </div>
 
 <div class="card">
+  <h2>6. Voix + décompte pendant la capture</h2>
+  <p class="sub" style="margin:0 0 10px">Le vrai angle mort. On joue les <b>vraies annonces</b> (ROUND, REST, décompte 3-2-1-GO) par-dessus la musique, au niveau des fichiers (pas de ducking sur iPhone). Puis tu écoutes : les entends-tu distinctement ?</p>
+  <button id="btnVoix" disabled>Capture 15 s avec voix + décompte</button>
+  <div class="row"><b>Annonces jouées</b><span id="vxPlayed">—</span></div>
+  <div class="row"><b>Annonces refusées</b><span id="vxBlocked" class="ko">—</span></div>
+  <div class="row"><b>Niveau audio du fichier</b><span id="vxRms">—</span></div>
+  <video id="result3" playsinline controls></video>
+  <p class="sub" style="margin:10px 0 0"><b>Verdict à l'oreille :</b> entends-tu « ROUND 2 », « REST », et « 3 · 2 · 1 · GO » nettement au-dessus de la musique ? Si oui, la feature tient. Si la voix est noyée ou absente, c'est bloquant.</p>
+</div>
+
+<div class="card">
   <h2>Journal</h2>
   <div id="log"></div>
 </div>
 
 <audio id="music" src="techno.mp3" loop></audio>
 <video id="camsrc" playsinline muted style="display:none"></video>
+
+<!-- Annonces réelles pour le test 6. Débloquées dans le geste utilisateur (leçon chantier 8). -->
+<audio id="a_round" src="round-2-fr.mp3" preload="auto"></audio>
+<audio id="a_rest"  src="rest-fr.mp3"  preload="auto"></audio>
+<audio id="a_half"  src="halfway-fr.mp3" preload="auto"></audio>
+<audio id="a_c3" src="count-fr-3.mp3" preload="auto"></audio>
+<audio id="a_c2" src="count-fr-2.mp3" preload="auto"></audio>
+<audio id="a_c1" src="count-fr-1.mp3" preload="auto"></audio>
+<audio id="a_go" src="count-fr-go.mp3" preload="auto"></audio>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -136,6 +156,7 @@ $('btnMusic').onclick = async () => {
       $('btnRecA').disabled = !(hasGUM && hasMR);
       $('btnRecB').disabled = !(hasGUM && hasMR);
       $('btnOverlay').disabled = !(hasGUM && hasMR && hasCS);
+      $('btnVoix').disabled = !(hasGUM && hasMR && hasCS);
       log('Musique: play OK');
     } else {
       music.pause();
@@ -411,6 +432,89 @@ $('btnOverlay').onclick = async () => {
   let n2=10; $('countdown').textContent=n2;
   const iv2=setInterval(()=>{ n2--; $('countdown').textContent=n2>0?n2:'';
     if(n2<=0){ clearInterval(iv2); if(rec2.state!=='inactive') rec2.stop(); } },1000);
+};
+
+// ===== TEST 6 : voix + décompte pendant la capture =====
+// Reproduit la fidélité iPhone : voix ET musique au niveau des fichiers, sans
+// ducking (impossible sur iOS, chantier 7). Les <audio> d'annonces sont débloqués
+// DANS le geste utilisateur (chantier 8), sinon iOS refuse tout play() différé.
+$('btnVoix').onclick = async () => {
+  $('btnVoix').disabled = true;
+  $('vxPlayed').textContent='0'; $('vxBlocked').textContent='0'; $('vxBlocked').className='';
+  const ids = ['a_round','a_rest','a_half','a_c3','a_c2','a_c1','a_go'];
+  const els = ids.map(id=>$(id));
+  // Déblocage synchrone dans le geste : play muet puis reset.
+  let unlocked = 0;
+  await Promise.all(els.map(el => {
+    el.muted = true;
+    return el.play().then(()=>{ el.pause(); el.currentTime=0; el.muted=false; unlocked++; })
+                    .catch(e=>{ el.muted=false; log('déblocage refusé '+el.id+': '+e.name); });
+  }));
+  log('Annonces débloquées: '+unlocked+'/'+els.length);
+  if (music.paused) { try { await music.play(); } catch(e){ log('musique: '+e.name); } }
+
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode:'environment', width:{ideal:1080}, height:{ideal:1920}, frameRate:{ideal:30,max:30} },
+      audio:true });
+  } catch(e){ log('ERREUR getUserMedia: '+e.name); $('btnVoix').disabled=false; return; }
+
+  const cam=$('camsrc'); cam.srcObject=stream;
+  try{ await cam.play(); }catch(e){}
+  await new Promise(res=>{ if(cam.videoWidth) return res(); cam.onloadedmetadata=()=>res(); });
+
+  const cv=$('cv'), ctx=cv.getContext('2d');
+  cv.width=cam.videoWidth||1080; cv.height=cam.videoHeight||1920;
+
+  let stop=false, frames=0; const t0=Date.now(); let dernier=0;
+  (function boucle(){
+    if(stop) return;
+    requestAnimationFrame(boucle);
+    const now=Date.now(); if(now-dernier<32) return; dernier=now;
+    ctx.drawImage(cam,0,0,cv.width,cv.height);
+    const el=Math.floor((now-t0)/1000);
+    const mm=String(Math.floor(el/60)).padStart(2,'0'), ss=String(el%60).padStart(2,'0');
+    dessineBloc(ctx,cv.width,cv.height,'EMOM  ROUND 2/8',mm+':'+ss,(15-el)<=3);
+    frames++;
+  })();
+
+  let cstream;
+  try { cstream=cv.captureStream(30); }
+  catch(e){ log('captureStream: '+e.name); stop=true; stream.getTracks().forEach(t=>t.stop()); $('btnVoix').disabled=false; return; }
+  const at=stream.getAudioTracks()[0];
+  if(at){ try{ cstream.addTrack(at); }catch(e){ log('addTrack: '+e.name); } }
+
+  const mime=supported[0];
+  let rec; const opts={audioBitsPerSecond:128000}; if(mime) opts.mimeType=mime;
+  try{ rec=new MediaRecorder(cstream,opts); }
+  catch(e){ log('MediaRecorder: '+e.name); stop=true; stream.getTracks().forEach(t=>t.stop()); $('btnVoix').disabled=false; return; }
+  const chunks=[];
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+
+  // Séquence sur 15 s : ROUND (t1), REST (t5), HALFWAY (t8), puis 3-2-1-GO (t11-14).
+  let played=0, blocked=0;
+  const jouer = el => { el.currentTime=0; el.play()
+      .then(()=>{ played++; $('vxPlayed').textContent=played; })
+      .catch(e=>{ blocked++; $('vxBlocked').textContent=blocked+' ('+e.name+')'; $('vxBlocked').className='ko'; log('annonce refusée '+el.id+': '+e.name); }); };
+  const seq=[[1000,'a_round'],[5000,'a_rest'],[8000,'a_half'],[11000,'a_c3'],[12000,'a_c2'],[13000,'a_c1'],[13800,'a_go']];
+  const timers=seq.map(([ms,id])=> setTimeout(()=>jouer($(id)), ms));
+
+  rec.onstop=async ()=>{
+    stop=true; timers.forEach(clearTimeout);
+    stream.getTracks().forEach(t=>t.stop());
+    const blob=new Blob(chunks,{type:rec.mimeType||'video/mp4'});
+    $('result3').src=URL.createObjectURL(blob);
+    if(blocked===0){ $('vxBlocked').textContent='0'; $('vxBlocked').className='ok'; }
+    const db=await mesureNiveau(blob);
+    if(db!==null){ $('vxRms').textContent=db.toFixed(1)+' dB'; $('vxRms').className=db>-40?'ok':(db>-50?'warn':'ko'); }
+    log('Test 6 fini. Annonces jouées: '+played+', refusées: '+blocked+'. ÉCOUTE LA VIDÉO.');
+    $('btnVoix').disabled=false; $('countdown').textContent='';
+  };
+
+  rec.start(); log('--- TEST 6 : voix + décompte ---');
+  let n=15; $('countdown').textContent=n;
+  const iv=setInterval(()=>{ n--; $('countdown').textContent=n>0?n:''; if(n<=0){ clearInterval(iv); if(rec.state!=='inactive') rec.stop(); } },1000);
 };
 </script>
 </body>
