@@ -689,10 +689,13 @@
     box-shadow:0 0 24px rgba(255,51,88,0.4);
   }
   /* Cache l'app pendant le wizard */
+  /* .app enveloppe aside + main : masquer le conteneur (les anciens sélecteurs
+     > main / > aside ne matchaient pas, d'où l'app qui perçait à droite du wizard). */
   body.wizard-active > header,
-  body.wizard-active > main,
-  body.wizard-active > .bottom-row,
-  body.wizard-active > footer{
+  body.wizard-active > .app,
+  body.wizard-active > footer,
+  body.wizard-active > #capStage,
+  body.wizard-active > #capResult{
     opacity:0 !important;
     pointer-events:none !important;
   }
@@ -1566,7 +1569,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v72</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v73</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
