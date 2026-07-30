@@ -1566,7 +1566,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v69</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v70</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -1629,6 +1629,18 @@ const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
   en:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
   pt:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}]
+};
+
+// Attaque (silence de tête, en ms) de chaque fichier du décompte 10→GO, mesurée à -40dB
+// le 30/07/2026. Les fichiers ElevenLabs ont des silences de tête inégaux : sans correction,
+// le mot ne tombe pas sur la seconde et les écarts perçus sont inégaux (le "2→1" tombait à
+// 0,85s au lieu de 1,0s). On déclenche chaque fichier à (i*1000 - attaque + attaque0) : le mot
+// atterrit alors pile sur la seconde, écarts égaux à 1,0s. attaque0 (celle du "10") sert d'ancre
+// car on ne peut pas déclencher avant t=0. En FR attaque0=0, donc audio et affichage sont calés.
+// ⚠️ Si les count-*.mp3 sont regénérés, re-mesurer ces valeurs. Ordre = [10,9,8,7,6,5,4,3,2,1,GO].
+const COUNT_ONSET={
+  fr:[0,0,279,312,422,322,178,379,465,315,490],
+  en:[531,731,310,697,376,496,493,574,529,554,486]
 };
 
 const TXT={
@@ -2980,8 +2992,13 @@ function launch(){
   const vMus=parseInt(document.getElementById('volMusic').value)/100;
   if(musicAudio) musicAudio.volume=vMus*0.05;
   const cdSteps=[];
+  // Calibrage : on cale le mot sur la seconde en compensant le silence de tête de chaque
+  // fichier (cf. COUNT_ONSET). attaque0 = ancre du "10" (on ne peut pas jouer avant t=0).
+  const _onsets=COUNT_ONSET[S.lang]||[];
+  const _onset0=_onsets[0]||0;
   countAudioList.forEach((file,i)=>{
-    cdSteps.push({t:i*1000,fn:()=>{
+    const _t=Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
+    cdSteps.push({t:_t,fn:()=>{
       // Pendant un enregistrement : décompte joué via buffer Web Audio (propre, capturé).
       if(_busActive){ playFileViaBus(file, Math.min(vol*2.0,1.0)); DBG('countdown(bus) '+file); return; }
       const a=_elFor(file);
@@ -2993,8 +3010,8 @@ function launch(){
       else DBG('countdown '+file);
     }});
   });
-  cdSteps.push({t:10500,fn:()=>startChrono()});
-  cdSteps.push({t:10800,fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }});
+  cdSteps.push({t:10500+_onset0,fn:()=>startChrono()});
+  cdSteps.push({t:10800+_onset0,fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }});
   cdSteps.sort((a,b)=>a.t-b.t);
   DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
   S.cdT0=Date.now(); // top réel du décompte, pour caler l'overlay vidéo dessus
