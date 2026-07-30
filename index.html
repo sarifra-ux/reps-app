@@ -1566,7 +1566,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v68</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v69</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -2402,7 +2402,7 @@ function ensureRecBus(){
   }
   return recBus;
 }
-function busActivate(){ _busActive=true; ensureRecBus(); try{ preloadRecCountdown(); }catch(e){} }
+function busActivate(){ _busActive=true; ensureRecBus(); try{ preloadRecCountdown(); }catch(e){} try{ preloadRecVoice(); }catch(e){} }
 function busDeactivate(){ _busActive=false; }
 // Route un element <audio> (musique, annonce, voix) vers sortie normale + bus.
 function busAttachEl(el){
@@ -2470,6 +2470,14 @@ function playFileViaBus(src, vol){
 async function preloadRecCountdown(){
   const list=(typeof S!=='undefined' && S.lang==='fr')?COUNT_AUDIO_FR:((typeof S!=='undefined'&&S.lang==='pt')?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
   for(const f of list){ await _loadRecBuf(f); }
+}
+// Précharge les voix jouées par speak() pendant l'enregistrement : surtout "TIME" en fin
+// de WOD, plus les jalons 3min / 1min / 10s. Sans ce préchargement, "TIME" devrait décoder
+// à la volée dans end() et partirait après l'arrêt de l'enregistrement.
+async function preloadRecVoice(){
+  const fx=(typeof VOICE_FILES!=='undefined' && VOICE_FILES[S.lang])?VOICE_FILES[S.lang]:null;
+  if(!fx) return;
+  for(const k of ['time','rest','s10','min1','min3']){ if(fx[k]) await _loadRecBuf(fx[k]); }
 }
 
 async function loadCountBuffer(lang, num){
@@ -2770,6 +2778,18 @@ function playVoiceFile(file, onFail){
   try{
     const volEl=document.getElementById('volVoice');
     const vol=volEl?parseInt(volEl.value)/100:1;
+    // Enregistrement vidéo : router un <audio> via createMediaElementSource est
+    // capricieux sur iPhone et n'atterrit pas dans la piste de la vidéo — c'est ce qui
+    // faisait manquer "TIME" en fin de WOD. Pendant l'enregistrement on passe donc par le
+    // buffer décodé (chemin propre, déjà utilisé pour round / rest / décompte).
+    if(_busActive){
+      duckStart();
+      playFileViaBus(file, Math.min(vol*2.0,1.0));
+      const _b=_recBuf[file];
+      const _d=(_b&&isFinite(_b.duration))?_b.duration*1000:1800;
+      setTimeout(duckEnd, _d+200);
+      return;
+    }
     const a=new Audio(file);
     a.volume=Math.min(vol*2.0,1.0);
     busAttachEl(a);
@@ -3252,9 +3272,9 @@ function end(){
   const _eb=document.getElementById('timerEyebrow');
   if(_eb) _eb.textContent=L3('// TERMINÉ','// DONE','// CONCLUÍDO');
   setStatus('','FINI');
-  // Enregistrement vidéo : on laisse tourner ~1s de plus pour capturer la frame finale
-  // (le 1:00 figé + l'annonce TIME) AVANT de couper. Sinon la vidéo s'arrête à 0:59.
-  try{ if(window.REC) setTimeout(()=>{ try{ REC._onStop(); }catch(e){} }, 1000); }catch(e){}
+  // Enregistrement vidéo : on laisse tourner ~1,9s de plus pour capturer la frame finale
+  // (le 1:00 figé) ET toute l'annonce "TIME" (fichier de 1,67s). À 1s elle était tronquée.
+  try{ if(window.REC) setTimeout(()=>{ try{ REC._onStop(); }catch(e){} }, 1900); }catch(e){}
 }
 
 function skipAhead(){
