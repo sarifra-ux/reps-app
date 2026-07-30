@@ -1566,7 +1566,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v70</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v71</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -1631,16 +1631,17 @@ const CD_TIMINGS={
   pt:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}]
 };
 
-// Attaque (silence de tête, en ms) de chaque fichier du décompte 10→GO, mesurée à -40dB
-// le 30/07/2026. Les fichiers ElevenLabs ont des silences de tête inégaux : sans correction,
-// le mot ne tombe pas sur la seconde et les écarts perçus sont inégaux (le "2→1" tombait à
-// 0,85s au lieu de 1,0s). On déclenche chaque fichier à (i*1000 - attaque + attaque0) : le mot
-// atterrit alors pile sur la seconde, écarts égaux à 1,0s. attaque0 (celle du "10") sert d'ancre
-// car on ne peut pas déclencher avant t=0. En FR attaque0=0, donc audio et affichage sont calés.
-// ⚠️ Si les count-*.mp3 sont regénérés, re-mesurer ces valeurs. Ordre = [10,9,8,7,6,5,4,3,2,1,GO].
+// Onset perçu (début de la partie forte du mot, en ms) de chaque fichier du décompte 10→GO,
+// mesuré le 30/07/2026 sur l'enveloppe d'énergie RMS (seuil -20 dB relatif au pic, fenêtres 20 ms).
+// Les mots ne démarrent pas tous au même instant dans leur fichier : sans correction, les écarts
+// perçus varient de ±90 ms (ex. 2→1 à 920 ms, 8→7 à 1090 ms). On déclenche chaque fichier à
+// (i*1000 - onset + onset0) : le mot tombe alors pile sur la seconde, écarts égaux à 1,0 s.
+// onset0 (celui du "10") sert d'ancre, on ne peut pas jouer avant t=0. En FR onset0=0, donc
+// l'audio est calé sur l'affichage. ⚠️ Si les count-*.mp3 changent, re-mesurer.
+// Ordre = [10,9,8,7,6,5,4,3,2,1,GO]. (Méthode fiable ; l'ancienne mesure silencedetect était fausse.)
 const COUNT_ONSET={
-  fr:[0,0,279,312,422,322,178,379,465,315,490],
-  en:[531,731,310,697,376,496,493,574,529,554,486]
+  fr:[0,0,0,90,60,90,0,60,80,0,60],
+  en:[50,0,0,90,100,0,0,0,0,0,0]
 };
 
 const TXT={
