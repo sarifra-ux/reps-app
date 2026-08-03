@@ -166,6 +166,8 @@
   .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
   .tracks{display:flex;flex-direction:column;gap:8px;}
   .mix-modes{display:flex;gap:6px;margin-bottom:4px;}
+  .byo-btn{width:100%;margin-bottom:6px;}
+  body.byo-music .mix-modes, body.byo-music .track-cat{opacity:0.4;pointer-events:none;filter:grayscale(0.6);}
   .mix-btn{flex:1;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--text);transition:all 0.2s;text-align:left;}
   .mix-btn:hover{border-color:var(--accent2);}
   .mix-btn.on{border-color:var(--accent2);background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(0,229,255,0.04));box-shadow:0 0 14px var(--glow-b);}
@@ -1363,6 +1365,13 @@
     <div>
       <div class="sec-label">🎵 Track</div>
       <div class="tracks">
+        <button class="mix-btn byo-btn" id="mixByoBtn" onclick="setByoMusic()">
+          <span class="mix-btn-ic">🎧</span>
+          <div class="mix-btn-txt">
+            <div class="mix-btn-title" data-i18n="byo.title">MA MUSIQUE</div>
+            <div class="mix-btn-sub" data-i18n="byo.sub">Joue ta propre musique (Spotify, Apple Music…)</div>
+          </div>
+        </button>
         <div class="mix-modes">
           <button class="mix-btn" id="mixAutoBtn" onclick="setMixMode('auto')">
             <span class="mix-btn-ic">🎲</span>
@@ -1766,6 +1775,8 @@ const I18N={
   'fav.modalTitle':['Favoris','Favorites','Favoritos'],
   'mix.selected':['morceaux cochés','tracks selected','faixas selecionadas'],
   'music.hint':['Choisis une catégorie','Pick a category','Escolha uma categoria'],
+  'byo.title':['MA MUSIQUE','MY MUSIC','MINHA MÚSICA'],
+  'byo.sub':['Joue ta propre musique (Spotify, Apple Music…)','Play your own music (Spotify, Apple Music…)','Toque sua própria música (Spotify, Apple Music…)'],
   'tile.mytracks':['MES MORCEAUX','MY TRACKS','MINHAS FAIXAS'],
   'tile.hymne':['HYMNE','ANTHEM','HINO'],
   'lang.choose':['Choisis ta langue','Choose your language','Escolha seu idioma'],
@@ -1899,6 +1910,7 @@ function updateTotalFromMode(){
 });
 
 function selectTrack(btn,key){
+  _byoOff(); // choisir un morceau REPS sort du mode "Ma musique"
   document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');S.track=key;
   // Ouvrir la catégorie parent et fermer les autres
@@ -2186,6 +2198,7 @@ window.CATEGORY_TRACKS={
 };
 window._mixCategory=null; // genre courant pour le mix auto (null = tous genres)
 let manualPicks=[]; // morceaux cochés par l'utilisateur en mode manuel
+let byoMusic=false; // "Ma musique" : REPS ne joue aucun morceau, le client met sa propre musique (Spotify/Apple Music) et REPS passe ses voix par-dessus
 let _shuffleCurrentKey=null;
 let _singleGenreMix=false; // vrai = on mixe dans le genre du morceau sans mode explicite
 
@@ -2198,6 +2211,7 @@ function genreOfTrack(key){
 
 // Appelé par le wizard : repart en mode par défaut (mix dans le genre choisi)
 function applyWizardMix(category){
+  _byoOff();
   mixMode=null;
   window._mixCategory=category;
   manualPicks=[];
@@ -2206,7 +2220,35 @@ function applyWizardMix(category){
   const mb=document.getElementById('mixManualBtn'); if(mb) mb.classList.remove('on');
 }
 
+// Mode "Ma musique" : le client joue sa propre musique dans son app (Spotify, Apple
+// Music, YouTube…). REPS ne diffuse aucun morceau, il ne passe que les voix et les bips
+// PAR-DESSUS. Côté iOS, la session audio est en .mixWithOthers (cf. AppDelegate.swift),
+// donc les voix ne coupent pas la musique du client. Pas de ducking en v1.
+function setByoMusic(){
+  byoMusic=!byoMusic;
+  const btn=document.getElementById('mixByoBtn');
+  if(btn) btn.classList.toggle('on', byoMusic);
+  document.body.classList.toggle('byo-music', byoMusic);
+  if(byoMusic){
+    // On coupe tout mix REPS : c'est la musique du client qui joue
+    mixMode=null; manualPicks=[]; window._mixCategory=null;
+    document.body.classList.remove('mix-manual');
+    const ab=document.getElementById('mixAutoBtn'); if(ab) ab.classList.remove('on');
+    const mb=document.getElementById('mixManualBtn'); if(mb) mb.classList.remove('on');
+    if(S.state==='playing') stopMusic();
+  } else {
+    if(S.state==='playing'){ stopMusic(); startMusic(); }
+  }
+}
+function _byoOff(){ // repasse en musique REPS quand l'utilisateur choisit un mix/morceau REPS
+  if(!byoMusic) return;
+  byoMusic=false;
+  document.body.classList.remove('byo-music');
+  const bb=document.getElementById('mixByoBtn'); if(bb) bb.classList.remove('on');
+}
+
 function setMixMode(mode){
+  _byoOff();
   // Toggle : si on reclique sur le mode actif, on désactive
   window._mixCategory=null; // toggle manuel = tous genres
   if(mixMode===mode){
@@ -2244,6 +2286,7 @@ function pickRandomTrack(excludeKey, pool){
 }
 
 function startMusic(){
+  if(byoMusic){ stopMusic(); return; } // Ma musique : REPS ne joue aucun morceau, le client met la sienne
   if(musicAudio){try{musicAudio.pause();}catch(e){}}
   let firstKey, loopMode;
   _singleGenreMix=false;

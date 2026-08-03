@@ -49,6 +49,10 @@
     --glow-tabata:rgba(255,59,111,0.4);
   }
   *{box-sizing:border-box;margin:0;padding:0;}
+  /* iOS : si un élément déborde en largeur, Safari dézoome la page (shrink-to-fit) et
+     les écrans fixes en 100vw ne couvrent plus toute la largeur visible (bande à droite
+     dans le wizard). overflow-x:hidden sur HTML (pas seulement body) bloque ce dézoom. */
+  html{overflow-x:hidden;width:100%;}
   body{
     background:
       radial-gradient(ellipse at top left, rgba(230,63,255,0.08) 0%, transparent 50%),
@@ -139,7 +143,7 @@
   .mode-tabs{display:flex;gap:6px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:5px;margin:14px 0;box-shadow:inset 0 1px 2px rgba(0,0,0,0.3);}
   .help-btn{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--surface);border:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:0.6rem;cursor:pointer;margin-left:6px;padding:0;line-height:1;transition:all 0.2s;}
   .help-btn:hover{border-color:var(--accent2);color:var(--accent2);}
-  .help-overlay{position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99998;background:rgba(8,6,16,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;animation:welcomeFadeIn 0.25s ease-out;}
+  .help-overlay{position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;z-index:99998;background:rgba(8,6,16,0.85);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;padding:24px;animation:welcomeFadeIn 0.25s ease-out;}
   .help-modal{background:linear-gradient(135deg,var(--surface),var(--card));border:1.5px solid var(--border);border-radius:18px;padding:22px;max-width:440px;width:100%;max-height:80vh;overflow-y:auto;}
   .help-modal-head{display:flex;align-items:center;justify-content:space-between;font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px;color:var(--text);margin-bottom:18px;}
   .help-close{background:var(--surface);border:1px solid var(--border);color:var(--muted);width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:0.9rem;line-height:1;}
@@ -162,6 +166,8 @@
   .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
   .tracks{display:flex;flex-direction:column;gap:8px;}
   .mix-modes{display:flex;gap:6px;margin-bottom:4px;}
+  .byo-btn{width:100%;margin-bottom:6px;}
+  body.byo-music .mix-modes, body.byo-music .track-cat{opacity:0.4;pointer-events:none;filter:grayscale(0.6);}
   .mix-btn{flex:1;display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--text);transition:all 0.2s;text-align:left;}
   .mix-btn:hover{border-color:var(--accent2);}
   .mix-btn.on{border-color:var(--accent2);background:linear-gradient(135deg,rgba(0,229,255,0.15),rgba(0,229,255,0.04));box-shadow:0 0 14px var(--glow-b);}
@@ -345,7 +351,7 @@
 
   /* ===== MODAL SETTINGS ===== */
   .settings-modal{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;
     z-index:99995;
     background:rgba(8,6,16,0.85);
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
@@ -534,7 +540,7 @@
 
   /* ===== ÉCRAN CHOIX DE LANGUE ===== */
   .lang-choice{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;z-index:99999;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -601,7 +607,7 @@
   .lang-name{font-weight:400;}
   /* ===== SPLASH LOGO REPS (à chaque ouverture) ===== */
   .welcome{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;z-index:99999;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -619,7 +625,7 @@
 
   /* ===== ÉCRAN CHOIX DE MODE ===== */
   .mode-choice{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99998;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;z-index:99998;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -689,20 +695,30 @@
     box-shadow:0 0 24px rgba(255,51,88,0.4);
   }
   /* Cache l'app pendant le wizard */
+  /* .app enveloppe aside + main : masquer le conteneur (les anciens sélecteurs
+     > main / > aside ne matchaient pas, d'où l'app qui perçait à droite du wizard). */
   body.wizard-active > header,
-  body.wizard-active > main,
-  body.wizard-active > .bottom-row,
-  body.wizard-active > footer{
+  body.wizard-active > .app,
+  body.wizard-active > footer,
+  body.wizard-active > #capStage,
+  body.wizard-active > #capResult{
     opacity:0 !important;
     pointer-events:none !important;
   }
+  /* Même fond que les panneaux du wizard : les écrans fixes ne couvrent pas 100% de la
+     largeur sur iOS, donc on peint le body avec le MÊME dégradé pour que la bande non
+     couverte (à droite) soit identique au panneau. Jointure invisible. */
   body.wizard-active{
-    background:var(--bg) !important;
+    background:
+      var(--monogram) 0 0/60px 60px,
+      radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(0,229,255,0.12) 0%, transparent 50%),
+      var(--bg-grad) !important;
   }
   body.wizard-active::before{
     content:'';
     position:fixed;
-    top:0;left:0;width:100vw;height:100vh;
+    top:0;left:0;right:0;bottom:0;width:100vw;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -714,7 +730,7 @@
 
   /* ===== ÉCRAN CHOIX DU TIMING ===== */
   .timing-choice{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99997;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;z-index:99997;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -780,7 +796,7 @@
 
   /* ===== ÉCRAN CHOIX DE LA MUSIQUE ===== */
   .music-choice{
-    position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99996;
+    position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;z-index:99996;
     background:
       var(--monogram) 0 0/60px 60px,
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
@@ -1349,6 +1365,13 @@
     <div>
       <div class="sec-label">🎵 Track</div>
       <div class="tracks">
+        <button class="mix-btn byo-btn" id="mixByoBtn" onclick="setByoMusic()">
+          <span class="mix-btn-ic">🎧</span>
+          <div class="mix-btn-txt">
+            <div class="mix-btn-title" data-i18n="byo.title">MA MUSIQUE</div>
+            <div class="mix-btn-sub" data-i18n="byo.sub">Joue ta propre musique (Spotify, Apple Music…)</div>
+          </div>
+        </button>
         <div class="mix-modes">
           <button class="mix-btn" id="mixAutoBtn" onclick="setMixMode('auto')">
             <span class="mix-btn-ic">🎲</span>
@@ -1566,7 +1589,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v63</div>
+<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v77</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -1629,6 +1652,19 @@ const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
   en:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
   pt:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}]
+};
+
+// Onset perçu (début de la partie forte du mot, en ms) de chaque fichier du décompte 10→GO,
+// mesuré le 30/07/2026 sur l'enveloppe d'énergie RMS (seuil -20 dB relatif au pic, fenêtres 20 ms).
+// Les mots ne démarrent pas tous au même instant dans leur fichier : sans correction, les écarts
+// perçus varient de ±90 ms (ex. 2→1 à 920 ms, 8→7 à 1090 ms). On déclenche chaque fichier à
+// (i*1000 - onset + onset0) : le mot tombe alors pile sur la seconde, écarts égaux à 1,0 s.
+// onset0 (celui du "10") sert d'ancre, on ne peut pas jouer avant t=0. En FR onset0=0, donc
+// l'audio est calé sur l'affichage. ⚠️ Si les count-*.mp3 changent, re-mesurer.
+// Ordre = [10,9,8,7,6,5,4,3,2,1,GO]. (Méthode fiable ; l'ancienne mesure silencedetect était fausse.)
+const COUNT_ONSET={
+  fr:[0,0,0,90,60,90,0,60,80,0,60],
+  en:[50,0,0,90,100,0,0,0,0,0,0]
 };
 
 const TXT={
@@ -1739,6 +1775,8 @@ const I18N={
   'fav.modalTitle':['Favoris','Favorites','Favoritos'],
   'mix.selected':['morceaux cochés','tracks selected','faixas selecionadas'],
   'music.hint':['Choisis une catégorie','Pick a category','Escolha uma categoria'],
+  'byo.title':['MA MUSIQUE','MY MUSIC','MINHA MÚSICA'],
+  'byo.sub':['Joue ta propre musique (Spotify, Apple Music…)','Play your own music (Spotify, Apple Music…)','Toque sua própria música (Spotify, Apple Music…)'],
   'tile.mytracks':['MES MORCEAUX','MY TRACKS','MINHAS FAIXAS'],
   'tile.hymne':['HYMNE','ANTHEM','HINO'],
   'lang.choose':['Choisis ta langue','Choose your language','Escolha seu idioma'],
@@ -1872,6 +1910,7 @@ function updateTotalFromMode(){
 });
 
 function selectTrack(btn,key){
+  _byoOff(); // choisir un morceau REPS sort du mode "Ma musique"
   document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');S.track=key;
   // Ouvrir la catégorie parent et fermer les autres
@@ -2159,6 +2198,7 @@ window.CATEGORY_TRACKS={
 };
 window._mixCategory=null; // genre courant pour le mix auto (null = tous genres)
 let manualPicks=[]; // morceaux cochés par l'utilisateur en mode manuel
+let byoMusic=false; // "Ma musique" : REPS ne joue aucun morceau, le client met sa propre musique (Spotify/Apple Music) et REPS passe ses voix par-dessus
 let _shuffleCurrentKey=null;
 let _singleGenreMix=false; // vrai = on mixe dans le genre du morceau sans mode explicite
 
@@ -2171,6 +2211,7 @@ function genreOfTrack(key){
 
 // Appelé par le wizard : repart en mode par défaut (mix dans le genre choisi)
 function applyWizardMix(category){
+  _byoOff();
   mixMode=null;
   window._mixCategory=category;
   manualPicks=[];
@@ -2179,7 +2220,35 @@ function applyWizardMix(category){
   const mb=document.getElementById('mixManualBtn'); if(mb) mb.classList.remove('on');
 }
 
+// Mode "Ma musique" : le client joue sa propre musique dans son app (Spotify, Apple
+// Music, YouTube…). REPS ne diffuse aucun morceau, il ne passe que les voix et les bips
+// PAR-DESSUS. Côté iOS, la session audio est en .mixWithOthers (cf. AppDelegate.swift),
+// donc les voix ne coupent pas la musique du client. Pas de ducking en v1.
+function setByoMusic(){
+  byoMusic=!byoMusic;
+  const btn=document.getElementById('mixByoBtn');
+  if(btn) btn.classList.toggle('on', byoMusic);
+  document.body.classList.toggle('byo-music', byoMusic);
+  if(byoMusic){
+    // On coupe tout mix REPS : c'est la musique du client qui joue
+    mixMode=null; manualPicks=[]; window._mixCategory=null;
+    document.body.classList.remove('mix-manual');
+    const ab=document.getElementById('mixAutoBtn'); if(ab) ab.classList.remove('on');
+    const mb=document.getElementById('mixManualBtn'); if(mb) mb.classList.remove('on');
+    if(S.state==='playing') stopMusic();
+  } else {
+    if(S.state==='playing'){ stopMusic(); startMusic(); }
+  }
+}
+function _byoOff(){ // repasse en musique REPS quand l'utilisateur choisit un mix/morceau REPS
+  if(!byoMusic) return;
+  byoMusic=false;
+  document.body.classList.remove('byo-music');
+  const bb=document.getElementById('mixByoBtn'); if(bb) bb.classList.remove('on');
+}
+
 function setMixMode(mode){
+  _byoOff();
   // Toggle : si on reclique sur le mode actif, on désactive
   window._mixCategory=null; // toggle manuel = tous genres
   if(mixMode===mode){
@@ -2217,6 +2286,7 @@ function pickRandomTrack(excludeKey, pool){
 }
 
 function startMusic(){
+  if(byoMusic){ stopMusic(); return; } // Ma musique : REPS ne joue aucun morceau, le client met la sienne
   if(musicAudio){try{musicAudio.pause();}catch(e){}}
   let firstKey, loopMode;
   _singleGenreMix=false;
@@ -2402,7 +2472,7 @@ function ensureRecBus(){
   }
   return recBus;
 }
-function busActivate(){ _busActive=true; ensureRecBus(); }
+function busActivate(){ _busActive=true; ensureRecBus(); try{ preloadRecCountdown(); }catch(e){} try{ preloadRecVoice(); }catch(e){} }
 function busDeactivate(){ _busActive=false; }
 // Route un element <audio> (musique, annonce, voix) vers sortie normale + bus.
 function busAttachEl(el){
@@ -2437,6 +2507,47 @@ function busAttachGain(gain){
   if(!_busActive||!gain) return;
   const bus=ensureRecBus(); if(!bus) return;
   try{ gain.connect(bus); }catch(e){}
+}
+
+// ===== LECTURE PAR BUFFER (uniquement pendant l'enregistrement) =====
+// Pourquoi : au tout début, le déblocage des <audio> laisse fuir une rafale sur iOS,
+// et router un <audio> via createMediaElementSource est capricieux sur iPhone. Pendant
+// un enregistrement, on joue donc le décompte via des AudioBuffer décodés (chemin propre,
+// déjà utilisé pour les annonces WA), branchés direct sur la sortie + le bus.
+const _recBuf={}; // cache AudioBuffer par src
+async function _loadRecBuf(src){
+  if(_recBuf[src]) return _recBuf[src];
+  const ctx=ensureAudioCtx(); if(!ctx) return null;
+  try{ const r=await fetch(src); const a=await r.arrayBuffer(); _recBuf[src]=await ctx.decodeAudioData(a); return _recBuf[src]; }
+  catch(e){ return null; }
+}
+function _playRecBuf(buf, vol){
+  const ctx=audioCtx; if(!ctx||!buf) return;
+  const s=ctx.createBufferSource(); s.buffer=buf;
+  const g=ctx.createGain(); g.gain.value=(isFinite(vol)?vol:1);
+  s.connect(g); g.connect(ctx.destination); busAttachGain(g);
+  try{ s.start(0); }catch(e){}
+}
+// Joue un fichier via buffer. Renvoie true si pris en charge (toujours, pendant enregistrement).
+function playFileViaBus(src, vol){
+  if(!ensureAudioCtx()) return false;
+  const buf=_recBuf[src];
+  if(buf){ _playRecBuf(buf, vol); return true; }
+  _loadRecBuf(src).then(b=>{ if(b) _playRecBuf(b, vol); }); // chargé à la volée si pas préchargé
+  return true;
+}
+// Précharge le décompte de départ (10..GO) de la langue courante, appelé à l'armement.
+async function preloadRecCountdown(){
+  const list=(typeof S!=='undefined' && S.lang==='fr')?COUNT_AUDIO_FR:((typeof S!=='undefined'&&S.lang==='pt')?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
+  for(const f of list){ await _loadRecBuf(f); }
+}
+// Précharge les voix jouées par speak() pendant l'enregistrement : surtout "TIME" en fin
+// de WOD, plus les jalons 3min / 1min / 10s. Sans ce préchargement, "TIME" devrait décoder
+// à la volée dans end() et partirait après l'arrêt de l'enregistrement.
+async function preloadRecVoice(){
+  const fx=(typeof VOICE_FILES!=='undefined' && VOICE_FILES[S.lang])?VOICE_FILES[S.lang]:null;
+  if(!fx) return;
+  for(const k of ['time','rest','s10','min1','min3']){ if(fx[k]) await _loadRecBuf(fx[k]); }
 }
 
 async function loadCountBuffer(lang, num){
@@ -2515,13 +2626,20 @@ function _announceFiles(){
 }
 // A APPELER DANS UN GESTE UTILISATEUR : debloque tous les elements d'un coup.
 function unlockAnnounceEls(){
+  // Pendant un enregistrement : on NE débloque PAS les <audio> (c'est cette rafale
+  // qui bavait au début). Les annonces + le décompte passent alors par des buffers
+  // Web Audio (voir playFileViaBus / playCountWA / playRoundWA / playRestWA).
+  if(_busActive) return;
   _announceFiles().forEach(src=>{
     const a=_elFor(src);
-    // Déjà routé dans la Web Audio = déjà débloqué : le rejouer déclencherait une
-    // rafale audible (le mute de l'element est ignoré une fois routé). On saute.
-    if(_busRouted.has(a)) return;
     try{
       a.muted=true;
+      // Pendant un enregistrement : router l'element AVANT de le jouer. Son son passe
+      // alors par un gain à 0 (puisque muted=true) => déblocage 100% silencieux, même si
+      // iOS laisse fuir un transitoire sur un <audio> muté. C'est ce qui rend le décompte
+      // propre dès le TOUT PREMIER enregistrement (avant, les elements n'étaient pas encore
+      // routés au moment du déblocage, donc la rafale passait).
+      busAttachEl(a);
       const p=a.play();
       if(p&&p.then) p.then(()=>{try{a.pause();a.currentTime=0;}catch(e){}a.muted=false;})
                      .catch(()=>{a.muted=false;});
@@ -2551,6 +2669,7 @@ function playAnnounceEl(src, onFail){
 }
 
 function playCount(num){
+  if(_busActive){ playCountWA(num); return; } // enregistrement : chemin Web Audio propre
   const src=(COUNT_AUDIO[S.lang]||{})[num];
   if(src && playAnnounceEl(src, ()=>playCountWA(num))) return;
   playCountWA(num);
@@ -2633,6 +2752,7 @@ async function loadRestBuffer(){
 }
 
 function playRest(){
+  if(_busActive){ playRestWA(); return; } // enregistrement : chemin Web Audio propre
   const src=S.lang==='fr'?'rest-fr.mp3':(S.lang==='pt'?'rest-pt.mp3':'rest.mp3');
   if(playAnnounceEl(src, ()=>playRestWA())) return;
   playRestWA();
@@ -2665,6 +2785,7 @@ function playRestBufferNow(buf){
 }
 
 function playRound(num){
+  if(_busActive){ playRoundWA(num); return; } // enregistrement : chemin Web Audio propre
   const src=(ROUND_AUDIO[S.lang]||{})[num];
   if(src && playAnnounceEl(src, ()=>playRoundWA(num))) return;
   playRoundWA(num);
@@ -2727,6 +2848,18 @@ function playVoiceFile(file, onFail){
   try{
     const volEl=document.getElementById('volVoice');
     const vol=volEl?parseInt(volEl.value)/100:1;
+    // Enregistrement vidéo : router un <audio> via createMediaElementSource est
+    // capricieux sur iPhone et n'atterrit pas dans la piste de la vidéo — c'est ce qui
+    // faisait manquer "TIME" en fin de WOD. Pendant l'enregistrement on passe donc par le
+    // buffer décodé (chemin propre, déjà utilisé pour round / rest / décompte).
+    if(_busActive){
+      duckStart();
+      playFileViaBus(file, Math.min(vol*2.0,1.0));
+      const _b=_recBuf[file];
+      const _d=(_b&&isFinite(_b.duration))?_b.duration*1000:1800;
+      setTimeout(duckEnd, _d+200);
+      return;
+    }
     const a=new Audio(file);
     a.volume=Math.min(vol*2.0,1.0);
     busAttachEl(a);
@@ -2814,7 +2947,7 @@ function startVisualCountdown(){
   S.cdVisSched=runAbsSchedule(visSteps);
 }
 
-function clearCd(){if(S.cdSched){clearInterval(S.cdSched);S.cdSched=null;}if(S.cdVisSched){clearInterval(S.cdVisSched);S.cdVisSched=null;}S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}document.getElementById('cdOverlay').classList.remove('show');}
+function clearCd(){if(S.cdSched){clearInterval(S.cdSched);S.cdSched=null;}if(S.cdVisSched){clearInterval(S.cdVisSched);S.cdVisSched=null;}S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}if(S.cdWA){S.cdWA.forEach(s=>{try{s.stop();}catch(e){}});S.cdWA=[];}document.getElementById('cdOverlay').classList.remove('show');}
 
 // ===== SEQUENCE =====
 function togglePlay(){
@@ -2916,12 +3049,55 @@ function launch(){
   // Ducking musique pendant tout le décompte pour que la voix soit bien audible
   const vMus=parseInt(document.getElementById('volMusic').value)/100;
   if(musicAudio) musicAudio.volume=vMus*0.05;
+  // Calibrage : on cale le mot sur la seconde en compensant le silence de tête de chaque
+  // fichier (cf. COUNT_ONSET). attaque0 = ancre du "10" (on ne peut pas jouer avant t=0).
+  const _onsets=COUNT_ONSET[S.lang]||[];
+  const _onset0=_onsets[0]||0;
+
+  if(_busActive){
+    // ENREGISTREMENT : le thread principal est saturé (dessin canvas 30 i/s + encodage vidéo),
+    // donc un décompte piloté par setInterval dérive de façon irrégulière (mesuré sur une vraie
+    // vidéo : écarts de 737 à 1147 ms au lieu de 1000). On planifie chaque chiffre sur l'HORLOGE
+    // Web Audio (`source.start(when)`), précise à l'échantillon et indépendante du thread.
+    // Buffers déjà préchargés par preloadRecCountdown() à l'armement de la caméra.
+    const ctx=ensureAudioCtx();
+    const lead=0.12;                              // petite marge pour armer les sources
+    const anchor=ctx?ctx.currentTime+lead:0;
+    const gainVol=Math.min(vol*2.0,1.0);
+    S.cdWA=[];
+    const startBuf=(buf,when)=>{
+      if(!ctx||!buf) return;
+      try{
+        const s=ctx.createBufferSource(); s.buffer=buf;
+        const g=ctx.createGain(); g.gain.value=gainVol;
+        s.connect(g); g.connect(ctx.destination); busAttachGain(g);
+        s.start(when); S.cdWA.push(s);
+      }catch(e){ DBG('cd WA start KO '+e.name); }
+    };
+    countAudioList.forEach((file,i)=>{
+      const when=anchor + Math.max(0, i*1000 - (_onsets[i]||0) + _onset0)/1000;
+      const b=_recBuf[file];
+      if(b) startBuf(b, when);
+      else _loadRecBuf(file).then(bb=>startBuf(bb, when)); // filet si pas préchargé
+    });
+    const leadMs=Math.round(lead*1000);
+    S.cdT0=Date.now()+leadMs;                     // overlay vidéo calé sur l'audio
+    // Chrono + remontée musique : tolèrent la gigue, restent sur runAbsSchedule (décalés du lead).
+    S.cdSched=runAbsSchedule([
+      {t:leadMs+10500+_onset0, fn:()=>startChrono()},
+      {t:leadMs+10800+_onset0, fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }}
+    ]);
+    DBG('launch(décompte horloge audio): mode='+S.mode+' total='+S.total+'s');
+    return;
+  }
+
+  // HORS enregistrement : chemin d'origine (éléments <audio>, thread libre, déjà régulier).
   const cdSteps=[];
   countAudioList.forEach((file,i)=>{
-    cdSteps.push({t:i*1000,fn:()=>{
+    const _t=Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
+    cdSteps.push({t:_t,fn:()=>{
       const a=_elFor(file);
       try{a.muted=false;}catch(e){} // sinon le déverrouillage async laisse le "10" muet au 1er WOD
-      busAttachEl(a);
       try{a.volume=Math.min(vol*2.0,1.0);}catch(e){}
       try{a.currentTime=0;}catch(e){}
       const pr=a.play();
@@ -2929,8 +3105,8 @@ function launch(){
       else DBG('countdown '+file);
     }});
   });
-  cdSteps.push({t:10500,fn:()=>startChrono()});
-  cdSteps.push({t:10800,fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }});
+  cdSteps.push({t:10500+_onset0,fn:()=>startChrono()});
+  cdSteps.push({t:10800+_onset0,fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }});
   cdSteps.sort((a,b)=>a.t-b.t);
   DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
   S.cdT0=Date.now(); // top réel du décompte, pour caler l'overlay vidéo dessus
@@ -3190,11 +3366,11 @@ function resetTimer(){
 }
 
 function end(){
-  try{ if(window.REC) REC._onStop(); }catch(e){}
   clearInterval(S.iv);clearCd();stopMusic();stopAllAnnounces();
   S.gen=(S.gen||0)+1; // tue tout intervalle orphelin
   if(voiceAudio){try{voiceAudio.pause();}catch(e){}voiceAudio=null;}
   S.state='idle';S.remain=0;
+  updateClock(); // fige l'affichage sur la valeur finale (EMOM: 1:00 au lieu de 0:59 ; sinon 0:00)
   document.body.classList.remove('wod-live');
   document.getElementById('btnPlay').textContent='▶';
   document.getElementById('timerCard').classList.remove('playing');
@@ -3208,6 +3384,9 @@ function end(){
   const _eb=document.getElementById('timerEyebrow');
   if(_eb) _eb.textContent=L3('// TERMINÉ','// DONE','// CONCLUÍDO');
   setStatus('','FINI');
+  // Enregistrement vidéo : on laisse tourner ~1,9s de plus pour capturer la frame finale
+  // (le 1:00 figé) ET toute l'annonce "TIME" (fichier de 1,67s). À 1s elle était tronquée.
+  try{ if(window.REC) setTimeout(()=>{ try{ REC._onStop(); }catch(e){} }, 1900); }catch(e){}
 }
 
 function skipAhead(){
@@ -3561,6 +3740,12 @@ function chooseLanguage(lang){
 function showModeChoice(){
   const screen=document.getElementById('modeChoiceScreen');
   if(!screen) return;
+  // Nettoyage capture vidéo : au retour dans le wizard juste après une capture, un écran
+  // de capture (capStage / capResult) pouvait rester affiché en fond et transparaître par
+  // le bord (les écrans wizard ne couvrent pas 100% du viewport iOS). On force sa fermeture.
+  try{ if(window.REC && (REC.armed||REC.recording)) REC.cancel(); }catch(e){}
+  ['capStage','capResult'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('on'); });
+  try{ const _cc=document.getElementById('capCamSrc'); if(_cc){ _cc.pause(); _cc.srcObject=null; } }catch(e){}
   // Cacher l'app pendant le wizard
   document.body.classList.add('wizard-active');
   // Adapter le titre selon la langue
@@ -3728,6 +3913,11 @@ function _csStepper(label,valId,minusCall,plusCall,valText){
     + '</div></div>';
 }
 function showCustomChoice(mode){
+  // Masquer les autres écrans du wizard : sinon celui d'avant (ex: réglages EMOM)
+  // reste affiché derrière et on voit deux écrans superposés.
+  ['modeChoiceScreen','timingChoiceScreen','musicChoiceScreen'].forEach(id=>{
+    const s=document.getElementById(id); if(s) s.style.display='none';
+  });
   CS={
     mode:mode,
     work:S.emomIntervalSec||60, rest:S.emomRestSec||0, rounds:S.emomRounds||5,
@@ -3847,6 +4037,10 @@ function csContinue(){
 function showMusicChoice(){
   const screen=document.getElementById('musicChoiceScreen');
   if(!screen) return;
+  // Masquer les autres écrans du wizard pour éviter tout empilement visible
+  ['modeChoiceScreen','timingChoiceScreen','customScreen'].forEach(id=>{
+    const s=document.getElementById(id); if(s) s.style.display='none';
+  });
   const title=document.getElementById('musicChoiceTitle');
   const hint=document.getElementById('musicChoiceHint');
   if(title) title.textContent=L3('Musique','Music','Música');
@@ -4463,7 +4657,7 @@ window.addEventListener('DOMContentLoaded',membersInit);
   <video id="capResultVid" playsinline controls></video>
   <pre id="capDiag" style="max-width:100%;max-height:26vh;overflow:auto;margin:0;padding:10px;background:rgba(0,0,0,.5);border-radius:8px;color:#8fe;font:11px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;"></pre>
   <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-    <a id="capDownload" download="reps-wod.mp4">⬇︎ Télécharger</a>
+    <button id="capDownload" onclick="REC.shareFile()">⬇︎ Enregistrer / Partager</button>
     <button onclick="document.getElementById('capResult').classList.remove('on')">Fermer</button>
   </div>
 </div>
@@ -4673,20 +4867,39 @@ window.addEventListener('DOMContentLoaded',membersInit);
 
   REC.save=function(blob){
     const fname='reps-wod-'+Date.now()+'.mp4';
+    let file=null;
+    try{ file=new File([blob],fname,{type:blob.type||'video/mp4'}); }catch(e){}
+    // Mémorisé pour le bouton "Enregistrer / Partager" de l'écran résultat.
+    REC.lastFile=file; REC.lastBlob=blob; REC.lastName=fname;
+    // Tentative de partage natif immédiat (feuille iOS : Enregistrer la vidéo / Fichiers).
     try{
-      const file=new File([blob],fname,{type:blob.type||'video/mp4'});
-      if(navigator.canShare && navigator.canShare({files:[file]})){
-        navigator.share({files:[file],title:'REPS WOD'}).catch(()=>showResult(blob,fname));
+      if(file && navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file],title:'REPS WOD'}).then(()=>{}).catch(()=>showResult(blob,fname));
         return;
       }
     }catch(e){}
     showResult(blob,fname);
   };
 
+  // Partage / enregistrement déclenché par le bouton (donc dans un geste utilisateur, requis
+  // par iOS). Le <a download> ne marche pas dans le WKWebView : on passe par la feuille native.
+  REC.shareFile=function(){
+    const f=REC.lastFile;
+    try{
+      if(f && navigator.canShare && navigator.canShare({files:[f]})){
+        navigator.share({files:[f],title:'REPS WOD'}).catch(()=>{});
+        return;
+      }
+      if(f && navigator.share){ navigator.share({files:[f]}).catch(()=>{}); return; }
+    }catch(e){}
+    // Repli : ouvrir la vidéo seule, l'utilisateur fait un appui long → Enregistrer la vidéo.
+    try{ if(REC.lastUrl) window.open(REC.lastUrl,'_blank'); }catch(e){}
+  };
+
   function showResult(blob,fname){
     const url=URL.createObjectURL(blob);
+    REC.lastUrl=url;
     el('capResultVid').src=url;
-    const dl=el('capDownload'); dl.href=url; dl.download=fname||'reps-wod.mp4';
     const d=el('capDiag'); if(d) d.textContent=(REC.diag||[]).join('\n');
     el('capResult').classList.add('on');
   }
