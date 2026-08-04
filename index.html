@@ -207,6 +207,8 @@
   .imp-del{margin-left:auto;width:24px;height:24px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--muted);display:inline-flex;align-items:center;justify-content:center;font-size:1rem;line-height:1;flex-shrink:0;transition:all 0.2s;}
   .imp-del:hover,.imp-del:active{border-color:#ff4d6d;color:#ff4d6d;background:rgba(255,77,109,0.12);}
   .music-tile-perso:hover,.music-tile-perso:active{border-color:var(--accent2);box-shadow:0 0 18px rgba(0,229,255,0.25);}
+  .music-tile-byo:hover,.music-tile-byo:active{border-color:var(--accent);box-shadow:0 0 18px rgba(157,78,221,0.30);}
+  .music-tile-byo.on{border-color:var(--accent);box-shadow:0 0 18px rgba(157,78,221,0.30);}
   .perso-row{display:flex;align-items:center;gap:8px;}
   .perso-pick{flex:1;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--text);text-align:left;transition:all 0.2s;}
   .perso-pick:hover,.perso-pick:active{border-color:var(--accent);box-shadow:0 0 12px rgba(230,63,255,0.2);}
@@ -1098,6 +1100,10 @@
         <span class="music-tile-icon">🎵</span>
         <span class="music-tile-name" data-i18n="tile.mytracks">MES MORCEAUX</span>
       </button>
+      <button class="music-tile music-tile-byo" onclick="chooseByoMusic()">
+        <span class="music-tile-icon">🎧</span>
+        <span class="music-tile-name" data-i18n="tile.byo">MA MUSIQUE</span>
+      </button>
     </div>
     <div class="music-choice-tiles" id="musicTrackTiles" style="display:none"></div>
     <div class="wizard-hint" id="musicChoiceHint" data-i18n="music.hint">Choisis une catégorie</div>
@@ -1182,9 +1188,9 @@
       <button class="settings-modal-close" onclick="closePersoModal()">✕</button>
     </div>
     <div class="settings-modal-body">
-      <button class="imp-add-btn" onclick="document.getElementById('impFileInput2').click()" data-i18n="perso.import">+ Importer (musique ou vidéo)</button>
+      <button class="imp-add-btn" onclick="document.getElementById('impFileInput2').click()" data-i18n="perso.import">+ Importer un fichier audio</button>
       <div id="persoModalList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;"></div>
-      <div class="imp-empty" id="persoModalEmpty" data-i18n="perso.empty">Aucun morceau importé. Importe ta musique, ou un enregistrement d'écran d'une chanson.</div>
+      <div class="imp-empty" id="persoModalEmpty" data-i18n="perso.empty">Aucun morceau importé. Importe tes propres fichiers audio.</div>
     </div>
   </div>
 </div>
@@ -1365,6 +1371,7 @@
     <div>
       <div class="sec-label">🎵 Track</div>
       <div class="tracks">
+        <!-- MA MUSIQUE (BYO) masqué : voir écran wizard. Réactiver avec le chemin audio natif.
         <button class="mix-btn byo-btn" id="mixByoBtn" onclick="setByoMusic()">
           <span class="mix-btn-ic">🎧</span>
           <div class="mix-btn-txt">
@@ -1372,6 +1379,7 @@
             <div class="mix-btn-sub" data-i18n="byo.sub">Joue ta propre musique (Spotify, Apple Music…)</div>
           </div>
         </button>
+        -->
         <div class="mix-modes">
           <button class="mix-btn" id="mixAutoBtn" onclick="setMixMode('auto')">
             <span class="mix-btn-ic">🎲</span>
@@ -1556,9 +1564,11 @@
     <div class="controls">
       <button class="btn-ctrl" onclick="resetTimer()">↺ RESET</button>
       <button class="btn-play" id="btnPlay" onclick="togglePlay()">▶</button>
-      <button class="btn-ctrl" id="btnRec" onclick="toggleRec()">🎥 REC</button>
       <button class="btn-ctrl" id="btnSkip" onclick="skipAhead()" style="display:none">⏭ –3MIN</button>
+      <button class="btn-ctrl" id="btnFilm" onclick="toggleFilm()" style="display:none">🎥 Filmer</button>
     </div>
+
+    <button id="addVideoBtn" onclick="startVideoOverlayFlow()" style="display:none;width:100%;margin-top:10px;padding:14px;font:800 15px/1 -apple-system,system-ui,sans-serif;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,#7c3aed,#a855f7);border:0;border-radius:12px;box-shadow:0 6px 18px rgba(124,58,237,.35);"></button>
 
     <div class="score-capture" id="scoreCapture">
       <div class="sc-label" id="scoreCaptureLabel">Enregistrer un score</div>
@@ -1589,7 +1599,18 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:6px;bottom:6px;z-index:2147483647;font:600 10px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none;">build v77</div>
+<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v98</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
+  <video id="syncVideo" playsinline style="flex:1;width:100%;min-height:0;object-fit:contain;background:#000;"></video>
+  <div style="padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#111;color:#fff;">
+    <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;">Place le curseur sur le <b>GO</b> de ta vidéo (le départ du WOD)</div>
+    <input id="syncSlider" type="range" min="0" max="1000" value="0" step="1" style="width:100%;accent-color:#7c3aed;">
+    <div id="syncTime" style="font:700 13px/1 ui-monospace,monospace;color:#a78bfa;margin-top:6px;">0.0 s</div>
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button onclick="cancelSync()" style="flex:1;padding:14px;background:#333;color:#fff;border:0;border-radius:10px;font:700 14px sans-serif;">Annuler</button>
+      <button onclick="confirmSync()" style="flex:2;padding:14px;background:#7c3aed;color:#fff;border:0;border-radius:10px;font:700 14px sans-serif;">C'est le GO ✓</button>
+    </div>
+  </div>
+</div>
 <script>
 // ===== COUPE-TOUT AUDIO (racine du bug "résidu du WOD précédent") =====
 // Tout élément Audio créé dans l'app est enregistré ici. Au lancement d'un WOD,
@@ -1776,14 +1797,15 @@ const I18N={
   'mix.selected':['morceaux cochés','tracks selected','faixas selecionadas'],
   'music.hint':['Choisis une catégorie','Pick a category','Escolha uma categoria'],
   'byo.title':['MA MUSIQUE','MY MUSIC','MINHA MÚSICA'],
+  'tile.byo':['MA MUSIQUE','MY MUSIC','MINHA MÚSICA'],
   'byo.sub':['Joue ta propre musique (Spotify, Apple Music…)','Play your own music (Spotify, Apple Music…)','Toque sua própria música (Spotify, Apple Music…)'],
   'tile.mytracks':['MES MORCEAUX','MY TRACKS','MINHAS FAIXAS'],
   'tile.hymne':['HYMNE','ANTHEM','HINO'],
   'lang.choose':['Choisis ta langue','Choose your language','Escolha seu idioma'],
   'perso.title':['Mes morceaux','My tracks','Minhas faixas'],
-  'perso.import':['+ Importer (musique ou vidéo)','+ Import (music or video)','+ Importar (música ou vídeo)'],
+  'perso.import':['+ Importer un fichier audio','+ Import an audio file','+ Importar um arquivo de áudio'],
   'perso.importOne':['+ Importer un morceau','+ Import a track','+ Importar uma faixa'],
-  'perso.empty':['Aucun morceau importé. Importe ta musique, ou un enregistrement d\'écran d\'une chanson.','No imported track yet. Import your music, or a screen recording of a song.','Nenhuma faixa importada. Importe sua música, ou uma gravação de tela de uma canção.'],
+  'perso.empty':['Aucun morceau importé. Importe tes propres fichiers audio.','No imported track yet. Import your own audio files.','Nenhuma faixa importada. Importe seus próprios arquivos de áudio.'],
   'perso.empty2':['Aucun morceau importé. Ajoute tes propres musiques depuis ton téléphone.','No imported track yet. Add your own music from your phone.','Nenhuma faixa importada. Adicione sua música do seu telefone.'],
   'perso.tracks':['🎵 MES MORCEAUX','🎵 MY TRACKS','🎵 MINHAS FAIXAS'],
   'fav.title':['⭐ WODs favoris','⭐ Favorite WODs','⭐ WODs favoritos'],
@@ -2246,6 +2268,32 @@ function _byoOff(){ // repasse en musique REPS quand l'utilisateur choisit un mi
   document.body.classList.remove('byo-music');
   const bb=document.getElementById('mixByoBtn'); if(bb) bb.classList.remove('on');
 }
+// Tuile "MA MUSIQUE" de l'écran wizard : active le mode BYO et ferme le wizard, comme
+// une tuile catégorie. REPS ne jouera aucun morceau, le client met sa propre musique.
+function chooseByoMusic(){
+  byoMusic=true;
+  document.body.classList.add('byo-music');
+  const bb=document.getElementById('mixByoBtn'); if(bb) bb.classList.add('on');
+  const tile=document.querySelector('.music-tile-byo'); if(tile) tile.classList.add('on');
+  // On coupe tout mix REPS
+  mixMode=null; manualPicks=[]; window._mixCategory=null;
+  document.body.classList.remove('mix-manual');
+  const ab=document.getElementById('mixAutoBtn'); if(ab) ab.classList.remove('on');
+  const mb=document.getElementById('mixManualBtn'); if(mb) mb.classList.remove('on');
+  if(S.state==='playing') stopMusic();
+  try{ nativePreloadAnnounces(); }catch(e){} // prépare toutes les voix natives à l'avance
+  try{localStorage.setItem('reps_music_category','byo');}catch(e){}
+  // Libellé "en cours de lecture"
+  const npBadge=document.getElementById('npBadge'); if(npBadge) npBadge.textContent='🎧 '+L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA');
+  const tName=document.getElementById('tName'); if(tName) tName.textContent=L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA');
+  const tCover=document.getElementById('tCover'); if(tCover) tCover.textContent='🎧';
+  // Ferme le wizard comme le fait une tuile catégorie
+  const screen=document.getElementById('musicChoiceScreen');
+  if(screen && screen.style.display!=='none'){
+    screen.style.opacity='0'; screen.style.transition='opacity 0.4s ease';
+    setTimeout(()=>{ screen.style.display='none'; if(typeof finishWizard==='function') finishWizard(); },400);
+  }
+}
 
 function setMixMode(mode){
   _byoOff();
@@ -2387,6 +2435,7 @@ function duckEnd(){
 }
 
 function playBeep(){
+  if(nativeVoiceOn()){ nativeVoicePlay(BEEP_AUDIO); return; }
   beepAudio=getCachedAudio('beep', BEEP_AUDIO);
   beepAudio.currentTime=0;
   beepAudio.volume=parseInt(document.getElementById('volVoice').value)/100;
@@ -2396,6 +2445,7 @@ function playBeep(){
 
 let tickAudio=null;
 function playTick(){
+  if(nativeVoiceOn()){ nativeVoicePlay(TICK_AUDIO); return; }
   // Bip aigu tranchant pour le décompte EMOM (volume forcé à 100% pour être audible par-dessus la musique)
   tickAudio=getCachedAudio('tick', TICK_AUDIO);
   tickAudio.currentTime=0;
@@ -2650,6 +2700,11 @@ function unlockAnnounceEls(){
 // Joue une annonce via element <audio>. onFail = repli Web Audio.
 function playAnnounceEl(src, onFail){
   if(!src) return false;
+  if(nativeVoiceOn()){ // Ma musique : voix natives par-dessus la musique du client, jamais de <audio> WebKit
+    if(_naLoaded[src]) nativeVoicePlay(src);
+    else nativeVoicePreload(src).then(()=>nativeVoicePlay(src));
+    return true;
+  }
   try{
     const a=_elFor(src);
     try{a.muted=false;}catch(e){} // garantir non-muet malgré un déverrouillage async en cours
@@ -2949,13 +3004,190 @@ function startVisualCountdown(){
 
 function clearCd(){if(S.cdSched){clearInterval(S.cdSched);S.cdSched=null;}if(S.cdVisSched){clearInterval(S.cdVisSched);S.cdVisSched=null;}S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}if(S.cdWA){S.cdWA.forEach(s=>{try{s.stop();}catch(e){}});S.cdWA=[];}document.getElementById('cdOverlay').classList.remove('show');}
 
+// ===== VOIX NATIVES (mode "Ma musique") =====
+// En mode Ma musique, les voix passent par le plugin natif @capgo/native-audio (HORS WebKit),
+// configuré sans notification -> il MIXE avec Spotify au lieu de le couper. Fallback silencieux
+// si le plugin n'est pas installé. N'affecte QUE le mode Ma musique ; mode normal intact.
+const _NA=(window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.NativeAudio)||null;
+let _naReady=false; const _naLoaded={};
+function nativeVoiceOn(){ return byoMusic && !!_NA; }
+async function nativeVoiceInit(){
+  if(!_NA) return false;
+  if(!_naReady){
+    try{ await _NA.configure({ showNotification:false }); _naReady=true; DBG('NA configure OK'); }
+    catch(e){ DBG('NA configure KO '+((e&&e.message)||e)); }
+  }
+  return _naReady;
+}
+async function nativeVoicePreload(file){
+  if(!_NA||_naLoaded[file]) return;
+  // assetPath : dossier bundle public/ (là où cap sync copie www). Si le preload échoue,
+  // c'est le 1er truc à tester : enlever le préfixe 'public/'.
+  try{ await _NA.preload({ assetId:file, assetPath:'public/'+file, isUrl:false, audioChannelNum:1 }); _naLoaded[file]=true; DBG('NA preload '+file); }
+  catch(e){ DBG('NA preload KO '+file+' '+((e&&e.message)||e)); }
+}
+function nativeVoicePlay(file){
+  if(!_NA) return false;
+  try{ _NA.play({ assetId:file }); return true; }
+  catch(e){ DBG('NA play KO '+file+' '+((e&&e.message)||e)); return false; }
+}
+async function nativePreloadCountdown(){
+  if(!(await nativeVoiceInit())) return;
+  const list=(typeof S!=='undefined'&&S.lang==='fr')?COUNT_AUDIO_FR:((typeof S!=='undefined'&&S.lang==='pt')?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
+  for(const f of list){ await nativeVoicePreload(f); }
+}
+// Toutes les voix d'un WOD pour la langue courante (décompte + 3-2-1 + ROUND + rest/time/… + bips)
+function _announceFilesForLang(){
+  const L=(typeof S!=='undefined')?S.lang:'fr';
+  const out=[];
+  ((L==='fr')?COUNT_AUDIO_FR:((L==='pt')?COUNT_AUDIO_PT:COUNT_AUDIO_EN)).forEach(f=>out.push(f)); // décompte 10->GO
+  const c3=COUNT_AUDIO[L]||{}; Object.keys(c3).forEach(k=>out.push(c3[k]));                       // 3-2-1
+  const ra=ROUND_AUDIO[L]||{}; Object.keys(ra).forEach(k=>out.push(ra[k]));                       // ROUND 2..10
+  const vf=VOICE_FILES[L]||{}; Object.keys(vf).forEach(k=>out.push(vf[k]));                       // rest/time/ten-sec/…
+  out.push(BEEP_AUDIO, TICK_AUDIO);
+  out.push(L==='fr'?'halfway-fr.mp3':(L==='pt'?'halfway-pt.mp3':'halfway.mp3'));
+  return out.filter((f,i)=>f && out.indexOf(f)===i);
+}
+async function nativePreloadAnnounces(){
+  if(!(await nativeVoiceInit())) return;
+  for(const f of _announceFilesForLang()){ await nativeVoicePreload(f); }
+}
+
 // ===== SEQUENCE =====
 function togglePlay(){
-  unlockIOSAudio(); // iPhone : forcer le Web Audio sur le canal média (geste utilisateur)
+  if(byoMusic){ if(_iosUnlockEl){try{_iosUnlockEl.pause();}catch(e){}} } // Ma musique : pas de loop silencieux WebKit (il tiendrait la session en non-mix)
+  else unlockIOSAudio(); // iPhone : forcer le Web Audio sur le canal média (geste utilisateur)
   if(S.state==='idle') launch();
   else if(S.state==='playing') pause();
   else if(S.state==='paused') resume();
 }
+
+// ===== PLUGIN NATIF VIDEO OVERLAY (étape 0 : test ping) =====
+// Résolution AU MOMENT DE L'APPEL (Capacitor est prêt), via Capacitor.Plugins (plugin natif).
+function _videoOverlayPlugin(){
+  const C=window.Capacitor;
+  if(!C) return null;
+  if(C.Plugins && C.Plugins.VideoOverlay) return C.Plugins.VideoOverlay;
+  if(typeof C.registerPlugin==='function'){ try{ return C.registerPlugin('VideoOverlay'); }catch(e){} }
+  return null;
+}
+async function testOverlayPlugin(){
+  const VO=_videoOverlayPlugin();
+  if(!VO){
+    DBG('VideoOverlay introuvable | Capacitor='+(!!window.Capacitor)+' Plugins='+!!(window.Capacitor&&window.Capacitor.Plugins)+' registerPlugin='+!!(window.Capacitor&&window.Capacitor.registerPlugin));
+    return;
+  }
+  try{ const r=await VO.ping({msg:'hello'}); DBG('✅ VideoOverlay ping OK: '+JSON.stringify(r)); }
+  catch(e){ DBG('❌ VideoOverlay ping KO: '+((e&&e.message)||e)); }
+}
+// ÉTAPE 4 : test avec un vrai bloc chrono (échantillon EMOM 10/10 x2)
+function _sampleWodFrames(){
+  const f=[];
+  for(let s=0;s<=40;s++){
+    const round=Math.min(Math.floor(s/20)+1,2);
+    const into=s%20, phase=into<10?'WORK':'REST';
+    const segLeft=into<10?(10-into):(20-into);
+    f.push({
+      top:'EMOM · ROUND '+round+'/2'+(phase==='REST'?' · REST':''),
+      time:String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'),
+      alert:(segLeft<=3&&segLeft>0)
+    });
+  }
+  return f;
+}
+let _syncCtx=null;
+async function startVideoOverlayFlow(){
+  const VO=_videoOverlayPlugin();
+  if(!VO){ DBG('overlay: plugin introuvable'); return; }
+  const real=!!(S.wodFrames&&S.wodFrames.length);
+  const frames=real?S.wodFrames:_sampleWodFrames();
+  DBG('overlay: '+frames.length+' frames ('+(real?'WOD réel':'échantillon')+'), sélecteur…');
+  let picked;
+  try{ picked=await VO.pickVideo(); }catch(e){ DBG('❌ pick KO: '+((e&&e.message)||e)); return; }
+  if(!picked||!picked.path){ DBG('pick: annulé'); return; }
+  // CALAGE AUTOMATIQUE : on passe l'heure du GO, le natif compare avec l'horodatage de la vidéo.
+  DBG('overlay: calage auto (GO='+(S.goWallClock||0)+')…');
+  try{
+    const r=await VO.exportOverlay({ path:picked.path, frames, goWallClockMs:(S.goWallClock||0) });
+    const off=(r&&r.goOffsetSec!=null)?Number(r.goOffsetSec).toFixed(1):'?';
+    DBG('✅ overlay OK — GO calé à '+off+'s ('+(r&&r.auto?'AUTO':'manuel/0')+')');
+  }catch(e){ DBG('❌ overlay KO: '+((e&&e.message)||e)); }
+}
+// Propose le CTA vidéo à la fin d'un WOD, uniquement si on a de vraies frames
+// enregistrées ET que le plugin natif est présent (donc sur l'app iOS, pas le web).
+function offerVideoOverlay(){
+  const btn=document.getElementById('addVideoBtn');
+  if(!btn) return;
+  const hasWod=!!(S.wodFrames&&S.wodFrames.length>3);
+  const native=!!_videoOverlayPlugin();
+  if(hasWod&&native){
+    btn.textContent=L3('🎬 Ajouter ta vidéo au chrono','🎬 Add your video to the timer','🎬 Adicionar teu vídeo ao cronômetro');
+    btn.style.display='block';
+  } else {
+    btn.style.display='none';
+  }
+}
+function hideVideoOverlayCta(){
+  const btn=document.getElementById('addVideoBtn');
+  if(btn) btn.style.display='none';
+}
+
+// ===== Enregistrement caméra natif (un seul tél, vidéo propre, timestamps corrects) =====
+// Remplace l'ancienne capture WebKit (morte, vidéo accélérée). REPS pilote la caméra ET
+// le WOD, donc on connaît le décalage exact GO - début d'enregistrement : pas d'anti-triche
+// par métadonnées, calage exact.
+function setFilmBtn(on){
+  const b=document.getElementById('btnFilm');
+  if(!b) return;
+  b.textContent=on?L3('🎥 Filme…','🎥 Filming…','🎥 Filmando…'):L3('🎥 Filmer','🎥 Film','🎥 Filmar');
+  b.classList.toggle('filming',on);
+}
+async function toggleFilm(){
+  const VO=_videoOverlayPlugin();
+  if(!VO){ DBG('film: plugin natif absent (web ?)'); return; }
+  if(S.filming){
+    try{ await VO.cancelRecording(); }catch(e){}
+    S.filming=false; S.recStartMs=0; setFilmBtn(false);
+    DBG('film: annulé'); return;
+  }
+  try{
+    const r=await VO.startRecording({camera:'back'});
+    S.filming=true;
+    S.recStartMs=(r&&r.startWallClockMs)||Date.now();
+    setFilmBtn(true);
+    DBG('film: REC démarré');
+  }catch(e){
+    S.filming=false; setFilmBtn(false);
+    DBG('❌ film KO: '+((e&&e.message)||e));
+    if((e&&e.code)==='PERM_DENIED') showAnnounce(L3('Autorise la caméra','Allow camera','Autoriza a câmera'));
+  }
+}
+// Fin du WOD : couper l'enregistrement puis incruster le chrono et sauver dans Photos.
+async function finishFilmAndExport(){
+  const VO=_videoOverlayPlugin();
+  if(!VO){ S.filming=false; setFilmBtn(false); return; }
+  let rec;
+  try{ rec=await VO.stopRecording(); }
+  catch(e){ DBG('❌ stop film KO: '+((e&&e.message)||e)); S.filming=false; setFilmBtn(false); return; }
+  S.filming=false; setFilmBtn(false);
+  if(!rec||!rec.path){ DBG('film: pas de fichier'); return; }
+  const off=Math.max(0,((S.goWallClock||0)-(S.recStartMs||0))/1000);
+  const frames=(S.wodFrames&&S.wodFrames.length)?S.wodFrames:_sampleWodFrames();
+  DBG('film: export (offset '+off.toFixed(1)+'s, '+frames.length+' frames)…');
+  try{
+    await VO.exportOverlay({ path:rec.path, frames, goOffsetSec:off });
+    DBG('✅ vidéo prête (chrono incrusté → Photos)');
+    showAnnounce(L3('🎬 Vidéo prête !','🎬 Video ready!','🎬 Vídeo pronto!'));
+  }catch(e){ DBG('❌ export KO: '+((e&&e.message)||e)); }
+}
+// Bouton Filmer visible seulement si le plugin natif répond (donc app iOS, pas web).
+document.addEventListener('DOMContentLoaded',()=>{
+  const show=()=>{ const b=document.getElementById('btnFilm'); if(b&&_videoOverlayPlugin()) b.style.display=''; };
+  show(); setTimeout(show,800);
+});
+// Écran de calage manuel : gardé comme repli si le calage auto échoue (non utilisé par défaut).
+function cancelSync(){ const el=document.getElementById('syncOverlay'); if(el) el.style.display='none'; _syncCtx=null; }
+function confirmSync(){ cancelSync(); }
 
 // ===== PANNEAU DE DEBUG (activé par ?debug=1 dans l'URL) =====
 // Activation : ?debug=1 dans l'URL (web) OU 5 appuis rapides sur le logo (app iOS,
@@ -2976,7 +3208,7 @@ let _dbgEl=null;
         taps=0;
         DEBUG_ON=!DEBUG_ON;
         if(!DEBUG_ON && _dbgEl){ _dbgEl.remove(); _dbgEl=null; }
-        else DBG('debug ON — 5 appuis sur le logo pour couper');
+        else { DBG('debug ON — 5 appuis sur le logo pour couper'); testOverlayPlugin(); }
       }
     });
   });
@@ -3025,12 +3257,17 @@ function launch(){
   if(window.speechSynthesis){ try{ speechSynthesis.cancel(); }catch(e){} }
   updateTotalFromMode();
   updateClock();
-  // Débloquer les éléments <audio> d'annonce PENDANT le geste utilisateur
-  unlockAnnounceEls();
-  // Précharger les buffers (décompte + rounds) pendant le 10-9-8...
-  ensureAudioCtx();
-  preloadCountBuffers();
-  preloadRoundBuffers();
+  if(byoMusic){
+    // Mode Ma musique : AUCUN audio WebKit (il couperait Spotify). Toutes les voix via plugin natif.
+    nativePreloadAnnounces();
+  } else {
+    // Débloquer les éléments <audio> d'annonce PENDANT le geste utilisateur
+    unlockAnnounceEls();
+    // Précharger les buffers (décompte + rounds) pendant le 10-9-8...
+    ensureAudioCtx();
+    preloadCountBuffers();
+    preloadRoundBuffers();
+  }
   S.state='launching';
   try{ if(window.REC) REC._onLaunch(); }catch(e){}
   document.body.classList.add('wod-live');
@@ -3096,6 +3333,7 @@ function launch(){
   countAudioList.forEach((file,i)=>{
     const _t=Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
     cdSteps.push({t:_t,fn:()=>{
+      if(nativeVoiceOn()){ nativeVoicePlay(file); return; } // Ma musique : voix native par-dessus Spotify
       const a=_elFor(file);
       try{a.muted=false;}catch(e){} // sinon le déverrouillage async laisse le "10" muet au 1er WOD
       try{a.volume=Math.min(vol*2.0,1.0);}catch(e){}
@@ -3113,16 +3351,32 @@ function launch(){
   S.cdSched=runAbsSchedule(cdSteps);
 }
 
+// Enregistre l'état du chrono (contexte, temps, alerte) à cet instant, pour l'overlay vidéo natif.
+function recordWodFrame(){
+  try{
+    if(!S.wodFrames) return;
+    const oi=(typeof window._overlayInfo==='function')?window._overlayInfo():null;
+    if(oi) S.wodFrames.push({top:oi.ctx||'', time:oi.time||'', alert:!!oi.alert});
+  }catch(e){}
+}
+
 function startChrono(){
   S.state='playing';
   document.body.classList.add('wod-live');
   document.getElementById('btnPlay').textContent='⏸';
   document.getElementById('timerCard').classList.add('playing');
   const mName={wod:'WOD',amrap:'AMRAP',emom:'EMOM',tabata:'TABATA'}[S.mode];
-  document.getElementById('timerStatus').textContent='▶ '+mName+' — '+TRACK_INFO[S.track].name;
+  document.getElementById('timerStatus').textContent='▶ '+mName+' — '+(byoMusic?L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA'):TRACK_INFO[S.track].name);
   try{const w=document.getElementById('scoreWod'); if(w) w.value=currentWodLabel();}catch(e){}
   if(S.mode!=='tabata') document.getElementById('btnSkip').style.display='';
   setStatus('playing','EN COURS');
+
+  // Overlay vidéo : on enregistre une frame du chrono par seconde, à partir du GO,
+  // et l'heure absolue du GO (pour le calage automatique de la vidéo, anti-triche).
+  S.wodFrames=[];
+  S.goWallClock=Date.now();
+  recordWodFrame();
+  hideVideoOverlayCta(); // on repart pour un WOD : on cache l'ancien CTA vidéo
 
   // Chrono calé sur l'horloge réelle : si iOS ralentit les timers, on rattrape
   // les secondes manquées une par une pour ne perdre aucune annonce.
@@ -3139,6 +3393,7 @@ function startChrono(){
       S.remain--;
       updateClock();
       checkAnnounce();
+      recordWodFrame();
       if(S.remain<=0) break;
     }
     if(guard>1) DBG('rattrapage de '+guard+' s (timer iOS ralenti)');
@@ -3343,6 +3598,7 @@ function resume(){
 
 function resetTimer(){
   try{ if(window.REC) REC._onStop(); }catch(e){}
+  try{ if(S.filming){ const _vo=_videoOverlayPlugin(); if(_vo) _vo.cancelRecording(); S.filming=false; setFilmBtn(false); } }catch(e){}
   clearInterval(S.iv);clearCd();stopMusic();stopAllAnnounces();musicWasPlaying=false;
   S.gen=(S.gen||0)+1; // tue tout intervalle orphelin
   if(voiceAudio){voiceAudio.pause();voiceAudio=null;}
@@ -3387,6 +3643,15 @@ function end(){
   // Enregistrement vidéo : on laisse tourner ~1,9s de plus pour capturer la frame finale
   // (le 1:00 figé) ET toute l'annonce "TIME" (fichier de 1,67s). À 1s elle était tronquée.
   try{ if(window.REC) setTimeout(()=>{ try{ REC._onStop(); }catch(e){} }, 1900); }catch(e){}
+  // Vrai parcours vidéo.
+  if(S.filming){
+    // On filme avec la caméra native : on laisse ~1,9 s de rab pour capturer la frame finale,
+    // puis on coupe l'enregistrement et on enchaîne l'incrustation du chrono.
+    setTimeout(()=>{ finishFilmAndExport(); }, 1900);
+  } else {
+    // Pas de tournage en cours : on propose l'import d'une vidéo (ex. filmée sur un 2e appareil).
+    offerVideoOverlay();
+  }
 }
 
 function skipAhead(){
@@ -3744,6 +4009,7 @@ function showModeChoice(){
   // de capture (capStage / capResult) pouvait rester affiché en fond et transparaître par
   // le bord (les écrans wizard ne couvrent pas 100% du viewport iOS). On force sa fermeture.
   try{ if(window.REC && (REC.armed||REC.recording)) REC.cancel(); }catch(e){}
+  try{ if(S.filming){ const _vo=_videoOverlayPlugin(); if(_vo) _vo.cancelRecording(); S.filming=false; setFilmBtn(false); } }catch(e){}
   ['capStage','capResult'].forEach(id=>{ const el=document.getElementById(id); if(el) el.classList.remove('on'); });
   try{ const _cc=document.getElementById('capCamSrc'); if(_cc){ _cc.pause(); _cc.srcObject=null; } }catch(e){}
   // Cacher l'app pendant le wizard
@@ -4629,7 +4895,7 @@ window.addEventListener('DOMContentLoaded',membersInit);
 
 <!-- ===== CAPTURE VIDÉO (v1) — caméra + chrono réel incrusté ===== -->
 <style>
-  #btnRec.on{background:#e6394b;border-color:#e6394b;color:#fff;}
+  #btnRec.on,#btnFilm.filming{background:#e6394b;border-color:#e6394b;color:#fff;}
   #capStage{position:fixed;inset:0;z-index:90000;background:#000;display:none;}
   #capStage.on{display:block;}
   #capCanvas{width:100%;height:100%;object-fit:cover;display:block;background:#000;}
@@ -4724,19 +4990,18 @@ window.addEventListener('DOMContentLoaded',membersInit);
 
   REC.startDraw=function(cam,cv,ctx){
     REC.drawing=true;
-    let last=0;
-    (function loop(){
+    // Cadence STABLE via setInterval (iOS ralentit requestAnimationFrame sans prévenir,
+    // ce qui perdait des images -> vidéo accélérée). Chaque tick dessine une image et,
+    // pendant l'enregistrement, la POUSSE manuellement au flux (requestFrame) : le temps
+    // réel est ainsi respecté image par image.
+    if(REC.drawTimer) clearInterval(REC.drawTimer);
+    REC.drawTimer=setInterval(function(){
       if(!REC.drawing) return;
-      REC.raf=requestAnimationFrame(loop);
-      try{ busSyncGains(); }catch(e){} // reflète mute/volume sur la sortie (chaque frame, réactif)
+      try{ busSyncGains(); }catch(e){}
       const now=Date.now();
-      if(now-last<32) return; // ~30 i/s
-      last=now;
       try{ ctx.drawImage(cam,0,0,cv.width,cv.height); REC.frames=(REC.frames||0)+1; }
       catch(e){ if(!REC._drawErr){ REC._drawErr=1; dlog('⚠️ drawImage échoue: '+e.name); } }
-      // Décompte de départ, plein écran centré (uniquement pendant 'launching')
       if(typeof S!=='undefined' && S.state==='launching' && (S.cdT0||REC.launchTs)){
-        // Calé sur le VRAI top du décompte (S.cdT0) : "10" à t=0, "9" à t=1s… "GO" à t=10s.
         const base=S.cdT0||REC.launchTs;
         const e=now-base;
         const n=10-Math.floor(e/1000);
@@ -4745,12 +5010,13 @@ window.addEventListener('DOMContentLoaded',membersInit);
         const info=overlayInfo();
         if(info) drawBlock(ctx,cv.width,cv.height,info.ctx,info.time,info.alert);
       }
-      // synchro du bouton play/pause de la scène
+      // Pousse l'image au flux à cadence réelle (anti-accéléré)
+      if(REC.vtrack && REC.recording){ try{ REC.vtrack.requestFrame(); }catch(e){} }
       const cp=el('capPlay');
       if(cp && typeof S!=='undefined'){
         cp.textContent=(S.state==='playing')?'⏸':(S.state==='launching')?'⏳':'▶';
       }
-    })();
+    }, 33); // ~30 i/s
   };
 
   function overlayInfo(){
@@ -4779,6 +5045,7 @@ window.addEventListener('DOMContentLoaded',membersInit);
     }
     return {time:time,ctx:cx,alert:alert};
   }
+  window._overlayInfo = overlayInfo; // exposé pour l'enregistrement des frames de l'overlay vidéo
 
   function drawBlock(ctx,W,H,texteHaut,temps,alerte){
     const pad=Math.round(W*0.022);
@@ -4821,7 +5088,13 @@ window.addEventListener('DOMContentLoaded',membersInit);
     REC.launchTs=Date.now();
     const cv=el('capCanvas');
     let cstream;
-    try{ cstream=cv.captureStream(30); }catch(e){ return; }
+    try{
+      cstream=cv.captureStream(0);              // 0 = images émises seulement sur requestFrame() -> cadence réelle maîtrisée
+      REC.vtrack=cstream.getVideoTracks()[0];
+      if(!REC.vtrack || typeof REC.vtrack.requestFrame!=='function'){ // repli si requestFrame non supporté
+        cstream=cv.captureStream(30); REC.vtrack=null;
+      }
+    }catch(e){ try{ cstream=cv.captureStream(30); REC.vtrack=null; }catch(_){ return; } }
     // Son de l'app (musique + voix) capturé via le bus Web Audio, PAS le micro.
     let busTrack=null;
     try{
@@ -4908,7 +5181,8 @@ window.addEventListener('DOMContentLoaded',membersInit);
     REC.drawing=false;
     try{ busDeactivate(); }catch(e){}
     if(REC.hb){ clearInterval(REC.hb); REC.hb=null; }
-    if(REC.raf) cancelAnimationFrame(REC.raf);
+    if(REC.drawTimer){ clearInterval(REC.drawTimer); REC.drawTimer=null; }
+    REC.vtrack=null;
     if(REC.stream){ REC.stream.getTracks().forEach(t=>{try{t.stop();}catch(e){}}); REC.stream=null; }
     REC.armed=false; REC.rec=null; REC.chunks=[];
     el('capStage').classList.remove('on');
