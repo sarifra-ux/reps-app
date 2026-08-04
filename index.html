@@ -1566,6 +1566,7 @@
       <button class="btn-play" id="btnPlay" onclick="togglePlay()">▶</button>
       <button class="btn-ctrl" id="btnSkip" onclick="skipAhead()" style="display:none">⏭ –3MIN</button>
       <button class="btn-ctrl" id="btnFilm" onclick="toggleFilm()" style="display:none">🎥 Filmer</button>
+      <button class="btn-ctrl on" id="btnFilmAudio" onclick="toggleFilmAudio()" style="display:none">🔊 Son ambiant</button>
     </div>
 
     <button id="addVideoBtn" onclick="startVideoOverlayFlow()" style="display:none;width:100%;margin-top:10px;padding:14px;font:800 15px/1 -apple-system,system-ui,sans-serif;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,#7c3aed,#a855f7);border:0;border-radius:12px;box-shadow:0 6px 18px rgba(124,58,237,.35);"></button>
@@ -1599,7 +1600,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v98</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
+<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v102</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
   <video id="syncVideo" playsinline style="flex:1;width:100%;min-height:0;object-fit:contain;background:#000;"></video>
   <div style="padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#111;color:#fff;">
     <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;">Place le curseur sur le <b>GO</b> de ta vidéo (le départ du WOD)</div>
@@ -3142,6 +3143,15 @@ function setFilmBtn(on){
   b.textContent=on?L3('🎥 Filme…','🎥 Filming…','🎥 Filmando…'):L3('🎥 Filmer','🎥 Film','🎥 Filmar');
   b.classList.toggle('filming',on);
 }
+// Toggle du son ambiant (micro). OFF par défaut : chemin vidéo-muet validé intact.
+// Impossible de changer en cours d'enregistrement.
+function toggleFilmAudio(){
+  if(S.filming){ DBG('son: pas pendant l\'enregistrement'); return; }
+  S.filmAudio=!S.filmAudio;
+  const b=document.getElementById('btnFilmAudio');
+  if(b){ b.textContent=(S.filmAudio?'🔊':'🔇')+' Son ambiant'; b.classList.toggle('on',S.filmAudio); }
+  DBG('son ambiant: '+(S.filmAudio?'ON':'OFF'));
+}
 async function toggleFilm(){
   const VO=_videoOverlayPlugin();
   if(!VO){ DBG('film: plugin natif absent (web ?)'); return; }
@@ -3151,7 +3161,7 @@ async function toggleFilm(){
     DBG('film: annulé'); return;
   }
   try{
-    const r=await VO.startRecording({camera:'back'});
+    const r=await VO.startRecording({camera:'back', withAudio:!!S.filmAudio});
     S.filming=true;
     S.recStartMs=(r&&r.startWallClockMs)||Date.now();
     setFilmBtn(true);
@@ -3163,26 +3173,38 @@ async function toggleFilm(){
   }
 }
 // Fin du WOD : couper l'enregistrement puis incruster le chrono et sauver dans Photos.
+function setFilmStatus(t){ const el=document.getElementById('timerStatus'); if(el) el.textContent=t; }
 async function finishFilmAndExport(){
   const VO=_videoOverlayPlugin();
   if(!VO){ S.filming=false; setFilmBtn(false); return; }
+  setFilmStatus(L3('🎬 Finalisation de la vidéo…','🎬 Finalizing video…','🎬 Finalizando o vídeo…'));
   let rec;
   try{ rec=await VO.stopRecording(); }
-  catch(e){ DBG('❌ stop film KO: '+((e&&e.message)||e)); S.filming=false; setFilmBtn(false); return; }
+  catch(e){ DBG('❌ stop film KO: '+((e&&e.message)||e)); S.filming=false; setFilmBtn(false);
+    setFilmStatus(L3('❌ Vidéo : erreur d\'enregistrement','❌ Video: recording error','❌ Vídeo: erro de gravação')); return; }
   S.filming=false; setFilmBtn(false);
-  if(!rec||!rec.path){ DBG('film: pas de fichier'); return; }
+  if(!rec||!rec.path){ DBG('film: pas de fichier');
+    setFilmStatus(L3('❌ Vidéo : aucun fichier','❌ Video: no file','❌ Vídeo: sem arquivo')); return; }
   const off=Math.max(0,((S.goWallClock||0)-(S.recStartMs||0))/1000);
   const frames=(S.wodFrames&&S.wodFrames.length)?S.wodFrames:_sampleWodFrames();
   DBG('film: export (offset '+off.toFixed(1)+'s, '+frames.length+' frames)…');
+  // Le montage peut prendre quelques secondes : statut persistant pendant l'attente.
+  setFilmStatus(L3('🎬 Montage du chrono… patiente','🎬 Rendering timer… hold on','🎬 Montando o cronômetro… aguarda'));
+  showAnnounce(L3('🎬 Montage en cours…','🎬 Rendering…','🎬 Montando…'));
   try{
     await VO.exportOverlay({ path:rec.path, frames, goOffsetSec:off });
     DBG('✅ vidéo prête (chrono incrusté → Photos)');
-    showAnnounce(L3('🎬 Vidéo prête !','🎬 Video ready!','🎬 Vídeo pronto!'));
-  }catch(e){ DBG('❌ export KO: '+((e&&e.message)||e)); }
+    setFilmStatus(L3('✅ Vidéo prête dans Photos','✅ Video saved to Photos','✅ Vídeo salvo em Fotos'));
+    showAnnounce(L3('🎬 Vidéo prête ! Ouvre Photos','🎬 Video ready! Open Photos','🎬 Vídeo pronto! Abre Fotos'));
+  }catch(e){ DBG('❌ export KO: '+((e&&e.message)||e));
+    setFilmStatus(L3('❌ Montage échoué','❌ Render failed','❌ Falha na montagem'));
+    showAnnounce(L3('❌ Vidéo : erreur','❌ Video: error','❌ Vídeo: erro')); }
 }
 // Bouton Filmer visible seulement si le plugin natif répond (donc app iOS, pas web).
 document.addEventListener('DOMContentLoaded',()=>{
-  const show=()=>{ const b=document.getElementById('btnFilm'); if(b&&_videoOverlayPlugin()) b.style.display=''; };
+  // Son ambiant ON par défaut (c'est l'usage voulu). Le bouton reste dispo pour couper.
+  try{ if(typeof S==='object' && S.filmAudio===undefined) S.filmAudio=true; }catch(e){}
+  const show=()=>{ if(!_videoOverlayPlugin()) return; ['btnFilm','btnFilmAudio'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display=''; }); };
   show(); setTimeout(show,800);
 });
 // Écran de calage manuel : gardé comme repli si le calage auto échoue (non utilisé par défaut).
@@ -4896,6 +4918,7 @@ window.addEventListener('DOMContentLoaded',membersInit);
 <!-- ===== CAPTURE VIDÉO (v1) — caméra + chrono réel incrusté ===== -->
 <style>
   #btnRec.on,#btnFilm.filming{background:#e6394b;border-color:#e6394b;color:#fff;}
+  #btnFilmAudio.on{background:#22c55e;border-color:#22c55e;color:#fff;}
   #capStage{position:fixed;inset:0;z-index:90000;background:#000;display:none;}
   #capStage.on{display:block;}
   #capCanvas{width:100%;height:100%;object-fit:cover;display:block;background:#000;}

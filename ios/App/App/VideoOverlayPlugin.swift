@@ -31,6 +31,7 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
     private var recCall: CAPPluginCall?
     private var recStartMs: Double = 0
     private var recURL: URL?
+    private var audioSessionTouched = false
     private let sessionQueue = DispatchQueue(label: "reps.camera.session")
 
     @objc func ping(_ call: CAPPluginCall) {
@@ -41,12 +42,23 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
     // aperçu de cadrage. Renvoie l'heure absolue de départ (pour caler le chrono ensuite).
     @objc func startRecording(_ call: CAPPluginCall) {
         let front = (call.getString("camera") ?? "back") == "front"
+        let withAudio = call.getBool("withAudio") ?? false
+        // Après l'accord caméra, on demande le micro seulement si le son ambiant est voulu.
+        let proceed = {
+            if withAudio {
+                AVCaptureDevice.requestAccess(for: .audio) { _ in
+                    self.setupAndStart(call, front: front, withAudio: withAudio)
+                }
+            } else {
+                self.setupAndStart(call, front: front, withAudio: false)
+            }
+        }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            self.setupAndStart(call, front: front)
+            proceed()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { granted in
-                if granted { self.setupAndStart(call, front: front) }
+                if granted { proceed() }
                 else { call.reject("Caméra refusée", "PERM_DENIED") }
             }
         default:
@@ -54,8 +66,20 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    private func setupAndStart(_ call: CAPPluginCall, front: Bool) {
+    private func setupAndStart(_ call: CAPPluginCall, front: Bool, withAudio: Bool) {
         sessionQueue.async {
+            // Son ambiant : on passe en playAndRecord MAIS avec mixWithOthers, pour laisser
+            // Spotify / la musique REPS continuer à jouer pendant l'enregistrement.
+            if withAudio {
+                let s = AVAudioSession.sharedInstance()
+                // Pas de .defaultToSpeaker (ça forçait la sortie sur le HP du tél) ni de
+                // .allowBluetooth (HFP mono qui dégrade et re-route). On garde A2DP : la
+                // musique reste sur l'enceinte, le micro du tél capte l'ambiance.
+                try? s.setCategory(.playAndRecord, mode: .videoRecording,
+                                   options: [.mixWithOthers, .allowBluetoothA2DP])
+                try? s.setActive(true)
+                self.audioSessionTouched = true
+            }
             let session = AVCaptureSession()
             // IMPORTANT : ne pas laisser la caméra reconfigurer la session audio (voix + Ma musique).
             session.automaticallyConfiguresApplicationAudioSession = false
@@ -69,6 +93,11 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
                 DispatchQueue.main.async { call.reject("Caméra indisponible", "CAM_KO") }; return
             }
             session.addInput(input)
+            // Micro (son ambiant) : optionnel, on continue en muet s'il n'est pas dispo/refusé.
+            if withAudio, let mic = AVCaptureDevice.default(for: .audio),
+               let micIn = try? AVCaptureDeviceInput(device: mic), session.canAddInput(micIn) {
+                session.addInput(micIn)
+            }
             let output = AVCaptureMovieFileOutput()
             guard session.canAddOutput(output) else {
                 DispatchQueue.main.async { call.reject("Sortie vidéo KO", "OUT_KO") }; return
@@ -138,7 +167,16 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         let s = self.captureSession
         self.captureSession = nil
         self.movieOutput = nil
-        sessionQueue.async { s?.stopRunning() }
+        let restoreAudio = self.audioSessionTouched
+        self.audioSessionTouched = false
+        sessionQueue.async {
+            s?.stopRunning()
+            // Si on avait ouvert le micro, on relâche la session pour rendre la main
+            // aux autres apps (Spotify) et laisser REPS reprendre son audio normal.
+            if restoreAudio {
+                try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            }
+        }
     }
 
     @objc func pickVideo(_ call: CAPPluginCall) {
