@@ -1600,7 +1600,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v102</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
+<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v104</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
   <video id="syncVideo" playsinline style="flex:1;width:100%;min-height:0;object-fit:contain;background:#000;"></video>
   <div style="padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#111;color:#fff;">
     <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;">Place le curseur sur le <b>GO</b> de ta vidéo (le départ du WOD)</div>
@@ -1685,8 +1685,9 @@ const CD_TIMINGS={
 // l'audio est calé sur l'affichage. ⚠️ Si les count-*.mp3 changent, re-mesurer.
 // Ordre = [10,9,8,7,6,5,4,3,2,1,GO]. (Méthode fiable ; l'ancienne mesure silencedetect était fausse.)
 const COUNT_ONSET={
-  fr:[0,0,0,90,60,90,0,60,80,0,60],
-  en:[50,0,0,90,100,0,0,0,0,0,0]
+  fr:[120,0,120,0,0,0,60,100,0,140,100],
+  en:[40,120,0,160,0,80,60,80,80,0,0],
+  pt:[0,120,0,0,0,0,60,40,0,160,0]
 };
 
 const TXT={
