@@ -129,8 +129,15 @@
     box-shadow:0 0 12px rgba(155,48,255,0.3);
   }
   @media(max-width:600px){
-    .new-wod-label{display:none;}
-    .new-wod-btn{padding:7px 10px;}
+    /* Barre du haut lisible et qui tient dans l'écran : logo resserré, libellés remis
+       sous les icônes, padding réduit, pastille de statut masquée (redondante avec la carte). */
+    header{padding:calc(12px + env(safe-area-inset-top,0px)) 12px 12px 12px;}
+    .logo{font-size:1.5rem;letter-spacing:3px;}
+    .header-right{gap:6px;}
+    .new-wod-btn{flex-direction:column;gap:3px;padding:6px 9px;font-size:1.05rem;line-height:1;}
+    .new-wod-label{display:block;font-size:0.5rem;letter-spacing:0.5px;font-family:'DM Mono',monospace;}
+    .settings-btn{font-size:1.05rem;padding:8px 10px;}
+    .status-pill{display:none;}
   }
   .status-pill{display:flex;align-items:center;gap:8px;border-radius:20px;padding:7px 14px;font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:2px;border:1px solid rgba(0,230,118,0.25);background:rgba(0,230,118,0.07);color:var(--green);}
   .status-pill.launching{border-color:rgba(255,214,0,0.4);background:rgba(255,214,0,0.08);color:var(--gold);}
@@ -277,8 +284,8 @@
   .btn-save-fav{background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px dashed var(--border);border-radius:10px;padding:13px 16px;color:var(--muted);cursor:pointer;font-family:'DM Mono',monospace;font-size:0.78rem;letter-spacing:1px;transition:all 0.2s;margin-top:8px;}
   .btn-save-fav:hover{border-color:var(--accent);color:var(--accent);border-style:solid;background:linear-gradient(135deg,rgba(230,63,255,0.1),rgba(230,63,255,0.02));box-shadow:0 0 14px rgba(230,63,255,0.2);}
 
-  main{padding:24px 28px;display:flex;flex-direction:column;gap:18px;}
-  .timer-card{background:var(--monogram) 0 0/60px 60px, var(--bg-grad);border:1px solid var(--border);border-radius:18px;padding:32px 36px 24px;text-align:center;position:relative;overflow:hidden;transition:box-shadow 0.5s;}
+  main{padding:24px 28px;display:flex;flex-direction:column;gap:18px;position:relative;}
+  .timer-card{background:var(--bg-grad);border:1px solid var(--border);border-radius:18px;padding:32px 36px 24px;text-align:center;position:relative;overflow:hidden;transition:box-shadow 0.5s;}
   .timer-card.playing{box-shadow:0 0 60px var(--glow-a),0 0 30px var(--glow-b);border-color:rgba(230,63,255,0.3);}
   /* Contenu du chrono au-dessus du motif */
   .timer-card .timer-eyebrow,.timer-card .timer-clock,.timer-card .timer-status,.timer-card .prog-wrap,.timer-card .now-playing-bar{position:relative;z-index:1;}
@@ -314,15 +321,15 @@
   .prog-fill.rest{background:var(--accent2);}
   .prog-fill.rest::after{background:var(--accent2);}
 
-  .announce{background:var(--surface);border:1px solid rgba(230,63,255,0.2);border-radius:10px;padding:12px 20px;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:4px;color:var(--accent);text-align:center;min-height:56px;display:flex;align-items:center;justify-content:center;opacity:0;transform:scale(0.96) translateY(4px);transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);text-shadow:0 0 16px var(--glow-a);}
-  .announce.show{opacity:1;transform:scale(1) translateY(0);}
+  .announce{position:absolute;left:50%;top:62%;z-index:40;pointer-events:none;white-space:nowrap;background:var(--surface);border:1px solid rgba(230,63,255,0.2);border-radius:10px;padding:12px 20px;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:4px;color:var(--accent);text-align:center;display:flex;align-items:center;justify-content:center;opacity:0;transform:translate(-50%,4px) scale(0.96);transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);text-shadow:0 0 16px var(--glow-a);}
+  .announce.show{opacity:1;transform:translate(-50%,0) scale(1);}
 
   .waveform{display:flex;align-items:center;justify-content:center;gap:3px;height:34px;}
   .wbar{width:3px;border-radius:2px;background:linear-gradient(to top,var(--accent),var(--accent2));height:3px;opacity:0.3;}
   .waveform.active .wbar{opacity:1;animation:wv var(--spd) ease-in-out infinite alternate;}
   @keyframes wv{from{height:3px}to{height:var(--wh)}}
 
-  .controls{display:flex;align-items:center;justify-content:center;gap:14px;}
+  .controls{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
   .btn-play{width:72px;height:72px;border-radius:50%;border:none;cursor:pointer;font-size:1.7rem;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--accent),#8b00cc);box-shadow:0 0 28px var(--glow-a),0 6px 20px rgba(0,0,0,0.6);color:white;}
   .btn-play:hover{transform:scale(1.07);}
   .btn-play:active{transform:scale(0.94);}
@@ -929,6 +936,25 @@
   body.wod-live .logo-sub{
     display:none !important;
   }
+  /* REFONTE écran WOD : `main` ne prenait que la hauteur de son contenu (la grille ne
+     l'étirait pas), donc le centrage n'avait aucun effet et le vide était l'espace SOUS main.
+     On force main à remplir l'écran pendant le WOD, puis on centre le bloc chrono+contrôles. */
+  body.wod-live main{min-height:calc(100dvh - 69px);justify-content:center;}
+  /* Round badge plus présent pendant l'effort */
+  body.wod-live .round-badge{font-size:0.8rem;color:var(--accent2);letter-spacing:3px;}
+
+  /* ===== POLISH v119 : affinage carte / chrono / contrôles / header ===== */
+  .timer-card{border-color:rgba(230,63,255,0.16);box-shadow:0 22px 55px rgba(0,0,0,0.45);}
+  .now-playing-bar{gap:8px;margin-bottom:14px;}
+  .np-badge,.brian-badge{font-size:0.5rem;padding:3px 12px;letter-spacing:1.5px;max-width:52vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .timer-eyebrow{font-size:0.55rem;letter-spacing:5px;margin-bottom:6px;opacity:.9;}
+  .prog-wrap{margin-top:22px;}
+  .prog-track{height:4px;}
+  .controls{gap:12px;margin-top:8px;}
+  .btn-ctrl{background:rgba(28,26,46,0.85);border:1px solid var(--border);color:#b9b6d6;border-radius:13px;padding:10px 15px;font-size:0.62rem;letter-spacing:1.2px;min-width:66px;text-align:center;transition:all .18s ease;}
+  .btn-ctrl:hover,.btn-ctrl:active{border-color:var(--accent);color:#fff;}
+  .btn-play{width:78px;height:78px;font-size:1.85rem;box-shadow:0 0 32px var(--glow-a),0 8px 24px rgba(0,0,0,0.55);}
+  .new-wod-label{color:#9a96b8;}
 
   /* ===== VOLUME SUR iOS ===== */
   /* Apple bloque le réglage du volume par JavaScript sur iPhone/iPad : ces curseurs
@@ -1600,7 +1626,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v114</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
+<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v119</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
   <video id="syncVideo" playsinline style="flex:1;width:100%;min-height:0;object-fit:contain;background:#000;"></video>
   <div style="padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#111;color:#fff;">
     <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;"><span data-i18n="sync.instrA">Place le curseur sur le </span><b>GO</b><span data-i18n="sync.instrB"> de ta vidéo (le départ du WOD)</span></div>
