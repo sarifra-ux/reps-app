@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REPS — Prototype incrustation chrono</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:20px; background:#16161a; color:#e8e8e6;
+         font:14px/1.5 -apple-system, system-ui, sans-serif; }
+  .wrap { max-width:1100px; margin:0 auto; }
+  h1 { font-size:16px; font-weight:600; margin:0 0 2px; }
+  .sub { color:#8b8b88; font-size:13px; margin:0 0 18px; }
+  .grid { display:grid; grid-template-columns:1fr 300px; gap:16px; align-items:start; }
+  @media (max-width:860px){ .grid{ grid-template-columns:1fr; } }
+  .stage { background:#000; border-radius:10px; overflow:hidden; position:relative; }
+  canvas { width:100%; display:block; }
+  .panel { background:#1f1f24; border:1px solid #2e2e35; border-radius:10px; padding:14px; }
+  .panel h2 { font-size:11px; font-weight:600; margin:0 0 10px; color:#8b8b88;
+              text-transform:uppercase; letter-spacing:.07em; }
+  label { display:block; font-size:12px; color:#a8a8a4; margin:10px 0 4px; }
+  input[type=range]{ width:100%; }
+  select, input[type=number]{ width:100%; padding:7px; background:#2a2a31; color:#e8e8e6;
+    border:1px solid #3a3a43; border-radius:6px; font-size:14px; }
+  .val { float:right; color:#e8e8e6; font-family:ui-monospace,Menlo,monospace; font-size:12px; }
+  button { width:100%; padding:11px; margin-top:8px; font-size:14px; font-weight:600;
+    background:#2f6fed; color:#fff; border:0; border-radius:8px; }
+  button.alt { background:#2e2e35; }
+  button:disabled { background:#333; color:#777; }
+  .drop { border:2px dashed #3a3a43; border-radius:10px; padding:40px 20px; text-align:center;
+    color:#8b8b88; cursor:pointer; }
+  .seg { display:flex; gap:6px; }
+  .seg button { margin:0; background:#2a2a31; color:#a8a8a4; font-weight:500; padding:8px; }
+  .seg button.on { background:#2f6fed; color:#fff; }
+  .hint { font-size:11px; color:#6b6b68; margin-top:6px; line-height:1.4; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>REPS — Prototype incrustation chrono</h1>
+<p class="sub">Charge ta vidéo de WOD. Règle la synchro. Le rendu est identique à ce que produira le plugin natif.</p>
+
+<div class="grid">
+  <div>
+    <div id="drop" class="drop">Dépose ta vidéo ici, ou clique pour choisir</div>
+    <div class="stage" style="display:none" id="stage"><canvas id="cv"></canvas></div>
+    <div style="display:none" id="transport">
+      <label>Position <span class="val" id="posv">0:00</span></label>
+      <input type="range" id="seek" min="0" max="100" step="0.05" value="0">
+      <div class="seg" style="margin-top:8px">
+        <button id="play">Lecture</button>
+        <button id="export" class="alt">Exporter (lent)</button>
+      </div>
+      <div class="hint">L'export réencode en temps réel dans le navigateur. C'est ce que le plugin natif fera en quelques minutes au lieu de la durée réelle.</div>
+    </div>
+    <input type="file" id="file" accept="video/*" style="display:none">
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Synchro</h2>
+      <label>Décalage du GO <span class="val" id="offv">0.0 s</span></label>
+      <input type="range" id="off" min="-5" max="60" step="0.1" value="0">
+      <div class="hint">Fais glisser jusqu'à ce que 00:00 tombe pile sur ton départ.</div>
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>WOD</h2>
+      <label>Mode</label>
+      <select id="mode">
+        <option value="wod">WOD — for time</option>
+        <option value="amrap">AMRAP</option>
+        <option value="emom" selected>EMOM</option>
+        <option value="tabata">TABATA</option>
+      </select>
+      <label>Durée totale (min) <span class="val" id="durv">8</span></label>
+      <input type="range" id="dur" min="1" max="30" step="1" value="8">
+      <label id="ivlab">Intervalle (s) <span class="val" id="ivv">60</span></label>
+      <input type="range" id="iv" min="10" max="300" step="5" value="60">
+    </div>
+
+    <div class="panel" style="margin-top:12px">
+      <h2>Affichage</h2>
+      <label>Temps</label>
+      <div class="seg">
+        <button id="tEl" class="on">Écoulé</button>
+        <button id="tRe">Restant</button>
+      </div>
+      <div class="hint" id="tHint"></div>
+      <label>Coin du bloc</label>
+      <select id="corner">
+        <option value="bl" selected>Bas gauche</option>
+        <option value="br">Bas droite</option>
+        <option value="tl">Haut gauche</option>
+        <option value="tr">Haut droite</option>
+      </select>
+      <label>Taille <span class="val" id="scv">100%</span></label>
+      <input type="range" id="sc" min="60" max="180" step="5" value="100">
+    </div>
+  </div>
+</div>
+</div>
+
+<video id="vid" playsinline style="display:none"></video>
+
+<script>
+const $=id=>document.getElementById(id);
+const vid=$('vid'), cv=$('cv'), ctx=cv.getContext('2d');
+let dragging=false;
+
+$('drop').onclick=()=>$('file').click();
+$('drop').ondragover=e=>{e.preventDefault();};
+$('drop').ondrop=e=>{e.preventDefault(); if(e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);};
+$('file').onchange=e=>{ if(e.target.files[0]) load(e.target.files[0]); };
+
+function load(f){
+  vid.src=URL.createObjectURL(f);
+  vid.onloadedmetadata=()=>{
+    cv.width=vid.videoWidth; cv.height=vid.videoHeight;
+    $('drop').style.display='none';
+    $('stage').style.display='block';
+    $('transport').style.display='block';
+    $('seek').max=vid.duration;
+    draw();
+  };
+}
+
+const pad=n=>String(Math.floor(n)).padStart(2,'0');
+const mmss=s=>{ s=Math.max(0,s); return pad(s/60)+':'+pad(s%60); };
+
+let showElapsed=true;
+$('tEl').onclick=()=>{showElapsed=true;$('tEl').classList.add('on');$('tRe').classList.remove('on');draw();};
+$('tRe').onclick=()=>{showElapsed=false;$('tRe').classList.add('on');$('tEl').classList.remove('on');draw();};
+
+function hint(){
+  const m=$('mode').value;
+  const h={ wod:"For time : pas de temps restant. L'option n'a pas de sens ici.",
+            amrap:'AMRAP : « restant » = temps restant du WOD entier.',
+            emom:"EMOM : « restant » = temps restant de l'intervalle en cours.",
+            tabata:"Tabata : « restant » = temps restant de l'intervalle en cours." }[m];
+  $('tHint').textContent=h;
+  $('ivlab').style.display=(m==='emom'||m==='tabata')?'block':'none';
+  $('iv').style.display=(m==='emom'||m==='tabata')?'block':'none';
+}
+
+function state(t){
+  const mode=$('mode').value, dur=+$('dur').value*60, iv=+$('iv').value;
+  if(t<-3) return {phase:'pre'};
+  if(t<0)  return {phase:'count', n:Math.ceil(-t)};
+  if(t>dur) return {phase:'done', label:mode.toUpperCase()+' · TERMINÉ', time:mmss(dur)};
+  let label, time, warn=false;
+  if(mode==='emom'||mode==='tabata'){
+    const total=Math.ceil(dur/iv), r=Math.floor(t/iv)+1, inR=t%iv, left=iv-inR;
+    label=mode.toUpperCase()+' '+Math.round(dur/60)+' · ROUND '+Math.min(r,total)+'/'+total;
+    time=showElapsed?mmss(t):mmss(left);
+    warn=left<=3;
+  } else if(mode==='amrap'){
+    label='AMRAP '+Math.round(dur/60);
+    time=showElapsed?mmss(t):mmss(dur-t);
+    warn=(dur-t)<=3;
+  } else {
+    label='FOR TIME';
+    time=mmss(t);
+  }
+  return {phase:'run', label, time, warn};
+}
+
+function draw(){
+  if(!vid.videoWidth) return;
+  ctx.drawImage(vid,0,0,cv.width,cv.height);
+  const t=vid.currentTime-(+$('off').value);
+  const s=state(t);
+  const k=cv.height/1080*(+$('sc').value/100);
+
+  if(s.phase==='count'){
+    ctx.fillStyle='rgba(0,0,0,0.35)';
+    ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.fillStyle='#fff';
+    ctx.font='500 '+Math.round(260*k)+'px ui-monospace, Menlo, monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(String(s.n),cv.width/2,cv.height/2);
+    ctx.textAlign='left'; ctx.textBaseline='alphabetic';
+  }
+  if(s.phase==='pre') return;
+
+  const label=s.phase==='count'?'DÉPART':(s.label||'');
+  const time=s.phase==='count'?'00:00':(s.time||'00:00');
+
+  const fL=Math.round(30*k), fT=Math.round(112*k), padX=Math.round(36*k), padY=Math.round(26*k), m=Math.round(36*k);
+  ctx.font='500 '+fT+'px ui-monospace, Menlo, monospace';
+  const wT=ctx.measureText(time).width;
+  ctx.font='400 '+fL+'px ui-monospace, Menlo, monospace';
+  const wL=ctx.measureText(label).width;
+  const bw=Math.max(wT,wL)+padX*2, bh=fT+fL+padY*2+Math.round(10*k);
+
+  const c=$('corner').value;
+  const x=(c==='bl'||c==='tl')?m:cv.width-bw-m;
+  const y=(c==='bl'||c==='br')?cv.height-bh-m:m;
+
+  ctx.fillStyle='rgba(0,0,0,0.72)';
+  if(ctx.roundRect){ ctx.beginPath(); ctx.roundRect(x,y,bw,bh,Math.round(20*k)); ctx.fill(); }
+  else ctx.fillRect(x,y,bw,bh);
+
+  ctx.fillStyle='#D3D1C7';
+  ctx.font='400 '+fL+'px ui-monospace, Menlo, monospace';
+  ctx.fillText(label,x+padX,y+padY+fL*0.8);
+
+  ctx.fillStyle=s.warn?'#E24B4A':'#FFFFFF';
+  ctx.font='500 '+fT+'px ui-monospace, Menlo, monospace';
+  ctx.fillText(time,x+padX,y+padY+fL+Math.round(10*k)+fT*0.82);
+
+  ctx.fillStyle='rgba(255,255,255,0.55)';
+  ctx.font='400 '+Math.round(32*k)+'px ui-monospace, Menlo, monospace';
+  const wR=ctx.measureText('REPS').width;
+  ctx.fillText('REPS',cv.width-wR-m,cv.height-Math.round(22*k));
+}
+
+function loop(){ if(!vid.paused&&!vid.ended){ draw(); $('seek').value=vid.currentTime; $('posv').textContent=mmss(vid.currentTime); } requestAnimationFrame(loop); }
+loop();
+
+$('play').onclick=()=>{ if(vid.paused){vid.play();$('play').textContent='Pause';} else {vid.pause();$('play').textContent='Lecture';} };
+$('seek').oninput=()=>{ vid.currentTime=+$('seek').value; $('posv').textContent=mmss(vid.currentTime); setTimeout(draw,40); };
+vid.onseeked=draw;
+
+['off','dur','iv','sc'].forEach(id=>$(id).oninput=()=>{
+  $('offv').textContent=(+$('off').value).toFixed(1)+' s';
+  $('durv').textContent=$('dur').value;
+  $('ivv').textContent=$('iv').value;
+  $('scv').textContent=$('sc').value+'%';
+  draw();
+});
+$('mode').onchange=()=>{hint();draw();};
+$('corner').onchange=draw;
+hint();
+
+$('export').onclick=async()=>{
+  const btn=$('export'); btn.disabled=true; btn.textContent='Export…';
+  const stream=cv.captureStream(30);
+  const at=vid.captureStream?vid.captureStream().getAudioTracks():[];
+  at.forEach(t=>stream.addTrack(t));
+  const mimes=['video/mp4;codecs=avc1','video/mp4','video/webm;codecs=vp9,opus','video/webm'];
+  const mime=mimes.find(m=>{try{return MediaRecorder.isTypeSupported(m)}catch(e){return false}});
+  const rec=new MediaRecorder(stream,mime?{mimeType:mime}:undefined);
+  const chunks=[];
+  rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  rec.onstop=()=>{
+    const b=new Blob(chunks,{type:rec.mimeType});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b); a.download='reps-wod.'+(rec.mimeType.includes('mp4')?'mp4':'webm');
+    a.click();
+    btn.disabled=false; btn.textContent='Exporter (lent)';
+  };
+  vid.currentTime=0; await vid.play(); rec.start();
+  vid.onended=()=>{ if(rec.state!=='inactive') rec.stop(); };
+};
+</script>
+</body>
+</html>

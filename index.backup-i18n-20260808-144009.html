@@ -1115,7 +1115,7 @@
     <h2 class="wizard-title" id="customScreenTitle" data-i18n="cfg.customized">Personnalisé</h2>
     <div id="customScreenBody" style="display:flex;flex-direction:column;gap:14px;width:100%"></div>
     <div class="cs-summary" id="customScreenSummary"></div>
-    <button class="cs-continue-btn" onclick="csContinue()"><span data-i18n="cfg.continueBtn">Continuer</span> →</button>
+    <button class="cs-continue-btn" onclick="csContinue()">Continuer →</button>
     <div class="wizard-hint" data-i18n="cfg.continue">Règle, puis continue vers la musique</div>
   </div>
 </div>
@@ -1129,11 +1129,11 @@
     <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)">✏️ <span class="new-wod-label" data-i18n="nav.custom">PERSO</span></button>
     <button class="new-wod-btn" id="membersBtn" onclick="openMembers()" title="Adhérents & scores">👥 <span class="new-wod-label" data-i18n="nav.scores">SCORES</span></button>
     <button class="settings-btn" onclick="openSettings()" title="Réglages">⚙</button>
-    <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText" data-i18n="status.ready">READY</span></div>
+    <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText">READY</span></div>
   </div>
 </header>
 
-<button class="exit-fs-btn" onclick="toggleFullscreen()">✕ <span data-i18n="nav.exit">QUITTER</span></button>
+<button class="exit-fs-btn" onclick="toggleFullscreen()">✕ QUITTER</button>
 
 <!-- ===== MODAL SETTINGS ===== -->
 <div id="settingsModal" class="settings-modal" style="display:none" onclick="closeSettingsBackdrop(event)">
@@ -1217,7 +1217,7 @@
       </div>
 
       <div id="membersList" style="display:flex;flex-direction:column;gap:10px;"></div>
-      <div class="imp-empty" id="membersEmpty" data-i18n="members.empty">Aucun adhérent. Ajoute un prénom et un nom pour commencer.</div>
+      <div class="imp-empty" id="membersEmpty">Aucun adhérent. Ajoute un prénom et un nom pour commencer.</div>
     </div>
   </div>
 </div>
@@ -1246,10 +1246,10 @@
     <div>
       <div class="sec-label"><span data-i18n="cfg.mode">Mode d'entraînement</span> <button class="help-btn" onclick="showModeHelp()">?</button></div>
       <div class="mode-tabs">
-        <button class="mode-tab active" onclick="setMode(this,'wod')">FOR TIME<small data-i18n="modesub.fortime">WOD CLASSIQUE</small></button>
-        <button class="mode-tab" onclick="setMode(this,'amrap')">AMRAP<small data-i18n="modesub.amrap">MAX ROUNDS</small></button>
-        <button class="mode-tab" onclick="setMode(this,'emom')">EMOM<small data-i18n="modesub.emom">EVERY MINUTE</small></button>
-        <button class="mode-tab" onclick="setMode(this,'tabata')">TABATA<small data-i18n="modesub.tabata">INTERVAL</small></button>
+        <button class="mode-tab active" onclick="setMode(this,'wod')">FOR TIME<small>WOD CLASSIQUE</small></button>
+        <button class="mode-tab" onclick="setMode(this,'amrap')">AMRAP<small>MAX ROUNDS</small></button>
+        <button class="mode-tab" onclick="setMode(this,'emom')">EMOM<small>EVERY MINUTE</small></button>
+        <button class="mode-tab" onclick="setMode(this,'tabata')">TABATA<small>INTERVAL</small></button>
       </div>
     </div>
 
@@ -1304,7 +1304,7 @@
 
     <!-- 3b. EMOM INTERVAL -->
     <div id="emomSection" style="display:none">
-      <div class="sec-label" data-i18n="seclabel.emomcfg">⏱ Config EMOM</div>
+      <div class="sec-label">⏱ Config EMOM</div>
       <div class="emom-interval">
         <div class="emom-interval-label" data-i18n="cfg.work">⚡ Work (effort)</div>
         <div class="emom-pickers">
@@ -1359,7 +1359,7 @@
 
     <!-- 3c. TABATA CONFIG -->
     <div id="tabataSection" style="display:none">
-      <div class="sec-label" data-i18n="seclabel.tabatacfg">⚙️ Config Tabata</div>
+      <div class="sec-label">⚙️ Config Tabata</div>
       <div class="tabata-config">
         <div class="tab-row"><label>WORK</label><input type="number" id="tabWork" value="20" min="5" max="120"> <span class="vol-lbl">sec</span></div>
         <div class="tab-row"><label>REST</label><input type="number" id="tabRest" value="10" min="5" max="120"> <span class="vol-lbl">sec</span></div>
@@ -1369,7 +1369,7 @@
 
     <!-- 4. TRACK -->
     <div>
-      <div class="sec-label" data-i18n="seclabel.track">🎵 Track</div>
+      <div class="sec-label">🎵 Track</div>
       <div class="tracks">
         <!-- MA MUSIQUE (BYO) masqué : voir écran wizard. Réactiver avec le chemin audio natif.
         <button class="mix-btn byo-btn" id="mixByoBtn" onclick="setByoMusic()">
@@ -1385,13 +1385,13 @@
             <span class="mix-btn-ic">🎲</span>
             <div class="mix-btn-txt">
               <div class="mix-btn-title">AUTO</div>
-              <div class="mix-btn-sub" data-i18n="mix.autoSub">Musique choisie + suite aléatoire</div>
+              <div class="mix-btn-sub">Musique choisie + suite aléatoire</div>
             </div>
           </button>
           <button class="mix-btn" id="mixManualBtn" onclick="setMixMode('manual')">
             <span class="mix-btn-ic">✓</span>
             <div class="mix-btn-txt">
-              <div class="mix-btn-title" data-i18n="mix.manualTitle">MANUEL</div>
+              <div class="mix-btn-title">MANUEL</div>
               <div class="mix-btn-sub"><span id="mixManualCount">0</span> <span data-i18n="mix.selected">morceaux cochés</span></div>
             </div>
           </button>
@@ -1525,17 +1525,17 @@
       <div class="vol-section">
         <div class="vol-row">
           <span class="vol-lbl">🎵</span>
-          <span class="vol-name" data-i18n="vol.music">MUSIQUE</span>
+          <span class="vol-name">MUSIQUE</span>
           <input type="range" class="music" min="0" max="100" value="60" id="volMusic" oninput="updateVolMusic(this.value)">
           <span class="vol-lbl" id="volMusicVal">60%</span>
         </div>
         <div class="vol-row">
           <span class="vol-lbl">🎙️</span>
-          <span class="vol-name" data-i18n="vol.voice">VOIX</span>
+          <span class="vol-name">VOIX</span>
           <input type="range" class="voice" min="0" max="100" value="100" id="volVoice" oninput="updateVolVoice(this.value)">
           <span class="vol-lbl" id="volVoiceVal">100%</span>
         </div>
-        <button class="btn-show-welcome" onclick="showWelcome()">↺ <span data-i18n="nav.rewelcome">REVOIR L'ACCUEIL</span></button>
+        <button class="btn-show-welcome" onclick="showWelcome()">↺ REVOIR L'ACCUEIL</button>
       </div>
     </div>
   </aside>
@@ -1565,8 +1565,8 @@
       <button class="btn-ctrl" onclick="resetTimer()">↺ RESET</button>
       <button class="btn-play" id="btnPlay" onclick="togglePlay()">▶</button>
       <button class="btn-ctrl" id="btnSkip" onclick="skipAhead()" style="display:none">⏭ –3MIN</button>
-      <button class="btn-ctrl" id="btnFilm" onclick="toggleFilm()" style="display:none" data-i18n="film.rec">🎥 Filmer</button>
-      <button class="btn-ctrl on" id="btnFilmAudio" onclick="toggleFilmAudio()" style="display:none" data-i18n="film.audio">🔊 Son ambiant</button>
+      <button class="btn-ctrl" id="btnFilm" onclick="toggleFilm()" style="display:none">🎥 Filmer</button>
+      <button class="btn-ctrl on" id="btnFilmAudio" onclick="toggleFilmAudio()" style="display:none">🔊 Son ambiant</button>
     </div>
 
     <button id="addVideoBtn" onclick="startVideoOverlayFlow()" style="display:none;width:100%;margin-top:10px;padding:14px;font:800 15px/1 -apple-system,system-ui,sans-serif;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,#7c3aed,#a855f7);border:0;border-radius:12px;box-shadow:0 6px 18px rgba(124,58,237,.35);"></button>
@@ -1579,7 +1579,7 @@
       </div>
       <div class="sc-row">
         <input type="text" class="sc-input sc-grow" id="scoreValue" data-i18n-ph="ph.score" placeholder="Score (12:34, 8+12, 100kg…)">
-        <button class="sc-save-btn" onclick="saveTimerScore()" data-i18n="score.save">Enregistrer</button>
+        <button class="sc-save-btn" onclick="saveTimerScore()">Enregistrer</button>
       </div>
       <div class="sc-feedback" id="scoreFeedback"></div>
     </div>
@@ -1600,15 +1600,15 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v106</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
+<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v105</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
   <video id="syncVideo" playsinline style="flex:1;width:100%;min-height:0;object-fit:contain;background:#000;"></video>
   <div style="padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#111;color:#fff;">
-    <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;"><span data-i18n="sync.instrA">Place le curseur sur le </span><b>GO</b><span data-i18n="sync.instrB"> de ta vidéo (le départ du WOD)</span></div>
+    <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;">Place le curseur sur le <b>GO</b> de ta vidéo (le départ du WOD)</div>
     <input id="syncSlider" type="range" min="0" max="1000" value="0" step="1" style="width:100%;accent-color:#7c3aed;">
     <div id="syncTime" style="font:700 13px/1 ui-monospace,monospace;color:#a78bfa;margin-top:6px;">0.0 s</div>
     <div style="display:flex;gap:10px;margin-top:14px;">
-      <button onclick="cancelSync()" style="flex:1;padding:14px;background:#333;color:#fff;border:0;border-radius:10px;font:700 14px sans-serif;" data-i18n="common.cancel">Annuler</button>
-      <button onclick="confirmSync()" style="flex:2;padding:14px;background:#7c3aed;color:#fff;border:0;border-radius:10px;font:700 14px sans-serif;"><span data-i18n="sync.confirm">C'est le GO</span> ✓</button>
+      <button onclick="cancelSync()" style="flex:1;padding:14px;background:#333;color:#fff;border:0;border-radius:10px;font:700 14px sans-serif;">Annuler</button>
+      <button onclick="confirmSync()" style="flex:2;padding:14px;background:#7c3aed;color:#fff;border:0;border-radius:10px;font:700 14px sans-serif;">C'est le GO ✓</button>
     </div>
   </div>
 </div>
@@ -1842,29 +1842,7 @@ const I18N={
   'ph.prenom':['Prénom','First name','Nome'],
   'ph.nom':['Nom','Last name','Sobrenome'],
   'ph.score':['Score (12:34, 8+12, 100kg…)','Score (12:34, 8+12, 100kg…)','Score (12:34, 8+12, 100kg…)'],
-  'ph.wodtype':['Type de WOD / exo','WOD / lift type','Tipo de WOD / exo'],
-  'status.ready':['PRÊT','READY','PRONTO'],
-  'nav.exit':['QUITTER','EXIT','SAIR'],
-  'nav.rewelcome':["REVOIR L'ACCUEIL",'SHOW WELCOME','REVER O INÍCIO'],
-  'members.empty':['Aucun adhérent. Ajoute un prénom et un nom pour commencer.','No members yet. Add a first and last name to start.','Nenhum membro. Adicione nome e sobrenome para começar.'],
-  'modesub.fortime':['WOD CLASSIQUE','CLASSIC WOD','WOD CLÁSSICO'],
-  'modesub.amrap':['MAX DE TOURS','MAX ROUNDS','MÁX ROUNDS'],
-  'modesub.emom':['CHAQUE MINUTE','EVERY MINUTE','CADA MINUTO'],
-  'modesub.tabata':['INTERVALLES','INTERVAL','INTERVALOS'],
-  'seclabel.emomcfg':['⏱ Config EMOM','⏱ EMOM config','⏱ Config EMOM'],
-  'seclabel.tabatacfg':['⚙️ Config Tabata','⚙️ Tabata config','⚙️ Config Tabata'],
-  'seclabel.track':['🎵 Morceau','🎵 Track','🎵 Faixa'],
-  'mix.manualTitle':['MANUEL','MANUAL','MANUAL'],
-  'mix.autoSub':['Musique choisie + suite aléatoire','Chosen track + random after','Faixa escolhida + aleatório depois'],
-  'vol.music':['MUSIQUE','MUSIC','MÚSICA'],
-  'vol.voice':['VOIX','VOICE','VOZ'],
-  'film.rec':['🎥 Filmer','🎥 Film','🎥 Filmar'],
-  'film.audio':['🔊 Son ambiant','🔊 Ambient sound','🔊 Som ambiente'],
-  'cfg.continueBtn':['Continuer','Continue','Continuar'],
-  'common.cancel':['Annuler','Cancel','Cancelar'],
-  'sync.instrA':['Place le curseur sur le ','Move the cursor to the ','Coloque o cursor no '],
-  'sync.instrB':[' de ta vidéo (le départ du WOD)',' of your video (the WOD start)',' do teu vídeo (o início do WOD)'],
-  'sync.confirm':["C'est le GO",'That’s the GO','É o GO']
+  'ph.wodtype':['Type de WOD / exo','WOD / lift type','Tipo de WOD / exo']
 };
 function I18Nget(key){
   const e=I18N[key]; if(!e) return null;
@@ -2196,7 +2174,7 @@ function updateClock(){
   
   // En EMOM, mettre à jour l'eyebrow avec WORK/REST + ROUND X/Y
   if(S.mode==='emom' && S.state==='playing'){
-    const phaseLabel=S.emomPhase==='rest'?L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'):L3('⚡ EFFORT','⚡ WORK','⚡ ESFORÇO');
+    const phaseLabel=S.emomPhase==='rest'?'😮‍💨 REST':'⚡ WORK';
     const totalRounds=S.emomRounds||5;
     const eb=document.getElementById('timerEyebrow');
     if(eb) eb.textContent=`// EMOM ${phaseLabel} — ROUND ${S.emomCurrentRound}/${totalRounds}`;
@@ -2224,7 +2202,7 @@ function updateClock(){
   const pi=document.getElementById('phaseIndicator');
   if(S.mode==='tabata' && S.state==='playing'){
     pi.className='phase-indicator '+S.tabPhase;
-    pi.textContent=S.tabPhase==='work'?L3('🔥 EFFORT','🔥 WORK','🔥 ESFORÇO'):L3('💧 REPOS','💧 REST','💧 DESCANSO');
+    pi.textContent=S.tabPhase==='work'?'🔥 WORK':'💧 REST';
   } else pi.className='phase-indicator';
 
   updateSchedHL();
@@ -3026,7 +3004,7 @@ function startVisualCountdown(){
       numEl.className='cd-num'+(isGo?' go':'');
       numEl.style.animation='none';void numEl.offsetWidth;
       numEl.style.animation='pop 0.15s ease-out';
-      subEl.textContent=isGo?L3("C'EST PARTI !","LET'S GO!",'VAMOS!'):'';
+      subEl.textContent=isGo?"C'EST PARTI !":'';
   }}));
   const lastT=timings[timings.length-1].t;
   visSteps.push({t:lastT+500,fn:()=>overlay.classList.remove('show')});
@@ -3179,7 +3157,7 @@ function toggleFilmAudio(){
   if(S.filming){ DBG('son: pas pendant l\'enregistrement'); return; }
   S.filmAudio=!S.filmAudio;
   const b=document.getElementById('btnFilmAudio');
-  if(b){ b.textContent=(S.filmAudio?'🔊':'🔇')+' '+L3('Son ambiant','Ambient sound','Som ambiente'); b.classList.toggle('on',S.filmAudio); }
+  if(b){ b.textContent=(S.filmAudio?'🔊':'🔇')+' Son ambiant'; b.classList.toggle('on',S.filmAudio); }
   DBG('son ambiant: '+(S.filmAudio?'ON':'OFF'));
 }
 async function toggleFilm(){
@@ -3421,7 +3399,7 @@ function startChrono(){
   document.getElementById('timerStatus').textContent='▶ '+mName+' — '+(byoMusic?L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA'):TRACK_INFO[S.track].name);
   try{const w=document.getElementById('scoreWod'); if(w) w.value=currentWodLabel();}catch(e){}
   if(S.mode!=='tabata') document.getElementById('btnSkip').style.display='';
-  setStatus('playing',L3('EN COURS','RUNNING','EM CURSO'));
+  setStatus('playing','EN COURS');
 
   // Overlay vidéo : on enregistre une frame du chrono par seconde, à partir du GO,
   // et l'heure absolue du GO (pour le calage automatique de la vidéo, anti-triche).
@@ -3638,7 +3616,7 @@ function pause(){
   document.getElementById('timerCard').classList.remove('playing');
   document.getElementById('waveform').classList.remove('active');
   document.getElementById('timerStatus').textContent=L3('⏸ En pause','⏸ Paused','⏸ Pausado');
-  setStatus('paused',L3('PAUSE','PAUSED','PAUSA'));
+  setStatus('paused','PAUSE');
 }
 function resume(){
   // On reprend le morceau là où il s'était arrêté. Si rien à reprendre, on relance le mix.
@@ -3670,7 +3648,7 @@ function resetTimer(){
   document.getElementById('btnSkip').style.display='none';
   document.getElementById('phaseIndicator').className='phase-indicator';
   document.getElementById('roundBadge').textContent='';
-  setStatus('',L3('PRÊT','READY','PRONTO'));
+  setStatus('','READY');
 }
 
 function end(){
@@ -3691,7 +3669,7 @@ function end(){
   // Ne pas laisser figé le dernier "REST — ROUND 3/3" du WOD
   const _eb=document.getElementById('timerEyebrow');
   if(_eb) _eb.textContent=L3('// TERMINÉ','// DONE','// CONCLUÍDO');
-  setStatus('',L3('FINI','DONE','FIM'));
+  setStatus('','FINI');
   // Enregistrement vidéo : on laisse tourner ~1,9s de plus pour capturer la frame finale
   // (le 1:00 figé) ET toute l'annonce "TIME" (fichier de 1,67s). À 1s elle était tronquée.
   try{ if(window.REC) setTimeout(()=>{ try{ REC._onStop(); }catch(e){} }, 1900); }catch(e){}
@@ -3751,7 +3729,7 @@ function getFavs(){try{return JSON.parse(localStorage.getItem('reps_favs')||'[]'
 function setFavs(f){localStorage.setItem('reps_favs',JSON.stringify(f));}
 
 function saveFavorite(){
-  const name=prompt(L3('Nom du WOD à sauvegarder :','Name of the WOD to save:','Nome do WOD a salvar:'));
+  const name=prompt('Nom du WOD à sauvegarder :');
   if(!name) return;
   const fav={name,mode:S.mode,track:S.track,dur:S.dur,lang:S.lang};
   if(S.mode==='tabata'){
@@ -3816,14 +3794,14 @@ function deleteFavorite(e,idx){
 function renderFavs(){
   const list=document.getElementById('favList');
   const favs=getFavs();
-  if(!favs.length){list.innerHTML='<div class="fav-empty">'+L3('Aucun WOD sauvegardé','No saved WOD yet','Nenhum WOD salvo')+'</div>';return;}
+  if(!favs.length){list.innerHTML='<div class="fav-empty">Aucun WOD sauvegardé</div>';return;}
   list.innerHTML='';
   favs.forEach((f,i)=>{
     const el=document.createElement('div');el.className='fav-item';
     el.onclick=()=>loadFavorite(i);
     const modeIcon={wod:'⏱',amrap:'🔄',emom:'🔔',tabata:'⚡'}[f.mode];
     const dur=f.mode==='tabata'?`${f.tabRounds}×${f.tabWork}/${f.tabRest}s`:`${f.dur}min`;
-    el.innerHTML=`<span>${modeIcon}</span><span class="fav-name">${f.name} · ${dur}</span><button class="fav-del" title="${L3('Supprimer','Delete','Excluir')}">✕</button>`;
+    el.innerHTML=`<span>${modeIcon}</span><span class="fav-name">${f.name} · ${dur}</span><button class="fav-del" title="Supprimer">✕</button>`;
     el.querySelector('.fav-del').onclick=(e)=>deleteFavorite(e,i);
     list.appendChild(el);
   });
@@ -3873,7 +3851,7 @@ function renderFavsModal(){
         <div class="fav-modal-name">${f.name}</div>
         <div class="fav-modal-meta">${modeLabel} · ${dur}</div>
       </div>
-      <button class="fav-modal-del" title="${L3('Supprimer','Delete','Excluir')}">✕</button>
+      <button class="fav-modal-del" title="Supprimer">✕</button>
     `;
     el.querySelector('.fav-modal-del').onclick=(e)=>{
       e.stopPropagation();
@@ -4214,7 +4192,7 @@ function openConfigFromWizard(){
   }
   // Le bouton du bandeau reflète que le panneau est ouvert
   const btn=document.getElementById('customizeBtn');
-  if(btn) btn.innerHTML='✓ <span class="new-wod-label">'+I18Nget('nav.done')+'</span>';
+  if(btn) btn.innerHTML='✓ <span class="new-wod-label">TERMINÉ</span>';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -4246,7 +4224,7 @@ function showCustomChoice(mode){
   const body=document.getElementById('customScreenBody');
   if(title){
     const names={wod:'For Time',amrap:'AMRAP',emom:'EMOM',tabata:'Tabata'};
-    title.textContent=L3('Perso · ','Custom · ','Perso · ')+(names[mode]||'');
+    title.textContent='Perso · '+(names[mode]||'');
   }
   let html='';
   if(mode==='emom'){
@@ -4258,21 +4236,21 @@ function showCustomChoice(mode){
       + _csStepper('MIN','csv_rmin',"csEmom('rest','min',-1)","csEmom('rest','min',1)",Math.floor(CS.rest/60))
       + _csStepper('SEC','csv_rsec',"csEmom('rest','sec',-1)","csEmom('rest','sec',1)",String(CS.rest%60).padStart(2,'0'))
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('🔁 Nombre de tours','🔁 Number of rounds','🔁 Número de rounds')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block"><div class="cs-block-title">🔁 Nombre de tours</div><div class="emom-pickers">'
       + _csStepper('','csv_rounds',"csRounds(-1)","csRounds(1)",CS.rounds)
       + '</div></div>';
   } else if(mode==='tabata'){
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('⚡ Work (sec)','⚡ Work (sec)','⚡ Work (seg)')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block"><div class="cs-block-title">⚡ Work (sec)</div><div class="emom-pickers">'
       + _csStepper('','csv_tw',"csTab('work',-1)","csTab('work',1)",CS.tabWork)
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('😮‍💨 Rest (sec)','😮‍💨 Rest (sec)','😮‍💨 Rest (seg)')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block"><div class="cs-block-title">😮‍💨 Rest (sec)</div><div class="emom-pickers">'
       + _csStepper('','csv_tr',"csTab('rest',-1)","csTab('rest',1)",CS.tabRest)
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('🔁 Nombre de tours','🔁 Number of rounds','🔁 Número de rounds')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block"><div class="cs-block-title">🔁 Nombre de tours</div><div class="emom-pickers">'
       + _csStepper('','csv_trnd',"csTab('rounds',-1)","csTab('rounds',1)",CS.tabRounds)
       + '</div></div>';
   } else {
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('⏱ Durée (min)','⏱ Duration (min)','⏱ Duração (min)')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block"><div class="cs-block-title">⏱ Durée (min)</div><div class="emom-pickers">'
       + _csStepper('','csv_dur',"csDur(-1)","csDur(1)",CS.durMin)
       + '</div></div>';
   }
@@ -4616,7 +4594,7 @@ function impUpdateCount(){
 }
 function impAddToUI(id,name,kind){
   const emoji=kind==='video'?'🎬':'🎵';
-  const sub=kind==='video'?L3('Perso · Vidéo','Custom · Video','Perso · Vídeo'):L3('Perso · Audio','Custom · Audio','Perso · Áudio');
+  const sub=kind==='video'?'Perso · Vidéo':'Perso · Audio';
   TRACK_INFO[id]={name:name,emoji:emoji,sub:sub};
   if(ALL_TRACK_KEYS.indexOf(id)<0) ALL_TRACK_KEYS.push(id);
   const body=document.getElementById('persoTracks');
@@ -4633,14 +4611,14 @@ function impAddToUI(id,name,kind){
   const s=document.createElement('div'); s.className='track-sub'; s.textContent=sub;
   txt.appendChild(t); txt.appendChild(s);
   const del=document.createElement('span');
-  del.className='imp-del'; del.textContent='×'; del.title=L3('Supprimer','Delete','Excluir');
+  del.className='imp-del'; del.textContent='×'; del.title='Supprimer';
   del.setAttribute('onclick',"event.stopPropagation();impRemove('"+id+"')");
   btn.appendChild(pick); btn.appendChild(em); btn.appendChild(txt); btn.appendChild(del);
   body.appendChild(btn);
 }
 function handleImportFiles(fileList){
   const files=Array.from(fileList||[]).filter(f=>impIsAudio(f)||impIsVideo(f));
-  if(!files.length){ alert(L3('Choisis un fichier audio (mp3, m4a...) ou une vidéo (enregistrement d\'écran .mov, .mp4).','Choose an audio file (mp3, m4a...) or a video (screen recording .mov, .mp4).','Escolha um arquivo de áudio (mp3, m4a...) ou um vídeo (gravação de tela .mov, .mp4).')); return Promise.resolve(); }
+  if(!files.length){ alert('Choisis un fichier audio (mp3, m4a...) ou une vidéo (enregistrement d\'écran .mov, .mp4).'); return Promise.resolve(); }
   let chain=Promise.resolve();
   files.forEach((f,i)=>{
     chain=chain.then(()=>{
@@ -4654,7 +4632,7 @@ function handleImportFiles(fileList){
         impAddToUI(id,name,kind);
       }).catch(e=>{
         console.error('import',e);
-        alert(L3('Impossible d\'enregistrer « ','Could not save « ','Não foi possível salvar « ')+name+L3(' ». L\'espace de stockage est peut-être plein.',' ». Storage may be full.',' ». O armazenamento pode estar cheio.'));
+        alert('Impossible d\'enregistrer « '+name+' ». L\'espace de stockage est peut-être plein.');
       });
     });
   });
@@ -4715,7 +4693,7 @@ function renderPersoModalList(){
     const s=document.createElement('div'); s.className='perso-sub'; s.textContent=info.sub||'';
     txt.appendChild(t); txt.appendChild(s);
     pick.appendChild(em); pick.appendChild(txt);
-    const del=document.createElement('button'); del.className='perso-del'; del.textContent='×'; del.title=L3('Supprimer','Delete','Excluir');
+    const del=document.createElement('button'); del.className='perso-del'; del.textContent='×'; del.title='Supprimer';
     del.setAttribute('onclick',"impRemove('"+id+"');renderPersoModalList();");
     row.appendChild(pick); row.appendChild(del);
     list.appendChild(row);
@@ -5010,7 +4988,7 @@ window.addEventListener('DOMContentLoaded',membersInit);
 
   REC.arm=async function(){
     REC.diag=[]; REC.launchTs=0; REC._drawErr=0;
-    if(!REC.supported()){ alert(L3("La capture vidéo n'est pas disponible sur cet appareil.","Video capture isn't available on this device.","A captura de vídeo não está disponível neste aparelho.")); return; }
+    if(!REC.supported()){ alert("La capture vidéo n'est pas disponible sur cet appareil."); return; }
     try{
       // Pas de micro : ouvrir le micro forcerait iOS en playAndRecord, ce qui
       // étouffe le son de l'app et rend l'enregistrement muet. Vidéo seule = fiable.
@@ -5018,7 +4996,7 @@ window.addEventListener('DOMContentLoaded',membersInit);
         video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}},
         audio:false
       });
-    }catch(e){ alert(L3('Accès caméra refusé : ','Camera access denied: ','Acesso à câmera negado: ')+e.name); return; }
+    }catch(e){ alert("Accès caméra refusé : "+e.name); return; }
     // Diagnostic : surveiller les pistes (une session audio iOS qui change peut les tuer)
     (REC.stream.getTracks()||[]).forEach(t=>{
       dlog('piste '+t.kind+' = '+t.readyState);
