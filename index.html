@@ -1600,7 +1600,7 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v106</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
+<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v114</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
   <video id="syncVideo" playsinline style="flex:1;width:100%;min-height:0;object-fit:contain;background:#000;"></video>
   <div style="padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#111;color:#fff;">
     <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;"><span data-i18n="sync.instrA">Place le curseur sur le </span><b>GO</b><span data-i18n="sync.instrB"> de ta vidéo (le départ du WOD)</span></div>
@@ -1772,6 +1772,7 @@ function setLang(l){
     try{localStorage.setItem('reps_lang',l);}catch(e){}
     applyI18n();
     renderSched();
+    _updateDiag();
   }catch(e){
     console.error('setLang error:',e);
     // Affiche l'erreur en bas à droite (diagnostic temporaire) au lieu de figer l'app
@@ -1785,6 +1786,10 @@ function L3(fr,en,pt){
   if(S.lang==='en') return en;
   return fr;
 }
+
+// Compteur de diagnostic retiré (il a servi à traquer la fuite mémoire / le plafond iOS).
+// Laissé en no-op pour ne pas toucher aux points d'appel ; le badge affiche à nouveau la version.
+function _updateDiag(){}
 
 // ===== I18N : traductions des libellés statiques =====
 const I18N={
@@ -2425,7 +2430,25 @@ function playNextShuffle(){
   musicAudio.play().catch(err=>console.warn('music next',err));
   busAttachEl(musicAudio);
 }
-function stopMusic(){if(musicAudio){try{musicAudio.pause();}catch(e){}musicAudio=null;}_duckCount=0;}
+function stopMusic(){
+  if(musicAudio){try{musicAudio.pause();}catch(e){}musicAudio=null;}
+  _duckCount=0;
+  // FUITE MÉMOIRE corrigée : chaque WOD mettait en cache un morceau ENTIER décodé dans
+  // audioCache (clé 'music_…') sans jamais le libérer. Décodé, un MP3 pèse des dizaines de
+  // Mo ; au bout de ~4 WOD la WebView saturait et figeait par à-coups. On purge ici les
+  // morceaux INTÉGRÉS (présents dans MUSIC), en libérant vraiment le média (src vidé + load).
+  // On NE touche PAS aux imports du client (clés 'music_<id>' absentes de MUSIC).
+  try{
+    for(const k in audioCache){
+      if(k.indexOf('music_')!==0) continue;
+      if(!MUSIC[k.slice(6)]) continue; // garder les imports perso
+      const a=audioCache[k];
+      try{ a.pause(); a.src=''; if(a.load) a.load(); }catch(e){}
+      try{ const i=window.__repsAudios?window.__repsAudios.indexOf(a):-1; if(i>=0) window.__repsAudios.splice(i,1); }catch(e){}
+      delete audioCache[k];
+    }
+  }catch(e){}
+}
 
 // Pause "douce" : on met le morceau en pause SANS détruire l'élément audio.
 // Ainsi la reprise repart exactement où on s'est arrêté, sur le morceau en cours
@@ -2665,27 +2688,49 @@ async function preloadCountBuffers(){
 // et "10 secondes" s'entendaient, mais pas ROUND / REST / le decompte).
 // On bascule donc les annonces sur des elements <audio> debloques pendant le
 // geste utilisateur (bouton play). La Web Audio reste en repli.
-const _elPool={};
-function _elFor(src){
-  if(!_elPool[src]){
-    const a=new Audio(src);
-    a.preload='auto';
+// Petit pool RÉUTILISABLE d'éléments <audio>. iOS limite le nombre d'éléments média
+// simultanés (~25-30) : en créer 27 d'un coup au lancement (un par fichier) frôlait ce
+// plafond et figeait la WebView. On garde 6 éléments et on change juste leur `src` à la
+// demande. Un son d'annonce dure <1 s et il n'y en a jamais 6 à la fois → 6 suffisent.
+const _EL_POOL_SIZE=6;
+const _elRing=[];
+let _elRR=0;
+function _ensureElRing(){
+  if(_elRing.length) return;
+  for(let i=0;i<_EL_POOL_SIZE;i++){
+    const a=new Audio();
+    a.preload='none';
     try{a.playsInline=true;a.setAttribute('playsinline','');}catch(e){}
-    _elPool[src]=a;
+    _elRing.push(a);
   }
-  return _elPool[src];
+}
+function _elFor(src){
+  _ensureElRing();
+  const a=_elRing[_elRR % _EL_POOL_SIZE]; _elRR++;
+  if(a._repsSrc!==src){ try{ a.src=src; }catch(e){} a._repsSrc=src; }
+  return a;
 }
 // Coupe et rembobine toutes les annonces du pool (résidus d'un WOD précédent)
 function stopAllAnnounces(){
   try{
-    for(const k in _elPool){
-      const a=_elPool[k];
-      if(a){ try{ a.pause(); a.currentTime=0; a.muted=false; a.onended=null; a.onerror=null; }catch(e){} }
+    // On coupe et on LIBÈRE la mémoire native des 6 éléments du pool (src vidé) entre deux WOD,
+    // sans détruire les objets eux-mêmes (ils restent réutilisables et seront redébloqués au
+    // lancement suivant). Un <audio> avec un src chargé garde son son décodé en mémoire native
+    // iOS, invisible au badge JS ; d'un WOD à l'autre ça s'accumulait et figeait la WebView.
+    for(const a of _elRing){
+      if(a){ try{ a.pause(); a.currentTime=0; a.muted=false; a.volume=1; a.onended=null; a.onerror=null; a.src=''; a._repsSrc=''; if(a.load) a.load(); }catch(e){} }
     }
   }catch(e){}
   // Voix créées par playVoiceFile (TIME, rounds…) : les couper aussi.
   try{
-    _activeVoices.forEach(a=>{ try{ a.pause(); a.currentTime=0; a.onended=null; a.onerror=null; }catch(e){} });
+    _activeVoices.forEach(a=>{
+      // src='' libère aussi la mémoire native décodée de la voix (pas juste l'objet JS).
+      try{ a.pause(); a.currentTime=0; a.onended=null; a.onerror=null; a.src=''; if(a.load) a.load(); }catch(e){}
+      // Fuite mémoire corrigée : une voix coupée AVANT sa fin ne déclenche jamais 'ended',
+      // donc le monkeypatch Audio ne la retire pas de __repsAudios → elle s'empile WOD après
+      // WOD jusqu'à figer la WebView. On la retire ici, au moment où on la coupe.
+      try{ const i=window.__repsAudios.indexOf(a); if(i>=0) window.__repsAudios.splice(i,1); }catch(e){}
+    });
   }catch(e){}
   _activeVoices=[];
   // Filet ultime : couper TOUT son enregistré, quelle que soit sa source.
@@ -2711,21 +2756,24 @@ function unlockAnnounceEls(){
   // qui bavait au début). Les annonces + le décompte passent alors par des buffers
   // Web Audio (voir playFileViaBus / playCountWA / playRoundWA / playRestWA).
   if(_busActive) return;
-  _announceFiles().forEach(src=>{
-    const a=_elFor(src);
+  // On ne débloque plus 27 fichiers d'un coup (ça saturait iOS et faisait le mur de son au
+  // départ). On débloque seulement les 6 éléments RÉUTILISABLES du pool, avec un son
+  // SILENCIEUX. Une fois débloqué pendant le geste, un élément peut rejouer n'importe quel
+  // son (on lui change juste le src) sans nouveau geste, et sans jamais dépasser 6 éléments.
+  _ensureElRing();
+  const silent=_makeSilentWavURI(0.05);
+  _elRing.forEach(a=>{
     try{
-      a.muted=true;
-      // Pendant un enregistrement : router l'element AVANT de le jouer. Son son passe
-      // alors par un gain à 0 (puisque muted=true) => déblocage 100% silencieux, même si
-      // iOS laisse fuir un transitoire sur un <audio> muté. C'est ce qui rend le décompte
-      // propre dès le TOUT PREMIER enregistrement (avant, les elements n'étaient pas encore
-      // routés au moment du déblocage, donc la rafale passait).
+      a.muted=true; a.volume=0;
+      a.src=silent; a._repsSrc='__silent__';
       busAttachEl(a);
+      const done=()=>{ try{a.pause();a.currentTime=0;}catch(e){} a.muted=false; a.volume=1;
+        // ne remet à vide QUE si un vrai son n'a pas déjà pris la main (évite de couper le "10")
+        if(a._repsSrc==='__silent__'){ try{a.src='';}catch(e){} a._repsSrc=''; } };
       const p=a.play();
-      if(p&&p.then) p.then(()=>{try{a.pause();a.currentTime=0;}catch(e){}a.muted=false;})
-                     .catch(()=>{a.muted=false;});
-      else {try{a.pause();a.currentTime=0;}catch(e){}a.muted=false;}
-    }catch(e){ try{a.muted=false;}catch(e2){} }
+      if(p&&p.then) p.then(done).catch(()=>{a.muted=false;a.volume=1;});
+      else done();
+    }catch(e){ try{a.muted=false;a.volume=1;}catch(e2){} }
   });
 }
 // Joue une annonce via element <audio>. onFail = repli Web Audio.
@@ -3449,6 +3497,7 @@ function startChrono(){
       if(S.remain<=0) break;
     }
     if(guard>1) DBG('rattrapage de '+guard+' s (timer iOS ralenti)');
+    _updateDiag();
     if(S.remain<=0){
       if(S.mode==='tabata'){ tabataPhaseEnd(); S.t0=Date.now(); S.startRemain=S.remain; }
       else end();
