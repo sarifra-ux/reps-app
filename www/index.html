@@ -335,6 +335,9 @@
   .btn-play:active{transform:scale(0.94);}
   .btn-ctrl{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:var(--muted);cursor:pointer;font-family:'DM Mono',monospace;font-size:0.65rem;letter-spacing:1px;}
   .btn-ctrl:hover{border-color:var(--accent2);color:var(--text);}
+  /* « FINI » : vert, pour le distinguer de RESET qui annule. L'un valide, l'autre jette. */
+  .btn-done{color:var(--green);border-color:rgba(0,230,118,0.35);}
+  .btn-done:hover,.btn-done:active{border-color:var(--green);color:var(--green);}
 
   /* FULLSCREEN MODE */
   body.fullscreen-mode header,
@@ -1018,6 +1021,10 @@
   .sc-row{display:flex;gap:8px;}
   .sc-input{flex:1;}
   .sc-grow{flex:2;}
+  /* Etat "aucun adherent" : un vrai bouton remplace le menu deroulant. Un <select>
+     vide ouvrait un picker natif a une seule ligne inerte, sans dire ou aller. */
+  .sc-addmbr{flex:1;cursor:pointer;text-align:left;color:var(--accent2);
+    border-color:var(--accent2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .sc-feedback{font-size:0.7rem;color:var(--green);min-height:0.9rem;}
 .settings-action-btn{display:flex;align-items:center;gap:12px;width:100%;background:var(--surface);
     border:1px solid var(--border);border-radius:12px;padding:14px 16px;color:var(--text);
@@ -1732,6 +1739,7 @@
       <button class="btn-ctrl" onclick="resetTimer()">↺ RESET</button>
       <button class="btn-play" id="btnPlay" onclick="togglePlay()">▶</button>
       <button class="btn-ctrl" id="btnSkip" onclick="skipAhead()" style="display:none">⏭ –3MIN</button>
+      <button class="btn-ctrl btn-done" id="btnDone" onclick="finishNow()" style="display:none" data-i18n="ctrl.done">✓ FINI</button>
       <button class="btn-ctrl" id="btnFilm" onclick="toggleFilm()" style="display:none" data-i18n="film.rec">🎥 Filmer</button>
       <button class="btn-ctrl on" id="btnFilmAudio" onclick="toggleFilmAudio()" style="display:none" data-i18n="film.audio">🔊 Son ambiant</button>
     </div>
@@ -1742,10 +1750,11 @@
       <div class="sc-label" id="scoreCaptureLabel">Enregistrer un score</div>
       <div class="sc-row">
         <select class="sc-input" id="scoreMember"></select>
+        <button class="sc-input sc-addmbr" id="scoreAddMember" onclick="openMembers()" style="display:none">👥 Ajouter un adhérent</button>
         <input type="text" class="sc-input" id="scoreWod" data-i18n-ph="ph.wodtype" placeholder="Type de WOD / exo">
       </div>
       <div class="sc-row">
-        <input type="text" class="sc-input sc-grow" id="scoreValue" data-i18n-ph="ph.score" placeholder="Score (12:34, 8+12, 100kg…)">
+        <input type="text" class="sc-input sc-grow" id="scoreValue" data-i18n-ph="ph.score" placeholder="Score (12:34, 8+12…)">
         <button class="sc-save-btn" onclick="saveTimerScore()" data-i18n="score.save">Enregistrer</button>
       </div>
       <div class="sc-feedback" id="scoreFeedback"></div>
@@ -1769,7 +1778,7 @@
 
 <!-- Badge de build retire pour la soumission App Store (guideline 2.2 : pas d'element
      de type "beta" visible). Le numero de build reste dans sw.js / Xcode. -->
-<div id="buildTag" style="position:fixed;right:6px;bottom:calc(4px + env(safe-area-inset-bottom));z-index:2147483647;font:400 9px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.16);letter-spacing:.5px;pointer-events:none;user-select:none;">v134</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
+<div id="buildTag" style="position:fixed;right:6px;bottom:calc(4px + env(safe-area-inset-bottom));z-index:2147483647;font:400 9px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.16);letter-spacing:.5px;pointer-events:none;user-select:none;">v143</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
   <video id="syncVideo" playsinline style="flex:1;width:100%;min-height:0;object-fit:contain;background:#000;"></video>
   <div style="padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#111;color:#fff;">
     <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;"><span data-i18n="sync.instrA">Place le curseur sur le </span><b>GO</b><span data-i18n="sync.instrB"> de ta vidéo (le départ du WOD)</span></div>
@@ -1811,7 +1820,11 @@ function stopAllAudio(){
   }
 }
 const MUSIC={pogo:'pogo.mp3',pleinfeu:'pleinfeu.mp3',techno:'techno.mp3',house:'house.mp3',hymne:'hymne.mp3',censured:'censured.mp3',cartier:'cartier.mp3',crime:'crime.mp3',cyrilgane:'cyrilgane.mp3',introduction:'introduction.mp3',vibes:'vibes.mp3'};
-const GO_AUDIO={fr:'brian-fr.mp3',en:'brian-en.mp3'};
+// GO_AUDIO (brian-fr.mp3 / brian-en.mp3) supprime le 10/08/2026 : la table etait
+// declaree ici et referencee NULLE PART ailleurs dans le fichier. Les deux mp3
+// (218 Ko) partaient dans le bundle et dans le precache du service worker pour rien.
+// Le decompte utilise COUNT_AUDIO_* ci-dessous. Le badge « BRIAN » de l'interface
+// est un simple libelle, il ne depend pas de ces fichiers.
 const COUNT_AUDIO_EN=['count-en-10.mp3','count-en-9.mp3','count-en-8.mp3','count-en-7.mp3','count-en-6.mp3','count-en-5.mp3','count-en-4.mp3','count-en-3.mp3','count-en-2.mp3','count-en-1.mp3','count-en-go.mp3'];
 const COUNT_AUDIO_FR=['count-fr-10.mp3','count-fr-9.mp3','count-fr-8.mp3','count-fr-7.mp3','count-fr-6.mp3','count-fr-5.mp3','count-fr-4.mp3','count-fr-3.mp3','count-fr-2.mp3','count-fr-1.mp3','count-fr-go.mp3'];
 const COUNT_AUDIO_PT=['count-pt-10.mp3','count-pt-9.mp3','count-pt-8.mp3','count-pt-7.mp3','count-pt-6.mp3','count-pt-5.mp3','count-pt-4.mp3','count-pt-3.mp3','count-pt-2.mp3','count-pt-1.mp3','count-pt-go.mp3'];
@@ -2017,7 +2030,7 @@ const I18N={
   'sched.rounds':['Rounds','Rounds','Rounds'],
   'ph.prenom':['Prénom','First name','Nome'],
   'ph.nom':['Nom','Last name','Sobrenome'],
-  'ph.score':['Score (12:34, 8+12, 100kg…)','Score (12:34, 8+12, 100kg…)','Score (12:34, 8+12, 100kg…)'],
+  'ph.score':['Score (12:34, 8+12…)','Score (12:34, 8+12…)','Score (12:34, 8+12…)'],
   'ph.wodtype':['Type de WOD / exo','WOD / lift type','Tipo de WOD / exo'],
   'status.ready':['PRÊT','READY','PRONTO'],
   'nav.exit':['QUITTER','EXIT','SAIR'],
@@ -2035,6 +2048,7 @@ const I18N={
   'vol.music':['MUSIQUE','MUSIC','MÚSICA'],
   'vol.voice':['VOIX','VOICE','VOZ'],
   'film.rec':['🎥 Filmer','🎥 Film','🎥 Filmar'],
+  'ctrl.done':['✓ FINI','✓ DONE','✓ FIM'],
   'film.audio':['🔊 Son ambiant','🔊 Ambient sound','🔊 Som ambiente'],
   'cfg.continueBtn':['Continuer','Continue','Continuar'],
   'common.cancel':['Annuler','Cancel','Cancelar'],
@@ -2570,7 +2584,52 @@ function pickRandomTrack(excludeKey, pool){
   return filtered[Math.floor(Math.random()*filtered.length)];
 }
 
+// SURVEILLANCE DE LA MUSIQUE (10/08/2026)
+//
+// Deux roles :
+//   1. tracer dans la console ce qui arrive a l'element (Safari > Developpement) ;
+//   2. RELANCER la lecture quand iOS l'a coupee sans qu'on le lui ait demande.
+//
+// Le cas reel : un athlete transpire, un AirPod bouge dans l'oreille. iOS emet un
+// changement de route audio et met la lecture en PAUSE, pour ne pas balancer le son
+// dans le haut-parleur en pleine rue. Aucun code de REPS n'ecoutait cet evenement :
+// la musique ET le coach vocal restaient muets jusqu'a la fin du WOD.
+// Choix produit assume : en plein effort, le coaching prime. On repart dans le
+// haut-parleur (iOS a deja bascule la route tout seul, un simple play() suffit).
+//
+// _arretVoulu distingue une coupure DEMANDEE (pause, fin de WOD, reset) d'une
+// coupure SUBIE. Sans ce drapeau on relancerait la musique a la fin du WOD.
+let _arretVoulu=false;
+function _watchMusic(el, cle, boucle){
+  if(!el || el._repsWatched) return;
+  el._repsWatched = true;
+  DBG('musique: demarre "'+cle+'" boucle='+boucle+' duree='+(el.duration||'?'));
+  ['ended','pause','error','stalled','emptied','abort','suspend','waiting'].forEach(function(ev){
+    el.addEventListener(ev, function(){
+      var d = 'musique: ['+ev+'] "'+cle+'"'
+            + ' t='+(el.currentTime||0).toFixed(1)+'s/'+(el.duration||'?')
+            + ' etatWod='+S.state+' boucle='+el.loop
+            + ' src='+(el.src?'ok':'VIDE');
+      if(ev==='error' && el.error) d += ' codeErreur='+el.error.code;
+      DBG(d);
+      // Coupure SUBIE en plein WOD -> on relance.
+      if(ev==='pause' && !_arretVoulu && S.state==='playing' && el.src){
+        el._repsReprises=(el._repsReprises||0)+1;
+        if(el._repsReprises>5){ DBG('musique: 5 reprises refusees, on arrete d\'insister'); return; }
+        DBG('musique: pause NON VOULUE (retrait d\'ecouteur ?) -> reprise, essai '+el._repsReprises);
+        // Petit delai : iOS doit finir de basculer la route avant qu'on rejoue.
+        setTimeout(function(){
+          if(_arretVoulu || S.state!=='playing') return;
+          el.play().then(function(){ DBG('musique: reprise OK'); })
+                   .catch(function(err){ DBG('musique: reprise REFUSEE : '+((err&&err.message)||err)); });
+        }, 250);
+      }
+    });
+  });
+}
+
 function startMusic(){
+  _arretVoulu=false;
   if(byoMusic){ stopMusic(); return; } // Ma musique : REPS ne joue aucun morceau, le client met la sienne
   if(musicAudio){try{musicAudio.pause();}catch(e){}}
   let firstKey, loopMode;
@@ -2606,13 +2665,16 @@ function startMusic(){
   musicAudio.currentTime=0;
   musicAudio.volume=parseInt(document.getElementById('volMusic').value)/100;
   musicAudio.onended=(loopMode?null:playNextShuffle);
-  musicAudio.play().catch(err=>console.warn('music play',err));
+  _watchMusic(musicAudio, firstKey, loopMode);
+  musicAudio.play().catch(err=>{ DBG('musique: play REFUSE "'+firstKey+'" : '+((err&&err.message)||err)); });
   busAttachEl(musicAudio);
 }
 
 function playNextShuffle(){
-  if(S.state!=='playing') return;
-  if(!mixMode && !_singleGenreMix) return;
+  // Ces deux sorties laissent le SILENCE : si le morceau precedent est fini et
+  // qu'on sort ici, plus rien ne joue jusqu'a la fin du WOD.
+  if(S.state!=='playing'){ DBG('musique: enchainement ANNULE (etatWod='+S.state+') -> silence'); return; }
+  if(!mixMode && !_singleGenreMix){ DBG('musique: enchainement ANNULE (aucun mode de mix) -> silence'); return; }
   let nextKey;
   if(mixMode==='manual'){
     // Aléatoire dans les morceaux cochés
@@ -2628,10 +2690,12 @@ function playNextShuffle(){
   musicAudio.currentTime=0;
   musicAudio.volume=(_duckCount>0?musicTargetVolume()*0.25:musicTargetVolume());
   musicAudio.onended=playNextShuffle;
-  musicAudio.play().catch(err=>console.warn('music next',err));
+  _watchMusic(musicAudio, nextKey, false);
+  musicAudio.play().catch(err=>{ DBG('musique: enchainement REFUSE "'+nextKey+'" : '+((err&&err.message)||err)); });
   busAttachEl(musicAudio);
 }
 function stopMusic(){
+  _arretVoulu=true; // coupure demandee : ne pas relancer
   if(musicAudio){try{musicAudio.pause();}catch(e){}musicAudio=null;}
   _duckCount=0;
   // FUITE MÉMOIRE corrigée : chaque WOD mettait en cache un morceau ENTIER décodé dans
@@ -2657,11 +2721,13 @@ function stopMusic(){
 // Ainsi la reprise repart exactement où on s'est arrêté, sur le morceau en cours
 // (et non sur le morceau choisi au départ, remis à zéro).
 function pauseMusic(){
+  _arretVoulu=true; // pause demandee par l'utilisateur : ne pas relancer
   if(musicAudio){try{musicAudio.pause();}catch(e){}}
   _duckCount=0; // on repart d'un volume propre à la reprise
 }
 // Reprend le morceau en cours. Renvoie false s'il n'y a rien à reprendre.
 function resumeMusic(){
+  _arretVoulu=false;
   if(!musicAudio) return false;
   musicAudio.volume=musicTargetVolume();
   musicAudio.play().catch(err=>console.warn('music resume',err));
@@ -3342,7 +3408,11 @@ function _announceFilesForLang(){
   const ra=ROUND_AUDIO[L]||{}; Object.keys(ra).forEach(k=>out.push(ra[k]));                       // ROUND 2..10
   const vf=VOICE_FILES[L]||{}; Object.keys(vf).forEach(k=>out.push(vf[k]));                       // rest/time/ten-sec/…
   out.push(BEEP_AUDIO, TICK_AUDIO);
-  out.push(L==='fr'?'halfway-fr.mp3':(L==='pt'?'halfway-pt.mp3':'halfway.mp3'));
+  // NOTE (10/08/2026) : le prechargement de halfway-*.mp3 a ete retire. Il n'existe
+  // AUCUNE annonce « a la moitie » dans l'app : pas de cle dans TXT, pas de mapping
+  // dans voiceFileForText(). Les fichiers etaient donc charges dans le pool audio
+  // natif pour un son qui ne pouvait jamais partir. Les mp3 restent sur le disque,
+  // l'annonce est un candidat pour la v1.1 (voir l'etat des lieux du 10/08).
   return out.filter((f,i)=>f && out.indexOf(f)===i);
 }
 async function nativePreloadAnnounces(){
@@ -3489,7 +3559,9 @@ async function finishFilmAndExport(){
   const frames=(S.wodFrames&&S.wodFrames.length)?S.wodFrames:_sampleWodFrames();
   DBG('film: export (offset '+off.toFixed(1)+'s, '+frames.length+' frames)…');
   // Le montage peut prendre quelques secondes : statut persistant pendant l'attente.
-  setFilmStatus(L3('🎬 Montage du chrono… patiente','🎬 Rendering timer… hold on','🎬 Montando o cronômetro… aguarda'));
+  // Message court volontairement : « Montage du chrono… patiente » se coupait en
+  // deux lignes bancales (« MONTAGE DU / CHRONO… PATIENTE ») dans la carte.
+  setFilmStatus(L3('🎬 Montage du chrono…','🎬 Rendering timer…','🎬 Montando o cronômetro…'));
   showAnnounce(L3('🎬 Montage en cours…','🎬 Rendering…','🎬 Montando…'));
   try{
     await VO.exportOverlay({ path:rec.path, frames, goOffsetSec:off });
@@ -3540,6 +3612,13 @@ let _dbgEl=null;
   });
 })();
 function DBG(msg){
+  // Toujours ecrit dans la console JS, meme quand le panneau visuel est coupe.
+  // Sans ca, une erreur comme « export KO » etait INVISIBLE sur l'app iOS : le
+  // panneau ne s'ouvre que via ?debug=1, et il n'y a pas d'URL a modifier dans
+  // une WKWebView. On peut desormais tout lire depuis Safari sur le Mac :
+  // Safari > Developpement > [iPhone] > REPS, onglet Console.
+  // Invisible pour l'utilisateur, aucun risque cote App Store.
+  try{ console.log('[REPS] '+msg); }catch(e){}
   if(!DEBUG_ON) return;
   if(!_dbgEl){
     _dbgEl=document.createElement('div');
@@ -3683,7 +3762,18 @@ function recordWodFrame(){
   try{
     if(!S.wodFrames) return;
     const oi=(typeof window._overlayInfo==='function')?window._overlayInfo():null;
-    if(oi) S.wodFrames.push({top:oi.ctx||'', time:oi.time||'', alert:!!oi.alert});
+    if(!oi) return;
+    const img={top:oi.ctx||'', time:oi.time||'', alert:!!oi.alert};
+    // L'incrustation place la frame n sur la n-ieme seconde de video. L'index doit
+    // donc suivre le TEMPS REEL ecoule depuis le GO, et non le nombre d'appels :
+    // une pause, ou un timer iOS ralenti, decalait sinon l'incrustation par rapport
+    // a l'image pour tout le reste de la video.
+    const idx=Math.max(0,Math.round((Date.now()-(S.goWallClock||Date.now()))/1000));
+    // Secondes manquantes (pause) : on repete la derniere image connue. Pendant une
+    // pause le chrono est fige a l'ecran, l'incrustation doit montrer la meme chose.
+    const dernier=S.wodFrames.length?S.wodFrames[S.wodFrames.length-1]:img;
+    while(S.wodFrames.length<idx) S.wodFrames.push(dernier);
+    S.wodFrames[idx]=img;
   }catch(e){}
 }
 
@@ -3696,13 +3786,29 @@ function startChrono(){
   document.getElementById('timerStatus').textContent='▶ '+mName+' — '+(byoMusic?L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA'):(TRACK_INFO[S.track]||{name:'—'}).name);
   try{const w=document.getElementById('scoreWod'); if(w) w.value=currentWodLabel();}catch(e){}
   if(S.mode!=='tabata') document.getElementById('btnSkip').style.display='';
+  // « FINI » dans tous les modes : il sert aussi a couper l'enregistrement video
+  // quand on a termine, sans attendre la fin du temps imparti.
+  { const _d=document.getElementById('btnDone'); if(_d) _d.style.display=''; }
   setStatus('playing',L3('EN COURS','RUNNING','EM CURSO'));
 
   // Overlay vidéo : on enregistre une frame du chrono par seconde, à partir du GO,
   // et l'heure absolue du GO (pour le calage automatique de la vidéo, anti-triche).
-  S.wodFrames=[];
-  S.goWallClock=Date.now();
-  recordWodFrame();
+  //
+  // BUG CORRIGE LE 10/08/2026 — startChrono() est appele DEUX FOIS : au lancement
+  // du WOD, mais aussi par resume() apres une pause. La remise a zero ci-dessous
+  // etait donc rejouee a chaque reprise : toutes les frames deja enregistrees
+  // etaient PERDUES et l'ancre de calage sautait a l'instant de la reprise.
+  // Concretement, sur un WOD de qualification ou l'athlete met pause a la 5e minute,
+  // la video exportee n'avait AUCUN chrono incruste sur les 5 premieres minutes.
+  // On ne reinitialise donc que sur un vrai depart.
+  if(S._repriseApresPause){
+    S._repriseApresPause=false;
+    recordWodFrame(); // comble le trou de la pause (cf. recordWodFrame)
+  } else {
+    S.wodFrames=[];
+    S.goWallClock=Date.now();
+    recordWodFrame();
+  }
   hideVideoOverlayCta(); // on repart pour un WOD : on cache l'ancien CTA vidéo
 
   // Chrono calé sur l'horloge réelle : si iOS ralentit les timers, on rattrape
@@ -3956,6 +4062,7 @@ function resume(){
   if(!(musicWasPlaying && resumeMusic())) startMusic();
   musicWasPlaying=false;
   document.getElementById('waveform').classList.add('active');
+  S._repriseApresPause=true; // ne pas effacer les frames deja enregistrees
   startChrono();
 }
 
@@ -3980,6 +4087,7 @@ function resetTimer(){
   document.getElementById('progFill').style.width='0%';
   document.getElementById('announce').classList.remove('show');
   document.getElementById('btnSkip').style.display='none';
+  { const _d=document.getElementById('btnDone'); if(_d) _d.style.display='none'; }
   document.getElementById('phaseIndicator').className='phase-indicator';
   document.getElementById('roundBadge').textContent='';
   setStatus('',L3('PRÊT','READY','PRONTO'));
@@ -3997,6 +4105,7 @@ function end(){
   document.getElementById('timerCard').classList.remove('playing');
   document.getElementById('waveform').classList.remove('active');
   document.getElementById('btnSkip').style.display='none';
+  { const _d=document.getElementById('btnDone'); if(_d) _d.style.display='none'; }
   document.getElementById('phaseIndicator').className='phase-indicator';
   showAnnounce('🏁 TIME !');
   speak(TXT[S.lang].time);
@@ -4017,6 +4126,26 @@ function end(){
     // Pas de tournage en cours : on propose l'import d'une vidéo (ex. filmée sur un 2e appareil).
     offerVideoOverlay();
   }
+}
+
+// Terminer le WOD avant la fin du temps imparti.
+// Indispensable en For Time, ou le principe est justement de finir le plus vite
+// possible : le score EST le temps mis. Sans ce bouton il fallait attendre les
+// 10 minutes completes, ce qui bloquait aussi l'export video (il ne part qu'a la
+// fin du WOD, via end()).
+function finishNow(){
+  if(S.state!=='playing' && S.state!=='paused') return;
+  // En For Time, on pre-remplit le panneau de score avec le temps ecoule : c'est
+  // exactement la donnee que l'athlete veut garder. On n'ecrase pas une saisie
+  // manuelle deja presente.
+  try{
+    if(S.mode==='wod'){
+      const ecoule=Math.max(0,(S.total||0)-(S.remain||0));
+      const v=document.getElementById('scoreValue');
+      if(v && !v.value) v.value=pad(Math.floor(ecoule/60))+':'+pad(ecoule%60);
+    }
+  }catch(e){}
+  end(); // end() coupe deja l'enregistrement et enchaine l'export video
 }
 
 function skipAhead(){
@@ -5219,10 +5348,18 @@ function renderMembers(){
 function refreshScoreMemberSelect(){
   const sel=document.getElementById('scoreMember');
   if(!sel) return;
+  const btn=document.getElementById('scoreAddMember');
   const prev=sel.value;
   if(MEMBERS.length===0){
+    // Liste vide : on masque le deroulant et on affiche un bouton qui mene a la
+    // modale. Avant, le <select> proposait la seule ligne "Aucun adhérent", ce qui
+    // se lisait comme un choix valide et laissait l'utilisateur bloque.
     sel.innerHTML='<option value="">'+L3('Aucun adhérent','No member','Nenhum membro')+'</option>';
+    sel.style.display='none';
+    if(btn){ btn.textContent='👥 '+L3('Ajouter un adhérent','Add a member','Adicionar um membro'); btn.style.display=''; }
   } else {
+    sel.style.display='';
+    if(btn) btn.style.display='none';
     sel.innerHTML=MEMBERS.map(m=>{
       const name=escapeHtml(((m.prenom||'')+' '+(m.nom||'')).trim())||'—';
       return '<option value="'+m.id+'">'+name+'</option>';

@@ -309,76 +309,51 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
 
         let pad = renderSize.width * 0.04
         let videoDur = max(1.0, CMTimeGetSeconds(asset.duration))
-        let blockW = renderSize.width * 0.52
         let timeH = renderSize.height * 0.075
         let topH = renderSize.height * 0.028
         let blockH = timeH + topH + renderSize.height * 0.022
 
-        for (i, f) in frames.enumerated() {
-            let start = goOffset + Double(i)
-            if start >= videoDur { break }
-            let s = start / videoDur
-            let e = min(1.0, (start + 1.0) / videoDur)
-            let topS = f["top"] as? String ?? ""
-            let timeS = f["time"] as? String ?? ""
-            let alert = (f["alert"] as? Bool) ?? false
+        // Geometrie interne de la carte, calculee UNE SEULE FOIS pour toutes les frames.
+        let stripeW = renderSize.width * 0.009
+        let textX = stripeW + renderSize.width * 0.018
+        let ctxSize = renderSize.height * 0.021
+        let ctxFont = UIFont(name: "AvenirNextCondensed-DemiBold", size: ctxSize)
+            ?? UIFont.systemFont(ofSize: ctxSize, weight: .semibold)
+        let ctxKern = renderSize.height * 0.004
 
-            // Carte du chrono. Identite REPS : fond sombre translucide, coins arrondis,
-            // liseré degrade magenta->cyan a gauche, ligne de contexte en cyan.
-            let container = CALayer()
-            container.frame = CGRect(x: pad, y: pad, width: blockW, height: blockH)
-            container.backgroundColor = UIColor(white: 0.02, alpha: 0.62).cgColor
-            container.cornerRadius = renderSize.width * 0.024
-            container.masksToBounds = true
-            container.borderWidth = max(1, renderSize.width * 0.0022)
-            container.borderColor = Self.repsMagenta.withAlphaComponent(0.35).cgColor
+        // Largeur de la carte. Elle etait figee a 0.52 * largeur : une ligne de contexte
+        // longue comme "EMOM · ROUND 1/2 · REST" etait coupee en plein mot ("... · RE"),
+        // visible a l'export. On mesure donc la ligne la plus longue de TOUTE la video et
+        // on dimensionne dessus : la carte reste large assez, et surtout d'une largeur
+        // constante d'une frame a l'autre (sinon elle "respirerait" a chaque seconde).
+        let ctxMaxW = frames.compactMap { ($0["top"] as? String)?.uppercased() }
+            .map { ($0 as NSString).size(withAttributes: [.font: ctxFont, .kern: ctxKern]).width }
+            .max() ?? 0
+        let blockW = min(renderSize.width - pad * 2,
+                         max(renderSize.width * 0.52, ctxMaxW + textX + renderSize.width * 0.045))
 
-            // Liseré vertical degrade : la signature visuelle de l'app, en petit.
-            let stripe = CAGradientLayer()
-            let stripeW = renderSize.width * 0.009
-            stripe.frame = CGRect(x: 0, y: 0, width: stripeW, height: blockH)
-            stripe.colors = [Self.repsCyan.cgColor, Self.repsMagenta.cgColor]
-            stripe.startPoint = CGPoint(x: 0.5, y: 0)
-            stripe.endPoint = CGPoint(x: 0.5, y: 1)
-            container.addSublayer(stripe)
+        // ------------------------------------------------------------------
+        // MONTAGE ALLEGE (10/08/2026)
+        //
+        // AVANT : 4 couches CALayer + 1 animation PAR SECONDE de video. Sur un WOD
+        // de 10 min cela faisait 2400 couches empilees dans un seul
+        // AVVideoCompositionCoreAnimationTool, et l'export echouait en silence
+        // (« MONTAGE ECHOUE » cote app). Une video d'1 min (240 couches) passait.
+        //
+        // MAINTENANT :
+        //   1. la carte (fond, bordure, liseré) est creee UNE SEULE FOIS ;
+        //   2. la ligne de contexte n'est recreee que lorsqu'elle CHANGE
+        //      (en EMOM : 2 fois par round, au lieu de 60 fois par minute) ;
+        //   3. seul le chrono garde une couche par seconde : lui change vraiment
+        //      a chaque seconde, on ne peut pas le regrouper.
+        //
+        // Sur 10 min on passe d'environ 2400 couches a environ 620.
+        // ------------------------------------------------------------------
 
-            let textX = stripeW + renderSize.width * 0.018
-
-            // Ligne de contexte (« EMOM · ROUND 2/3 ») : cyan, espacee, en capitales.
-            let topL = CATextLayer()
-            topL.string = NSAttributedString(string: topS.uppercased(), attributes: [
-                .font: UIFont(name: "AvenirNextCondensed-DemiBold", size: renderSize.height * 0.021)
-                    ?? UIFont.systemFont(ofSize: renderSize.height * 0.021, weight: .semibold),
-                .kern: renderSize.height * 0.004,
-                .foregroundColor: Self.repsCyan
-            ])
-            topL.alignmentMode = .left
-            topL.contentsScale = UIScreen.main.scale
-            topL.frame = CGRect(x: textX, y: blockH - topH - renderSize.height * 0.010,
-                                width: blockW - textX - renderSize.width * 0.02, height: topH)
-            container.addSublayer(topL)
-
-            // Chrono. Monospace pour que les chiffres ne dansent pas. Blanc, magenta REPS
-            // sur les 3 dernieres secondes (le rouge pur jurait avec la palette).
-            let timeFont = UIFont(name: "Menlo-Bold", size: renderSize.height * 0.062)
-                ?? UIFont.monospacedDigitSystemFont(ofSize: renderSize.height * 0.062, weight: .bold)
-            let timeL = CATextLayer()
-            timeL.string = NSAttributedString(string: timeS, attributes: [
-                .font: timeFont,
-                .kern: renderSize.height * 0.002,
-                .foregroundColor: alert ? Self.repsMagenta : UIColor.white
-            ])
-            timeL.alignmentMode = .left
-            timeL.contentsScale = UIScreen.main.scale
-            // Halo discret : garde le chrono lisible sur un fond clair (salle, plein jour).
-            timeL.shadowColor = (alert ? Self.repsMagenta : Self.repsCyan).cgColor
-            timeL.shadowOpacity = alert ? 0.55 : 0.35
-            timeL.shadowRadius = renderSize.height * 0.006
-            timeL.shadowOffset = .zero
-            timeL.frame = CGRect(x: textX, y: renderSize.height * 0.010,
-                                 width: blockW - textX - renderSize.width * 0.02, height: timeH)
-            container.addSublayer(timeL)
-
+        // Visibilite d'une couche sur l'intervalle [debut, fin], en secondes video.
+        func visibilite(_ debut: Double, _ fin: Double) -> CAKeyframeAnimation {
+            let s = max(0.0, debut / videoDur)
+            let e = min(1.0, fin / videoDur)
             let anim = CAKeyframeAnimation(keyPath: "opacity")
             anim.calculationMode = .discrete
             if s <= 0 { anim.keyTimes = [0.0, NSNumber(value: e)]; anim.values = [1, 0] }
@@ -387,9 +362,103 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
             anim.beginTime = AVCoreAnimationBeginTimeAtZero
             anim.isRemovedOnCompletion = false
             anim.fillMode = .both
-            container.opacity = 0
-            container.add(anim, forKey: "vis")
-            parentLayer.addSublayer(container)
+            return anim
+        }
+
+        // Nombre de frames qui tiennent reellement dans la duree de la video.
+        var nbUtiles = 0
+        for i in 0..<frames.count where goOffset + Double(i) < videoDur { nbUtiles = i + 1 }
+
+        if nbUtiles > 0 {
+            // --- 1. La carte : statique, une seule couche pour toute la video ---
+            let card = CALayer()
+            card.frame = CGRect(x: pad, y: pad, width: blockW, height: blockH)
+            card.backgroundColor = UIColor(white: 0.02, alpha: 0.62).cgColor
+            card.cornerRadius = renderSize.width * 0.024
+            card.masksToBounds = true
+            card.borderWidth = max(1, renderSize.width * 0.0022)
+            card.borderColor = Self.repsMagenta.withAlphaComponent(0.35).cgColor
+            card.opacity = 0
+            card.add(visibilite(goOffset, min(videoDur, goOffset + Double(nbUtiles))), forKey: "vis")
+
+            // Liseré vertical degrade : la signature visuelle de l'app, en petit.
+            let stripe = CAGradientLayer()
+            stripe.frame = CGRect(x: 0, y: 0, width: stripeW, height: blockH)
+            stripe.colors = [Self.repsCyan.cgColor, Self.repsMagenta.cgColor]
+            stripe.startPoint = CGPoint(x: 0.5, y: 0)
+            stripe.endPoint = CGPoint(x: 0.5, y: 1)
+            card.addSublayer(stripe)
+            parentLayer.addSublayer(card)
+
+            // REGRESSION CORRIGEE LE 10/08/2026
+            // Premiere version de cet allegement : les textes etaient des ENFANTS de
+            // `card`, qui porte elle-meme une animation d'opacite. Or le beginTime
+            // d'une animation enfant s'interprete dans l'espace de temps du parent :
+            // AVCoreAnimationBeginTimeAtZero imbrique a fausse le decoupage discret,
+            // et PLUSIEURS secondes restaient visibles en meme temps (chiffres
+            // fantomes, halos accumules, verifie a l'image sur l'export du 10/08).
+            // Les textes sont donc redevenus FRERES de la carte dans parentLayer,
+            // comme dans le code d'origine : meme espace de temps, decoupage net.
+            // Leurs coordonnees passent en absolu (decalees de l'origine de la carte).
+            let ox = pad, oy = pad
+
+            // --- 2. Ligne de contexte : une couche par PLAGE de texte identique ---
+            let ctxFrame = CGRect(x: ox + textX, y: oy + blockH - topH - renderSize.height * 0.010,
+                                  width: blockW - textX - renderSize.width * 0.02, height: topH)
+            var i = 0
+            while i < nbUtiles {
+                let texte = (frames[i]["top"] as? String ?? "").uppercased()
+                var j = i + 1
+                while j < nbUtiles && (frames[j]["top"] as? String ?? "").uppercased() == texte { j += 1 }
+                if !texte.isEmpty {
+                    let topL = CATextLayer()
+                    topL.truncationMode = .end   // filet de securite si la mesure est prise en defaut
+                    topL.string = NSAttributedString(string: texte, attributes: [
+                        .font: ctxFont,
+                        .kern: ctxKern,
+                        .foregroundColor: Self.repsCyan
+                    ])
+                    topL.alignmentMode = .left
+                    topL.contentsScale = UIScreen.main.scale
+                    topL.frame = ctxFrame
+                    topL.opacity = 0
+                    topL.add(visibilite(goOffset + Double(i),
+                                        min(videoDur, goOffset + Double(j))), forKey: "vis")
+                    parentLayer.addSublayer(topL)
+                }
+                i = j
+            }
+
+            // --- 3. Chrono : une couche par seconde. Monospace pour que les chiffres
+            // ne dansent pas. Blanc, magenta REPS sur les 3 dernieres secondes
+            // (le rouge pur jurait avec la palette). ---
+            let timeFont = UIFont(name: "Menlo-Bold", size: renderSize.height * 0.062)
+                ?? UIFont.monospacedDigitSystemFont(ofSize: renderSize.height * 0.062, weight: .bold)
+            let timeFrame = CGRect(x: ox + textX, y: oy + renderSize.height * 0.010,
+                                   width: blockW - textX - renderSize.width * 0.02, height: timeH)
+            for k in 0..<nbUtiles {
+                let timeS = frames[k]["time"] as? String ?? ""
+                if timeS.isEmpty { continue }
+                let alert = (frames[k]["alert"] as? Bool) ?? false
+                let timeL = CATextLayer()
+                timeL.string = NSAttributedString(string: timeS, attributes: [
+                    .font: timeFont,
+                    .kern: renderSize.height * 0.002,
+                    .foregroundColor: alert ? Self.repsMagenta : UIColor.white
+                ])
+                timeL.alignmentMode = .left
+                timeL.contentsScale = UIScreen.main.scale
+                // Halo discret : garde le chrono lisible sur un fond clair (salle, plein jour).
+                timeL.shadowColor = (alert ? Self.repsMagenta : Self.repsCyan).cgColor
+                timeL.shadowOpacity = alert ? 0.55 : 0.35
+                timeL.shadowRadius = renderSize.height * 0.006
+                timeL.shadowOffset = .zero
+                timeL.frame = timeFrame
+                timeL.opacity = 0
+                timeL.add(visibilite(goOffset + Double(k),
+                                     min(videoDur, goOffset + Double(k) + 1.0)), forKey: "vis")
+                parentLayer.addSublayer(timeL)
+            }
         }
 
         // Logo « R·E·P·S » en degrade, comme l'en-tete de l'app : c'est la signature

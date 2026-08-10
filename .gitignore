@@ -30,3 +30,6 @@ notes/
 
 # Fichier de test cree par erreur
 .writetest
+
+# Scripts de commit generes (outils jetables, pas du code de l'app)
+commit-*.sh
