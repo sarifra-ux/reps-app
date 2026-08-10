@@ -22,3 +22,11 @@ REPS-*.md
 *-etat-des-lieux.md
 *-specs.md
 notes/
+
+# Doublons de synchro iCloud/Dropbox ("fichier 2.ext")
+* 2.*
+* 2
+*\ 2.*
+
+# Fichier de test cree par erreur
+.writetest

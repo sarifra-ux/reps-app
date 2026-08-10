@@ -1024,6 +1024,140 @@
     font-family:'DM Mono',monospace;font-size:0.85rem;cursor:pointer;text-align:left;}
   .settings-action-btn:hover{border-color:var(--accent);}
   .settings-action-btn .settings-icon{font-size:1.1rem;}
+
+  /* ============================================================
+     REFONTE v125 — écran principal
+     Bloc volontairement place en DERNIER : il ne fait que surcharger
+     les regles au-dessus, donc on peut le supprimer d'un bloc pour
+     revenir a l'ancien rendu. Aucune logique JS touchee.
+     ============================================================ */
+
+  /* 1. HEADER — le sous-titre sur 4 lignes mangeait le haut de l'ecran,
+        et la pastille de statut debordait hors de l'ecran a droite. */
+  .logo-sub{display:none;}
+  /* ⚠ TOUJOURS garder env(safe-area-inset-top) : sans lui le header remonte sous la
+     barre d'etat / la Dynamic Island et les boutons deviennent inatteignables.
+     (Erreur commise en v125 : un simple `padding-top:8px` avait tue la safe area.) */
+  header{align-items:center;padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;}
+  .header-right{align-items:center;flex-wrap:nowrap;min-width:0;}
+  /* Statut reduit a une pastille ronde : plus de texte, donc plus de debordement. */
+  .status-pill{padding:0;min-width:0;background:transparent;border:0;box-shadow:none;flex:0 0 auto;}
+  .status-pill span{display:none;}
+  .status-pill .dot{width:7px;height:7px;margin:0 2px 0 6px;}
+
+  /* 2. CARTE CHRONO — le chrono devient le heros.
+        Les deux pastilles colorees (morceau / voix) passent SOUS le chrono,
+        en texte discret : c'est de l'information secondaire. */
+  /* La carte passe en colonne flex UNIQUEMENT pour pouvoir reordonner ses enfants
+     (order:9 sur la barre morceau/voix). Sans risque : phase-indicator, round-badge,
+     cd-overlay et ::before sont tous en position absolue, ils ne sont pas dans le flux. */
+  .timer-card{display:flex;flex-direction:column;padding-top:22px;padding-bottom:20px;}
+  /* #roundBadge est en position absolue en haut a droite, alors que l'eyebrow est le
+     premier element du flux : les deux se retrouvaient sur la MEME ligne et se
+     chevauchaient ("// EMOM WORK" passait sous "ROUND 1/2"). On donne au badge sa
+     propre bande en haut, et on descend l'eyebrow dessous. */
+  .round-badge{top:12px;}
+  .timer-card .timer-eyebrow{margin-top:16px;}
+  /* Le nom du morceau est deja dans la ligne de statut ("▶ EMOM — CARTIER") pendant
+     l'effort : on evite de le repeter, et on gagne de la hauteur quand on filme. */
+  body.wod-live .now-playing-bar{display:none;}
+  .now-playing-bar{order:9;margin:12px 0 0;gap:6px;opacity:.75;}
+  .np-badge,.brian-badge{background:transparent;border:0;color:#8e8aa8;font-size:0.52rem;
+    letter-spacing:1.2px;padding:0;box-shadow:none;}
+  .timer-clock{font-size:clamp(3.6rem,19vw,5.6rem);line-height:1.02;}
+  .timer-eyebrow{opacity:.65;}
+  .prog-wrap{margin-top:18px;}
+
+  /* 3. FORME D'ONDE — ligne de points fade qui coupait l'ecran en deux. */
+  .waveform{display:none !important;}
+
+  /* 4. COMMANDES — rangee symetrique : play au centre, deux pilules
+        de MEME taille de part et d'autre. Avant, RESET / play / Filming
+        melangeaient tailles, formes et couleurs sur une ligne bancale.
+        On garde les libelles : l'icone seule ("-3MIN" surtout) est ambigue. */
+  .controls{gap:16px;margin-top:18px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .controls>.btn-ctrl:first-child,#btnSkip{
+    order:1;height:46px;min-width:104px;padding:0 16px;border-radius:23px;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:0.58rem;letter-spacing:1.4px;}
+  #btnSkip{order:3;}
+  .btn-play{order:2;width:72px;height:72px;font-size:1.7rem;}
+
+  /* 5. FILMER / SON AMBIANT — deux chips discrets sur leur propre ligne.
+        Avant : un gros bloc rouge et un gros bloc vert qui se disputaient
+        l'attention avec le bouton play. Ils ne s'allument qu'une fois actifs. */
+  .controls::after{content:'';flex-basis:100%;height:0;order:4;} /* force le retour a la ligne */
+  #btnFilm{order:5;} #btnFilmAudio{order:6;}
+  #btnFilm,#btnFilmAudio{
+    flex:1 1 0;min-width:0;max-width:190px;margin-top:2px;border-radius:12px;padding:11px 8px;
+    background:rgba(28,26,46,0.6);border:1px solid var(--border);color:#8e8aa8;
+    font-size:0.58rem;letter-spacing:1px;}
+  #btnFilm.on,#btnFilmAudio.on{
+    background:rgba(124,58,237,0.14);border-color:rgba(167,139,250,0.55);color:#c9b6ff;}
+
+  /* 6. Respiration : sur l'ecran d'accueil le bloc etait tasse en haut. */
+  .score-capture{margin-top:18px;}
+
+  /* 6bis. ANTI-DEBORDEMENT HORIZONTAL
+     Un element flex ou grid a `min-width:auto` par defaut : il refuse de devenir plus
+     etroit que son contenu le plus long. Un message comme « ✅ VIDEO SAVED TO PHOTOS »
+     (non coupable, avec letter-spacing) elargissait donc la carte au-dela de l'ecran,
+     et tout le contenu partait vers la droite. On autorise le retrecissement. */
+  main{min-width:0;}
+  main>*{min-width:0;max-width:100%;}
+  .timer-card{min-width:0;}
+  .timer-card>*{min-width:0;max-width:100%;}
+  .timer-status{overflow-wrap:anywhere;} /* le message peut passer a la ligne */
+  .sc-input,.sc-row{min-width:0;}
+
+  /* 7. ECRAN PARTAGE PENDANT LE TOURNAGE
+        Avant : une vignette flottante posee PAR-DESSUS l'interface, qui recouvrait
+        toujours quelque chose. Ici l'apercu natif prend le haut de l'ecran et toute
+        l'interface descend dessous : plus aucun recouvrement.
+        --cam-h DOIT rester egal a camFraction dans VideoOverlayPlugin.swift (0.40). */
+  :root{--cam-h:40dvh;}
+  #camSlot{height:0;overflow:hidden;transition:height .18s ease;}
+  body.filming #camSlot{height:var(--cam-h);}
+  /* Le header est normalement `position:sticky; top:0`. Pendant le tournage il se
+     recollerait sous la camera au moindre scroll : on le fige dans le flux.
+     Et surtout : il n'est plus en haut de l'ecran, donc la marge de safe area
+     (~59 pt sur Dynamic Island) devient un trou inutile — elle poussait le bas
+     de l'interface hors de l'ecran et coupait les boutons Filmer / Son ambiant. */
+  body.filming header{position:static;padding-top:10px;}
+  /* Le bas doit rester au-dessus de la barre d'accueil. */
+  body.filming main{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));}
+  /* La hauteur reservee au reste de l'interface doit exclure la camera, sinon la page
+     depasse l'ecran et le bas (boutons) sort du champ. */
+  body.filming .app{min-height:calc(100dvh - var(--cam-h) - 69px);}
+  body.wod-live.filming main{min-height:calc(100dvh - var(--cam-h) - 69px);}
+  /* Moins de marges dans la moitie basse : elle doit tenir sans rogner le chrono. */
+  body.filming main{padding-top:14px;gap:12px;}
+  body.filming .timer-card{padding-top:16px;padding-bottom:14px;}
+  body.filming .timer-clock{font-size:clamp(3rem,15vw,4.4rem);}
+  body.filming .prog-wrap{margin-top:12px;}
+  body.filming .controls{margin-top:12px;}
+  body.filming .score-capture{display:none;}        /* pas de saisie de score pendant qu'on filme */
+
+  /* 7bis. MODALES PENDANT LE TOURNAGE
+     L'apercu camera est un calque NATIF pose au-dessus de la WebView : tout ce que le
+     web dessine dans les 40 % du haut est invisible, y compris une modale centree.
+     Symptome vu en v133 : ouvrir Reglages en filmant, et la moitie haute du panneau
+     (titre, volumes) disparait derriere la camera.
+     On confine donc les surfaces plein ecran a la zone libre, sous la camera. */
+  body.filming .settings-modal,
+  body.filming .help-overlay,
+  body.filming .lang-choice,
+  body.filming .mode-choice,
+  body.filming .welcome{
+    padding-top:calc(var(--cam-h) + 12px);
+    align-items:flex-start;
+  }
+  /* Et on borne leur hauteur pour qu'elles restent entierement visibles + scrollables. */
+  body.filming .settings-modal-content,
+  body.filming .help-modal{
+    max-height:calc(100dvh - var(--cam-h) - 36px);
+    overflow-y:auto;
+  }
 </style>
 </head>
 <body>
@@ -1145,6 +1279,13 @@
     <div class="wizard-hint" data-i18n="cfg.continue">Règle, puis continue vers la musique</div>
   </div>
 </div>
+<!-- Emplacement reserve a l'apercu camera natif (ecran partage).
+     Hauteur 0 au repos, --cam-h pendant le tournage. C'est un VRAI element du flux :
+     tout ce qui suit (header, carte, commandes) descend naturellement dessous, sans
+     decalage artificiel a base de padding + position:sticky (qui donnait un empilement
+     imprevisible). Le calque AVCaptureVideoPreviewLayer se dessine par-dessus. -->
+<div id="camSlot" aria-hidden="true"></div>
+
 <header>
   <div>
     <div class="logo">R·E·P·S</div>
@@ -1239,7 +1380,7 @@
       <div class="mbr-add-row">
         <input type="text" id="mbrPrenom" class="mbr-input" data-i18n-ph="ph.prenom" placeholder="Prénom">
         <input type="text" id="mbrNom" class="mbr-input" data-i18n-ph="ph.nom" placeholder="Nom">
-        <button class="mbr-add-btn" onclick="addMember()">+ Ajouter</button>
+        <button class="mbr-add-btn" data-i18n="members.add" onclick="addMember()">+ Ajouter</button>
       </div>
 
       <div id="membersList" style="display:flex;flex-direction:column;gap:10px;"></div>
@@ -1373,7 +1514,7 @@
         </div>
         <div class="emom-divider"></div>
         <div class="emom-rounds-info">
-          <div class="emom-interval-label" style="margin-bottom:4px">🔁 Tours calculés</div>
+          <div class="emom-interval-label" data-i18n="emom.roundsCalc" style="margin-bottom:4px">🔁 Tours calculés</div>
           <div class="emom-rounds-display">
             <span class="emom-rounds-num" id="emomRounds">5</span>
             <span class="emom-rounds-hint" data-i18n="cfg.rounds">tours (auto-calculés depuis la durée)</span>
@@ -1547,7 +1688,7 @@
 
     <!-- MIX AUDIO -->
     <div>
-      <div class="sec-label">🎚️ Mix Audio</div>
+      <div class="sec-label" data-i18n="mix.audio">🎚️ Mix Audio</div>
       <div class="vol-section">
         <div class="vol-row">
           <span class="vol-lbl">🎵</span>
@@ -1626,7 +1767,9 @@
   </main>
 </div>
 
-<div id="buildTag" style="position:fixed;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:2147483647;font:800 13px/1 -apple-system,system-ui,sans-serif;color:#fff;background:rgba(124,58,237,.92);padding:6px 9px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none;">build v119</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
+<!-- Badge de build retire pour la soumission App Store (guideline 2.2 : pas d'element
+     de type "beta" visible). Le numero de build reste dans sw.js / Xcode. -->
+<div id="buildTag" style="position:fixed;right:6px;bottom:calc(4px + env(safe-area-inset-bottom));z-index:2147483647;font:400 9px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.16);letter-spacing:.5px;pointer-events:none;user-select:none;">v134</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
   <video id="syncVideo" playsinline style="flex:1;width:100%;min-height:0;object-fit:contain;background:#000;"></video>
   <div style="padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#111;color:#fff;">
     <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;"><span data-i18n="sync.instrA">Place le curseur sur le </span><b>GO</b><span data-i18n="sync.instrB"> de ta vidéo (le départ du WOD)</span></div>
@@ -1864,6 +2007,8 @@ const I18N={
   'members.title':['Adhérents & scores','Members & scores','Membros & scores'],
   'members.keep':['Garder l\'historique','Keep history','Manter histórico'],
   'members.add':['+ Ajouter','+ Add','+ Adicionar'],
+  'emom.roundsCalc':['🔁 Tours calculés','🔁 Calculated rounds','🔁 Rounds calculados'],
+  'mix.audio':['🎚️ Mix Audio','🎚️ Audio Mix','🎚️ Mix de Áudio'],
   'score.label':['Enregistrer un score','Save a score','Salvar um score'],
   'score.save':['Enregistrer','Save','Salvar'],
   'sched.wod':['Programme des annonces','Announcements schedule','Programa de avisos'],
@@ -1962,11 +2107,22 @@ function setMode(btn,mode){
   }
 }
 
+// Lecture bornee d'un champ nombre. Deux pieges evites :
+//  - l'attribut "max" du champ n'empeche PAS la saisie clavier (taper 99999 dans
+//    tabRounds creait un <div> par round et gelait la WebView) ;
+//  - `parseInt(x)||defaut` avale le 0 legitime (Rest=0 repassait a 10 s).
+function numIn(id,def,min,max){
+  const el=document.getElementById(id);
+  const n=el?parseInt(el.value,10):NaN;
+  if(isNaN(n)) return def;
+  return Math.max(min,Math.min(max,n));
+}
+
 function updateTotalFromMode(){
   if(S.mode==='tabata'){
-    const w=parseInt(document.getElementById('tabWork').value)||20;
-    const r=parseInt(document.getElementById('tabRest').value)||10;
-    const rounds=parseInt(document.getElementById('tabRounds').value)||8;
+    const w=numIn('tabWork',20,1,3600);
+    const r=numIn('tabRest',10,0,3600);
+    const rounds=numIn('tabRounds',8,1,50);
     S.tabWorkSec=w;S.tabRestSec=r;S.tabTotalRounds=rounds;
     S.tabPhase='work';S.tabRound=1;
     S.total=w; S.remain=w;
@@ -2115,11 +2271,18 @@ function refreshEmomSummary(){
 }
 
 // ===== SCHEDULE =====
+// Libelles de la grille d'annonces, traduits a la construction.
+// renderSched() est rappele par setLang(), donc la grille suit la langue.
+function schedLbl3min(){ return L3('IL RESTE 3 MIN','3 MIN LEFT','FALTAM 3 MIN'); }
+function schedLblLastMin(){ return L3('DERNIÈRE MIN','LAST MIN','ÚLTIMO MIN'); }
+function schedLbl10s(){ return L3('10 SECONDES','10 SECONDS','10 SEGUNDOS'); }
+function schedLblMinLeft(m){ return L3(m+' MIN RESTANTES',m+' MIN LEFT',m+' MIN RESTANTES'); }
+
 function buildAnnouncesWOD(totalSec){
   const a=[];
-  if(totalSec>240) a.push({at:180,label:'IL RESTE 3 MIN',icon:'🔥',tts:'min3'});
-  a.push({at:60,label:'DERNIÈRE MIN',icon:'⚡',tts:'min1'});
-  a.push({at:10,label:'10 SECONDES',icon:'🎯',tts:'s10'});
+  if(totalSec>240) a.push({at:180,label:schedLbl3min(),icon:'🔥',tts:'min3'});
+  a.push({at:60,label:schedLblLastMin(),icon:'⚡',tts:'min1'});
+  a.push({at:10,label:schedLbl10s(),icon:'🎯',tts:'s10'});
   [5,4,3,2,1].forEach(n=>a.push({at:n,label:''+n,icon:'🔔',tts:'s'+n}));
   a.push({at:0,label:'TIME !',icon:'🏁',tts:'time'});
   return a.sort((x,y)=>y.at-x.at);
@@ -2132,11 +2295,11 @@ function buildAnnouncesAMRAP(totalSec){
   for(let m=totalMin-1;m>=2;m--){
     const at=m*60;
     if(at===180 || at===60) continue;
-    a.push({at:at,label:`${m} MIN LEFT`,icon:'⏱',tts:'minLeft',arg:m});
+    a.push({at:at,label:schedLblMinLeft(m),icon:'⏱',tts:'minLeft',arg:m});
   }
-  if(totalMin>=4) a.push({at:180,label:'IL RESTE 3 MIN',icon:'🔥',tts:'min3'});
-  a.push({at:60,label:'DERNIÈRE MIN',icon:'⚡',tts:'min1'});
-  a.push({at:10,label:'10 SECONDES',icon:'🎯',tts:'s10'});
+  if(totalMin>=4) a.push({at:180,label:schedLbl3min(),icon:'🔥',tts:'min3'});
+  a.push({at:60,label:schedLblLastMin(),icon:'⚡',tts:'min1'});
+  a.push({at:10,label:schedLbl10s(),icon:'🎯',tts:'s10'});
   [5,4,3,2,1].forEach(n=>a.push({at:n,label:''+n,icon:'🔔',tts:'s'+n}));
   a.push({at:0,label:'TIME !',icon:'🏁',tts:'time'});
   return a.sort((x,y)=>y.at-x.at);
@@ -2157,7 +2320,7 @@ function buildAnnouncesEMOM(totalSec){
     elapsed+=interval;
     roundN++;
   }
-  a.push({at:10,label:'10 SECONDES',icon:'🎯',tts:'s10'});
+  a.push({at:10,label:schedLbl10s(),icon:'🎯',tts:'s10'});
   [5,4,3,2,1].forEach(n=>a.push({at:n,label:''+n,icon:'🔔',tts:'s'+n}));
   a.push({at:0,label:'TIME !',icon:'🏁',tts:'time'});
   return a.sort((x,y)=>y.at-x.at);
@@ -2186,7 +2349,7 @@ function renderSched(){
     const el=document.createElement('div');el.className='sched-item';el.id='sc-'+idx;
     let tl;
     if(S.mode==='tabata'){tl='R'+item.roundIdx;}
-    else if(item.at===0) tl='FIN';
+    else if(item.at===0) tl=L3('FIN','END','FIM');
     else {const m=Math.floor(item.at/60).toString().padStart(2,'0');const s=(item.at%60).toString().padStart(2,'0');tl=m+':'+s;}
     el.innerHTML=`<span class="s-time">${tl}</span><span class="s-icon">${item.icon}</span><span class="s-text">${item.label}</span>`;
     grid.appendChild(el);
@@ -2225,12 +2388,13 @@ function updateClock(){
   else if(r<=60 && S.mode!=='emom') cls+=' warn';
   clock.className=cls;
   
-  // En EMOM, mettre à jour l'eyebrow avec WORK/REST + ROUND X/Y
+  // En EMOM, l'eyebrow affiche la phase (le round est dans #roundBadge)
   if(S.mode==='emom' && S.state==='playing'){
     const phaseLabel=S.emomPhase==='rest'?L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'):L3('⚡ EFFORT','⚡ WORK','⚡ ESFORÇO');
-    const totalRounds=S.emomRounds||5;
     const eb=document.getElementById('timerEyebrow');
-    if(eb) eb.textContent=`// EMOM ${phaseLabel} — ROUND ${S.emomCurrentRound}/${totalRounds}`;
+    // Le numero de round est deja affiche par #roundBadge (coin haut droit de la carte) :
+    // le repeter ici allongeait l'eyebrow au point qu'il passait SOUS le badge.
+    if(eb) eb.textContent=`// EMOM ${phaseLabel}`;
   }
 
   const progFill=document.getElementById('progFill');
@@ -2262,8 +2426,19 @@ function updateClock(){
 }
 
 const audioCache={};
+// Type de media des morceaux importes ('audio' ou 'video'), retenu pour pouvoir
+// recreer le bon element a la demande sans le garder vivant en permanence.
+const impKind={};
 function getCachedAudio(key, src){
-  if(!audioCache[key]){audioCache[key]=new Audio(src);}
+  if(!audioCache[key]){
+    // Un import video doit etre joue par un <video>, pas un <audio>.
+    const id=(key.indexOf('music_')===0)?key.slice(6):'';
+    if(id && impKind[id]==='video' && typeof impMakeMediaEl==='function'){
+      audioCache[key]=impMakeMediaEl(src,'video');
+    }else{
+      audioCache[key]=new Audio(src);
+    }
+  }
   return audioCache[key];
 }
 // === MIX MODES (Auto aléatoire / Mix manuel / Single) ===
@@ -2461,15 +2636,17 @@ function stopMusic(){
   _duckCount=0;
   // FUITE MÉMOIRE corrigée : chaque WOD mettait en cache un morceau ENTIER décodé dans
   // audioCache (clé 'music_…') sans jamais le libérer. Décodé, un MP3 pèse des dizaines de
-  // Mo ; au bout de ~4 WOD la WebView saturait et figeait par à-coups. On purge ici les
-  // morceaux INTÉGRÉS (présents dans MUSIC), en libérant vraiment le média (src vidé + load).
-  // On NE touche PAS aux imports du client (clés 'music_<id>' absentes de MUSIC).
+  // Mo ; au bout de ~4 WOD la WebView saturait et figeait par à-coups. On purge ici TOUS les
+  // morceaux joués (intégrés ET imports du client), en libérant vraiment le média
+  // (src vidé + load). Les imports ne perdent rien : leur blob reste dans MUSIC[id] et
+  // l'élément est recréé à la demande par getCachedAudio() au prochain WOD.
   try{
     for(const k in audioCache){
       if(k.indexOf('music_')!==0) continue;
-      if(!MUSIC[k.slice(6)]) continue; // garder les imports perso
       const a=audioCache[k];
       try{ a.pause(); a.src=''; if(a.load) a.load(); }catch(e){}
+      // Les imports vidéo vivent dans le DOM (hors écran) : on les retire aussi.
+      try{ if(a.tagName==='VIDEO'&&a.parentNode) a.parentNode.removeChild(a); }catch(e){}
       try{ const i=window.__repsAudios?window.__repsAudios.indexOf(a):-1; if(i>=0) window.__repsAudios.splice(i,1); }catch(e){}
       delete audioCache[k];
     }
@@ -3024,7 +3201,22 @@ function playVoiceFile(file, onFail){
     a.volume=Math.min(vol*2.0,1.0);
     busAttachEl(a);
     _activeVoices.push(a); // traçable pour pouvoir la couper au WOD suivant
-    const drop=()=>{ const i=_activeVoices.indexOf(a); if(i>=0) _activeVoices.splice(i,1); };
+    let _dropped=false;
+    const drop=()=>{
+      if(_dropped) return; _dropped=true;
+      const i=_activeVoices.indexOf(a); if(i>=0) _activeVoices.splice(i,1);
+      // Une voix coupee avant la fin ne fire jamais 'ended' : le monkeypatch ne la
+      // retire pas de __repsAudios. On la retire ici, sinon elle s'empile.
+      try{ const j=window.__repsAudios?window.__repsAudios.indexOf(a):-1; if(j>=0) window.__repsAudios.splice(j,1); }catch(_){}
+      // IMPORTANT : couper les handlers AVANT de liberer le media. Vider le src relance
+      // l'algorithme de chargement -> event 'error' -> a.onerror -> onFail() -> l'annonce
+      // serait redite par la synthese vocale. (Meme precaution que stopAllAnnounces.)
+      try{ a.onended=null; a.onerror=null; }catch(_){}
+      // On libere la memoire native decodee tout de suite : sinon chaque annonce
+      // laisse un element media vivant jusqu'au GC, et WKWebView plafonne
+      // vers 25-30 elements (c'est la cause du gel corrige en v113).
+      try{ a.pause(); a.removeAttribute('src'); if(a.load) a.load(); }catch(_){}
+    };
     const vmEl=document.getElementById('volMusic');
     const vMus=vmEl?parseInt(vmEl.value)/100:1;
     if(musicAudio) musicAudio.volume=vMus*0.25;
@@ -3246,6 +3438,10 @@ function setFilmBtn(on){
   if(!b) return;
   b.textContent=on?L3('🎥 Filme…','🎥 Filming…','🎥 Filmando…'):L3('🎥 Filmer','🎥 Film','🎥 Filmar');
   b.classList.toggle('filming',on);
+  // Ecran partage : pendant le tournage, l'apercu natif occupe le haut de l'ecran
+  // (hauteur --cam-h, cf. CSS) et toute l'interface descend en dessous. Rien n'est
+  // recouvert. La hauteur doit rester synchro avec camFraction dans VideoOverlayPlugin.swift.
+  document.body.classList.toggle('filming',!!on);
 }
 // Toggle du son ambiant (micro). OFF par défaut : chemin vidéo-muet validé intact.
 // Impossible de changer en cours d'enregistrement.
@@ -3332,6 +3528,10 @@ let _dbgEl=null;
       last=now;
       if(taps>=5){
         taps=0;
+        // Panneau de diagnostic reserve au dev : on n'y accede plus par 5 appuis
+        // (un reviewer App Store pouvait tomber dessus par accident). Pour l'activer,
+        // ouvrir l'app avec ?debug=1 dans l'URL.
+        if(!/[?&]debug=1/.test(location.search)) return;
         DEBUG_ON=!DEBUG_ON;
         if(!DEBUG_ON && _dbgEl){ _dbgEl.remove(); _dbgEl=null; }
         else { DBG('debug ON — 5 appuis sur le logo pour couper'); testOverlayPlugin(); }
@@ -3395,6 +3595,7 @@ function launch(){
     preloadRoundBuffers();
   }
   S.state='launching';
+  wakeLockOn(); // demande dans le geste utilisateur (exigence iOS)
   try{ if(window.REC) REC._onLaunch(); }catch(e){}
   document.body.classList.add('wod-live');
   document.getElementById('btnPlay').textContent='⏳';
@@ -3492,7 +3693,7 @@ function startChrono(){
   document.getElementById('btnPlay').textContent='⏸';
   document.getElementById('timerCard').classList.add('playing');
   const mName={wod:'WOD',amrap:'AMRAP',emom:'EMOM',tabata:'TABATA'}[S.mode];
-  document.getElementById('timerStatus').textContent='▶ '+mName+' — '+(byoMusic?L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA'):TRACK_INFO[S.track].name);
+  document.getElementById('timerStatus').textContent='▶ '+mName+' — '+(byoMusic?L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA'):(TRACK_INFO[S.track]||{name:'—'}).name);
   try{const w=document.getElementById('scoreWod'); if(w) w.value=currentWodLabel();}catch(e){}
   if(S.mode!=='tabata') document.getElementById('btnSkip').style.display='';
   setStatus('playing',L3('EN COURS','RUNNING','EM CURSO'));
@@ -3624,7 +3825,7 @@ function checkAnnounce(){
     if(r===60){showAnnounce(L3('DERNIÈRE MIN','LAST MIN','ÚLTIMO MIN'));speak(t.min1);return;}
     if(r>60 && r%60===0){
       const min=r/60;
-      showAnnounce(`${min} MIN LEFT`);
+      showAnnounce(schedLblMinLeft(min)); // meme libelle que la grille (etait fige en anglais)
       speak(t.minLeft(min));
       return;
     }
@@ -3707,8 +3908,42 @@ function checkAnnounce(){
   }
 }
 
+// === VERROU D'ECRAN (wake lock) ===
+// Sans ca l'iPhone eteint l'ecran tout seul pendant un WOD de 20 min : la WebView est
+// suspendue, le chrono se fige et les annonces sautent. API standard (Safari 16.4+),
+// detectee a l'execution : si elle manque, on ne fait rien et l'app marche comme avant.
+let _wakeLock=null, _wakeWant=false, _wakePending=false;
+function wakeLockOn(){
+  try{
+    if(!('wakeLock' in navigator)) return;
+    _wakeWant=true;
+    // La demande est asynchrone : sans _wakePending, un enchainement rapide
+    // (ou visibilitychange pendant une demande en vol) creerait plusieurs verrous
+    // dont un seul serait memorise, les autres jamais relaches.
+    if(_wakePending || (_wakeLock && !_wakeLock.released)) return;
+    _wakePending=true;
+    navigator.wakeLock.request('screen').then(wl=>{
+      _wakePending=false;
+      if(!_wakeWant){ try{ wl.release(); }catch(_){} return; } // WOD deja fini entre-temps
+      _wakeLock=wl;
+      // iOS relache le verrou des que l'app passe en arriere-plan : on note la perte
+      // pour pouvoir le redemander au retour (cf. visibilitychange plus bas).
+      try{ wl.addEventListener('release',()=>{ if(_wakeLock===wl) _wakeLock=null; }); }catch(_){}
+    }).catch(e=>{ _wakePending=false; console.warn('wakeLock refuse',e); });
+  }catch(e){ console.warn('wakeLock indisponible',e); }
+}
+function wakeLockOff(){
+  _wakeWant=false;
+  try{ if(_wakeLock){ const wl=_wakeLock; _wakeLock=null; wl.release&&wl.release().catch(()=>{}); } }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{
+  // Au retour au premier plan, on reprend le verrou si un WOD tourne toujours.
+  if(document.visibilityState==='visible' && (S.state==='playing'||S.state==='launching')) wakeLockOn();
+});
+
 function pause(){
   S.state='paused';clearInterval(S.iv);pauseMusic();musicWasPlaying=true;
+  wakeLockOff();
   document.getElementById('btnPlay').textContent='▶';
   document.getElementById('timerCard').classList.remove('playing');
   document.getElementById('waveform').classList.remove('active');
@@ -3716,6 +3951,7 @@ function pause(){
   setStatus('paused',L3('PAUSE','PAUSED','PAUSA'));
 }
 function resume(){
+  wakeLockOn(); // on reprend le verrou d'ecran (geste utilisateur)
   // On reprend le morceau là où il s'était arrêté. Si rien à reprendre, on relance le mix.
   if(!(musicWasPlaying && resumeMusic())) startMusic();
   musicWasPlaying=false;
@@ -3731,6 +3967,7 @@ function resetTimer(){
   if(voiceAudio){voiceAudio.pause();voiceAudio=null;}
   window.speechSynthesis&&window.speechSynthesis.cancel();
   S.state='idle';
+  wakeLockOff();
   document.body.classList.remove('wod-live');
   if(S.mode==='tabata'){S.tabPhase='work';S.tabRound=1;updateTotalFromMode();}
   if(S.mode==='emom'){S.emomPhase='work';S.emomCurrentRound=1;updateTotalFromMode();}
@@ -3753,6 +3990,7 @@ function end(){
   S.gen=(S.gen||0)+1; // tue tout intervalle orphelin
   if(voiceAudio){try{voiceAudio.pause();}catch(e){}voiceAudio=null;}
   S.state='idle';S.remain=0;
+  wakeLockOff();
   updateClock(); // fige l'affichage sur la valeur finale (EMOM: 1:00 au lieu de 0:59 ; sinon 0:00)
   document.body.classList.remove('wod-live');
   document.getElementById('btnPlay').textContent='▶';
@@ -3783,7 +4021,12 @@ function end(){
 
 function skipAhead(){
   if(S.remain>180&&S.state==='playing'&&S.mode!=='tabata'){
-    S.remain=180;updateClock();
+    S.remain=180;
+    // On recale l'horloge de référence, sinon la boucle de startChrono
+    // (target>=S.remain -> return) fige le chrono jusqu'a ce que le temps
+    // reel rattrape les 3 min. Meme logique que tabataPhaseEnd().
+    S.startRemain=180; S.t0=Date.now();
+    updateClock();
     showAnnounce(L3('IL RESTE 3 MIN','3 MIN LEFT','FALTAM 3 MIN'));speak(TXT[S.lang].min3);
   }
 }
@@ -3830,9 +4073,9 @@ function saveFavorite(){
   if(!name) return;
   const fav={name,mode:S.mode,track:S.track,dur:S.dur,lang:S.lang};
   if(S.mode==='tabata'){
-    fav.tabWork=parseInt(document.getElementById('tabWork').value)||20;
-    fav.tabRest=parseInt(document.getElementById('tabRest').value)||10;
-    fav.tabRounds=parseInt(document.getElementById('tabRounds').value)||8;
+    fav.tabWork=numIn('tabWork',20,1,3600);
+    fav.tabRest=numIn('tabRest',10,0,3600);
+    fav.tabRounds=numIn('tabRounds',8,1,50);
   }
   const favs=getFavs();
   favs.push(fav);
@@ -3860,7 +4103,10 @@ function loadFavorite(idx){
   const trackIdx=trackOrder[f.track]||0;
   if(trackBtns[trackIdx]) trackBtns[trackIdx].classList.add('active');
   S.track=f.track;
-  const info=TRACK_INFO[S.track];
+  // Repli si le favori pointe vers un import supprime, ou si impLoadAll() (asynchrone)
+  // n'a pas encore repeuple TRACK_INFO : sans ce garde-fou l'exception coupait la suite
+  // de la fonction (chrono jamais mis a jour). Meme repli que applyTrack().
+  const info=TRACK_INFO[S.track]||TRACK_INFO['pogo']||{name:'—',emoji:'🎵',sub:''};
   document.getElementById('npBadge').textContent='🎵 '+info.name.toUpperCase();
   document.getElementById('tCover').textContent=info.emoji;
   document.getElementById('tName').textContent=info.name.toUpperCase();
@@ -3964,9 +4210,9 @@ function saveFavoriteFromModal(){
   if(!name) return;
   const fav={name,mode:S.mode,track:S.track,dur:S.dur,lang:S.lang};
   if(S.mode==='tabata'){
-    fav.tabWork=parseInt(document.getElementById('tabWork').value)||20;
-    fav.tabRest=parseInt(document.getElementById('tabRest').value)||10;
-    fav.tabRounds=parseInt(document.getElementById('tabRounds').value)||8;
+    fav.tabWork=numIn('tabWork',20,1,3600);
+    fav.tabRest=numIn('tabRest',10,0,3600);
+    fav.tabRounds=numIn('tabRounds',8,1,50);
   }
   const favs=getFavs();
   favs.push(fav);
@@ -4184,7 +4430,7 @@ function showTimingChoice(mode){
   // Configurer le titre selon le mode et la langue
   let titleText='';
   if(mode==='wod'){
-    titleText=S.lang==='en'?'Cap Time':'Cap Time';
+    titleText='Cap Time'; // jargon CrossFit, volontairement non traduit (cf. ROUND/AMRAP)
   } else if(mode==='tabata'){
     titleText='Tabata';
   } else {
@@ -4510,7 +4756,7 @@ function applyTrack(chosen,category){
   
   // Mettre à jour l'UI track dans l'app
   try{
-    const info=TRACK_INFO[chosen];
+    const info=TRACK_INFO[chosen]||{name:'—',emoji:'🎵',sub:''};
     if(info){
       const npBadge=document.getElementById('npBadge');
       const tCover=document.getElementById('tCover');
@@ -4725,7 +4971,8 @@ function handleImportFiles(fileList){
       return impSave({id:id,name:name,blob:f,kind:kind}).then(()=>{
         const url=URL.createObjectURL(f);
         MUSIC[id]=url;
-        audioCache['music_'+id]=impMakeMediaEl(url,kind);
+        impKind[id]=kind;
+        // Element media cree a la demande (cf. getCachedAudio), pas ici.
         impAddToUI(id,name,kind);
       }).catch(e=>{
         console.error('import',e);
@@ -4744,8 +4991,9 @@ function handleImportFiles(fileList){
 function impRemove(id){
   const btn=document.getElementById('trackbtn_'+id); if(btn) btn.remove();
   const el=audioCache['music_'+id];
-  if(el){ try{el.pause();}catch(e){} if(el.tagName==='VIDEO'&&el.parentNode){ el.parentNode.removeChild(el); } delete audioCache['music_'+id]; }
+  if(el){ try{el.pause(); el.src=''; if(el.load) el.load();}catch(e){} if(el.tagName==='VIDEO'&&el.parentNode){ el.parentNode.removeChild(el); } delete audioCache['music_'+id]; }
   if(MUSIC[id]){ try{URL.revokeObjectURL(MUSIC[id]);}catch(e){} delete MUSIC[id]; }
+  delete impKind[id];
   delete TRACK_INFO[id];
   const ai=ALL_TRACK_KEYS.indexOf(id); if(ai>=0) ALL_TRACK_KEYS.splice(ai,1);
   const mi=manualPicks.indexOf(id);
@@ -4765,7 +5013,10 @@ function impLoadAll(){
       const kind=r.kind||'audio';
       const url=URL.createObjectURL(r.blob);
       MUSIC[r.id]=url;
-      audioCache['music_'+r.id]=impMakeMediaEl(url,kind);
+      impKind[r.id]=kind;
+      // On ne cree PAS l'element media ici : un import = un element vivant des le
+      // demarrage, et WKWebView plafonne vers 25-30. Il est cree a la demande
+      // par getCachedAudio() quand le morceau est reellement joue.
       impAddToUI(r.id, r.name||'Sans titre', kind);
     });
     impUpdateCount();
@@ -4982,7 +5233,12 @@ function refreshScoreMemberSelect(){
 
 function currentWodLabel(){
   const mName={wod:'WOD',amrap:'AMRAP',emom:'EMOM',tabata:'TABATA'}[S.mode]||'WOD';
-  const mins=(S.dur?Math.round(S.dur/60):0);
+  // S.dur est DEJA en minutes (S.total=S.dur*60) : pas de /60. Mais il n'est pas
+  // renseigne par la config tabata (il garderait la derniere duree WOD choisie),
+  // et en EMOM le total reel peut diverger de la duree cible -> cas par cas.
+  if(S.mode==='tabata') return mName+' '+(S.tabTotalRounds||8)+'x'+(S.tabWorkSec||20)+'/'+(S.tabRestSec||10)+'s';
+  if(S.mode==='emom'){ const t=Math.round((S.total||0)/60); return t?(mName+' '+t+' min'):mName; }
+  const mins=S.dur||0;
   return mins?(mName+' '+mins+' min'):mName;
 }
 
@@ -5022,8 +5278,13 @@ window.addEventListener('DOMContentLoaded',membersInit);
 
 <!-- ===== CAPTURE VIDÉO (v1) — caméra + chrono réel incrusté ===== -->
 <style>
-  #btnRec.on,#btnFilm.filming{background:#e6394b;border-color:#e6394b;color:#fff;}
-  #btnFilmAudio.on{background:#22c55e;border-color:#22c55e;color:#fff;}
+  /* Refonte v127 : les gros aplats rouge et vert se disputaient l'attention avec le
+     bouton play. Etat actif = simple teinte violette, coherente avec le reste.
+     (Ce bloc <style> est charge APRES le style principal, d'ou la reprise ici :
+     a specificite egale, c'est la derniere regle du document qui gagne.) */
+  #btnRec.on{background:#e6394b;border-color:#e6394b;color:#fff;}
+  #btnFilm.filming,#btnFilmAudio.on{
+    background:rgba(124,58,237,0.16);border-color:rgba(167,139,250,0.6);color:#c9b6ff;}
   #capStage{position:fixed;inset:0;z-index:90000;background:#000;display:none;}
   #capStage.on{display:block;}
   #capCanvas{width:100%;height:100%;object-fit:cover;display:block;background:#000;}

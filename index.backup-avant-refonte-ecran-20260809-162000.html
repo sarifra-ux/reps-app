@@ -1024,140 +1024,6 @@
     font-family:'DM Mono',monospace;font-size:0.85rem;cursor:pointer;text-align:left;}
   .settings-action-btn:hover{border-color:var(--accent);}
   .settings-action-btn .settings-icon{font-size:1.1rem;}
-
-  /* ============================================================
-     REFONTE v125 — écran principal
-     Bloc volontairement place en DERNIER : il ne fait que surcharger
-     les regles au-dessus, donc on peut le supprimer d'un bloc pour
-     revenir a l'ancien rendu. Aucune logique JS touchee.
-     ============================================================ */
-
-  /* 1. HEADER — le sous-titre sur 4 lignes mangeait le haut de l'ecran,
-        et la pastille de statut debordait hors de l'ecran a droite. */
-  .logo-sub{display:none;}
-  /* ⚠ TOUJOURS garder env(safe-area-inset-top) : sans lui le header remonte sous la
-     barre d'etat / la Dynamic Island et les boutons deviennent inatteignables.
-     (Erreur commise en v125 : un simple `padding-top:8px` avait tue la safe area.) */
-  header{align-items:center;padding-top:calc(10px + env(safe-area-inset-top,0px));padding-bottom:10px;}
-  .header-right{align-items:center;flex-wrap:nowrap;min-width:0;}
-  /* Statut reduit a une pastille ronde : plus de texte, donc plus de debordement. */
-  .status-pill{padding:0;min-width:0;background:transparent;border:0;box-shadow:none;flex:0 0 auto;}
-  .status-pill span{display:none;}
-  .status-pill .dot{width:7px;height:7px;margin:0 2px 0 6px;}
-
-  /* 2. CARTE CHRONO — le chrono devient le heros.
-        Les deux pastilles colorees (morceau / voix) passent SOUS le chrono,
-        en texte discret : c'est de l'information secondaire. */
-  /* La carte passe en colonne flex UNIQUEMENT pour pouvoir reordonner ses enfants
-     (order:9 sur la barre morceau/voix). Sans risque : phase-indicator, round-badge,
-     cd-overlay et ::before sont tous en position absolue, ils ne sont pas dans le flux. */
-  .timer-card{display:flex;flex-direction:column;padding-top:22px;padding-bottom:20px;}
-  /* #roundBadge est en position absolue en haut a droite, alors que l'eyebrow est le
-     premier element du flux : les deux se retrouvaient sur la MEME ligne et se
-     chevauchaient ("// EMOM WORK" passait sous "ROUND 1/2"). On donne au badge sa
-     propre bande en haut, et on descend l'eyebrow dessous. */
-  .round-badge{top:12px;}
-  .timer-card .timer-eyebrow{margin-top:16px;}
-  /* Le nom du morceau est deja dans la ligne de statut ("▶ EMOM — CARTIER") pendant
-     l'effort : on evite de le repeter, et on gagne de la hauteur quand on filme. */
-  body.wod-live .now-playing-bar{display:none;}
-  .now-playing-bar{order:9;margin:12px 0 0;gap:6px;opacity:.75;}
-  .np-badge,.brian-badge{background:transparent;border:0;color:#8e8aa8;font-size:0.52rem;
-    letter-spacing:1.2px;padding:0;box-shadow:none;}
-  .timer-clock{font-size:clamp(3.6rem,19vw,5.6rem);line-height:1.02;}
-  .timer-eyebrow{opacity:.65;}
-  .prog-wrap{margin-top:18px;}
-
-  /* 3. FORME D'ONDE — ligne de points fade qui coupait l'ecran en deux. */
-  .waveform{display:none !important;}
-
-  /* 4. COMMANDES — rangee symetrique : play au centre, deux pilules
-        de MEME taille de part et d'autre. Avant, RESET / play / Filming
-        melangeaient tailles, formes et couleurs sur une ligne bancale.
-        On garde les libelles : l'icone seule ("-3MIN" surtout) est ambigue. */
-  .controls{gap:16px;margin-top:18px;align-items:center;justify-content:center;flex-wrap:wrap;}
-  .controls>.btn-ctrl:first-child,#btnSkip{
-    order:1;height:46px;min-width:104px;padding:0 16px;border-radius:23px;
-    display:inline-flex;align-items:center;justify-content:center;
-    font-size:0.58rem;letter-spacing:1.4px;}
-  #btnSkip{order:3;}
-  .btn-play{order:2;width:72px;height:72px;font-size:1.7rem;}
-
-  /* 5. FILMER / SON AMBIANT — deux chips discrets sur leur propre ligne.
-        Avant : un gros bloc rouge et un gros bloc vert qui se disputaient
-        l'attention avec le bouton play. Ils ne s'allument qu'une fois actifs. */
-  .controls::after{content:'';flex-basis:100%;height:0;order:4;} /* force le retour a la ligne */
-  #btnFilm{order:5;} #btnFilmAudio{order:6;}
-  #btnFilm,#btnFilmAudio{
-    flex:1 1 0;min-width:0;max-width:190px;margin-top:2px;border-radius:12px;padding:11px 8px;
-    background:rgba(28,26,46,0.6);border:1px solid var(--border);color:#8e8aa8;
-    font-size:0.58rem;letter-spacing:1px;}
-  #btnFilm.on,#btnFilmAudio.on{
-    background:rgba(124,58,237,0.14);border-color:rgba(167,139,250,0.55);color:#c9b6ff;}
-
-  /* 6. Respiration : sur l'ecran d'accueil le bloc etait tasse en haut. */
-  .score-capture{margin-top:18px;}
-
-  /* 6bis. ANTI-DEBORDEMENT HORIZONTAL
-     Un element flex ou grid a `min-width:auto` par defaut : il refuse de devenir plus
-     etroit que son contenu le plus long. Un message comme « ✅ VIDEO SAVED TO PHOTOS »
-     (non coupable, avec letter-spacing) elargissait donc la carte au-dela de l'ecran,
-     et tout le contenu partait vers la droite. On autorise le retrecissement. */
-  main{min-width:0;}
-  main>*{min-width:0;max-width:100%;}
-  .timer-card{min-width:0;}
-  .timer-card>*{min-width:0;max-width:100%;}
-  .timer-status{overflow-wrap:anywhere;} /* le message peut passer a la ligne */
-  .sc-input,.sc-row{min-width:0;}
-
-  /* 7. ECRAN PARTAGE PENDANT LE TOURNAGE
-        Avant : une vignette flottante posee PAR-DESSUS l'interface, qui recouvrait
-        toujours quelque chose. Ici l'apercu natif prend le haut de l'ecran et toute
-        l'interface descend dessous : plus aucun recouvrement.
-        --cam-h DOIT rester egal a camFraction dans VideoOverlayPlugin.swift (0.40). */
-  :root{--cam-h:40dvh;}
-  #camSlot{height:0;overflow:hidden;transition:height .18s ease;}
-  body.filming #camSlot{height:var(--cam-h);}
-  /* Le header est normalement `position:sticky; top:0`. Pendant le tournage il se
-     recollerait sous la camera au moindre scroll : on le fige dans le flux.
-     Et surtout : il n'est plus en haut de l'ecran, donc la marge de safe area
-     (~59 pt sur Dynamic Island) devient un trou inutile — elle poussait le bas
-     de l'interface hors de l'ecran et coupait les boutons Filmer / Son ambiant. */
-  body.filming header{position:static;padding-top:10px;}
-  /* Le bas doit rester au-dessus de la barre d'accueil. */
-  body.filming main{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));}
-  /* La hauteur reservee au reste de l'interface doit exclure la camera, sinon la page
-     depasse l'ecran et le bas (boutons) sort du champ. */
-  body.filming .app{min-height:calc(100dvh - var(--cam-h) - 69px);}
-  body.wod-live.filming main{min-height:calc(100dvh - var(--cam-h) - 69px);}
-  /* Moins de marges dans la moitie basse : elle doit tenir sans rogner le chrono. */
-  body.filming main{padding-top:14px;gap:12px;}
-  body.filming .timer-card{padding-top:16px;padding-bottom:14px;}
-  body.filming .timer-clock{font-size:clamp(3rem,15vw,4.4rem);}
-  body.filming .prog-wrap{margin-top:12px;}
-  body.filming .controls{margin-top:12px;}
-  body.filming .score-capture{display:none;}        /* pas de saisie de score pendant qu'on filme */
-
-  /* 7bis. MODALES PENDANT LE TOURNAGE
-     L'apercu camera est un calque NATIF pose au-dessus de la WebView : tout ce que le
-     web dessine dans les 40 % du haut est invisible, y compris une modale centree.
-     Symptome vu en v133 : ouvrir Reglages en filmant, et la moitie haute du panneau
-     (titre, volumes) disparait derriere la camera.
-     On confine donc les surfaces plein ecran a la zone libre, sous la camera. */
-  body.filming .settings-modal,
-  body.filming .help-overlay,
-  body.filming .lang-choice,
-  body.filming .mode-choice,
-  body.filming .welcome{
-    padding-top:calc(var(--cam-h) + 12px);
-    align-items:flex-start;
-  }
-  /* Et on borne leur hauteur pour qu'elles restent entierement visibles + scrollables. */
-  body.filming .settings-modal-content,
-  body.filming .help-modal{
-    max-height:calc(100dvh - var(--cam-h) - 36px);
-    overflow-y:auto;
-  }
 </style>
 </head>
 <body>
@@ -1279,13 +1145,6 @@
     <div class="wizard-hint" data-i18n="cfg.continue">Règle, puis continue vers la musique</div>
   </div>
 </div>
-<!-- Emplacement reserve a l'apercu camera natif (ecran partage).
-     Hauteur 0 au repos, --cam-h pendant le tournage. C'est un VRAI element du flux :
-     tout ce qui suit (header, carte, commandes) descend naturellement dessous, sans
-     decalage artificiel a base de padding + position:sticky (qui donnait un empilement
-     imprevisible). Le calque AVCaptureVideoPreviewLayer se dessine par-dessus. -->
-<div id="camSlot" aria-hidden="true"></div>
-
 <header>
   <div>
     <div class="logo">R·E·P·S</div>
@@ -1769,7 +1628,7 @@
 
 <!-- Badge de build retire pour la soumission App Store (guideline 2.2 : pas d'element
      de type "beta" visible). Le numero de build reste dans sw.js / Xcode. -->
-<div id="buildTag" style="position:fixed;right:6px;bottom:calc(4px + env(safe-area-inset-bottom));z-index:2147483647;font:400 9px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.16);letter-spacing:.5px;pointer-events:none;user-select:none;">v134</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
+<div id="buildTag" style="position:fixed;right:6px;bottom:calc(4px + env(safe-area-inset-bottom));z-index:2147483647;font:400 9px/1 -apple-system,system-ui,sans-serif;color:rgba(255,255,255,.16);letter-spacing:.5px;pointer-events:none;user-select:none;">v124</div><div id="syncOverlay" style="display:none;position:fixed;inset:0;z-index:2147483646;background:#000;flex-direction:column;">
   <video id="syncVideo" playsinline style="flex:1;width:100%;min-height:0;object-fit:contain;background:#000;"></video>
   <div style="padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:#111;color:#fff;">
     <div style="font:600 14px/1.3 -apple-system,system-ui,sans-serif;margin-bottom:10px;"><span data-i18n="sync.instrA">Place le curseur sur le </span><b>GO</b><span data-i18n="sync.instrB"> de ta vidéo (le départ du WOD)</span></div>
@@ -2388,13 +2247,12 @@ function updateClock(){
   else if(r<=60 && S.mode!=='emom') cls+=' warn';
   clock.className=cls;
   
-  // En EMOM, l'eyebrow affiche la phase (le round est dans #roundBadge)
+  // En EMOM, mettre à jour l'eyebrow avec WORK/REST + ROUND X/Y
   if(S.mode==='emom' && S.state==='playing'){
     const phaseLabel=S.emomPhase==='rest'?L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'):L3('⚡ EFFORT','⚡ WORK','⚡ ESFORÇO');
+    const totalRounds=S.emomRounds||5;
     const eb=document.getElementById('timerEyebrow');
-    // Le numero de round est deja affiche par #roundBadge (coin haut droit de la carte) :
-    // le repeter ici allongeait l'eyebrow au point qu'il passait SOUS le badge.
-    if(eb) eb.textContent=`// EMOM ${phaseLabel}`;
+    if(eb) eb.textContent=`// EMOM ${phaseLabel} — ROUND ${S.emomCurrentRound}/${totalRounds}`;
   }
 
   const progFill=document.getElementById('progFill');
@@ -3438,10 +3296,6 @@ function setFilmBtn(on){
   if(!b) return;
   b.textContent=on?L3('🎥 Filme…','🎥 Filming…','🎥 Filmando…'):L3('🎥 Filmer','🎥 Film','🎥 Filmar');
   b.classList.toggle('filming',on);
-  // Ecran partage : pendant le tournage, l'apercu natif occupe le haut de l'ecran
-  // (hauteur --cam-h, cf. CSS) et toute l'interface descend en dessous. Rien n'est
-  // recouvert. La hauteur doit rester synchro avec camFraction dans VideoOverlayPlugin.swift.
-  document.body.classList.toggle('filming',!!on);
 }
 // Toggle du son ambiant (micro). OFF par défaut : chemin vidéo-muet validé intact.
 // Impossible de changer en cours d'enregistrement.
@@ -5278,13 +5132,8 @@ window.addEventListener('DOMContentLoaded',membersInit);
 
 <!-- ===== CAPTURE VIDÉO (v1) — caméra + chrono réel incrusté ===== -->
 <style>
-  /* Refonte v127 : les gros aplats rouge et vert se disputaient l'attention avec le
-     bouton play. Etat actif = simple teinte violette, coherente avec le reste.
-     (Ce bloc <style> est charge APRES le style principal, d'ou la reprise ici :
-     a specificite egale, c'est la derniere regle du document qui gagne.) */
-  #btnRec.on{background:#e6394b;border-color:#e6394b;color:#fff;}
-  #btnFilm.filming,#btnFilmAudio.on{
-    background:rgba(124,58,237,0.16);border-color:rgba(167,139,250,0.6);color:#c9b6ff;}
+  #btnRec.on,#btnFilm.filming{background:#e6394b;border-color:#e6394b;color:#fff;}
+  #btnFilmAudio.on{background:#22c55e;border-color:#22c55e;color:#fff;}
   #capStage{position:fixed;inset:0;z-index:90000;background:#000;display:none;}
   #capStage.on{display:block;}
   #capCanvas{width:100%;height:100%;object-fit:cover;display:block;background:#000;}

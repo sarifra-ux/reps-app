@@ -112,18 +112,28 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
             self.movieOutput = output
 
             DispatchQueue.main.async {
-                // Aperçu de cadrage : vignette en haut à droite, au-dessus de la WebView.
+                // Apercu de cadrage : ECRAN PARTAGE.
+                //
+                // Les versions precedentes posaient une vignette flottante PAR-DESSUS
+                // l'interface : quoi qu'on fasse elle recouvrait quelque chose (header,
+                // carte chrono, ou boutons). Ici l'apercu prend franchement le HAUT de
+                // l'ecran, sur toute la largeur, et le web descend toute son interface
+                // en dessous (classe `body.filming`, variable CSS --cam-h).
+                //
+                // ⚠ camFraction DOIT rester egal a --cam-h dans index.html (40dvh).
+                // Si l'un change, changer l'autre, sinon il y a un trou ou un recouvrement.
                 if let host = self.bridge?.viewController?.view {
                     let pv = AVCaptureVideoPreviewLayer(session: session)
                     pv.videoGravity = .resizeAspectFill
-                    let w = host.bounds.width * 0.34
-                    let h = w * 16.0 / 9.0
-                    pv.frame = CGRect(x: host.bounds.width - w - 12,
-                                      y: host.safeAreaInsets.top + 12, width: w, height: h)
-                    pv.cornerRadius = 12
+                    let camFraction: CGFloat = 0.40
+                    let H = host.bounds.height
+                    let W = host.bounds.width
+                    // Plein bord depuis le haut de l'ecran (on passe sous la barre d'etat).
+                    pv.frame = CGRect(x: 0, y: 0, width: W, height: H * camFraction)
+                    // Coins arrondis en bas seulement : l'apercu se lit comme un bandeau.
+                    pv.cornerRadius = 18
+                    pv.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
                     pv.masksToBounds = true
-                    pv.borderColor = UIColor(red: 0.49, green: 0.23, blue: 0.93, alpha: 1).cgColor
-                    pv.borderWidth = 2
                     if let c = pv.connection, c.isVideoOrientationSupported { c.videoOrientation = .portrait }
                     host.layer.addSublayer(pv)
                     self.previewLayer = pv
@@ -313,30 +323,60 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
             let timeS = f["time"] as? String ?? ""
             let alert = (f["alert"] as? Bool) ?? false
 
+            // Carte du chrono. Identite REPS : fond sombre translucide, coins arrondis,
+            // liseré degrade magenta->cyan a gauche, ligne de contexte en cyan.
             let container = CALayer()
             container.frame = CGRect(x: pad, y: pad, width: blockW, height: blockH)
-            container.backgroundColor = UIColor(white: 0, alpha: 0.55).cgColor
-            container.cornerRadius = renderSize.width * 0.012
+            container.backgroundColor = UIColor(white: 0.02, alpha: 0.62).cgColor
+            container.cornerRadius = renderSize.width * 0.024
+            container.masksToBounds = true
+            container.borderWidth = max(1, renderSize.width * 0.0022)
+            container.borderColor = Self.repsMagenta.withAlphaComponent(0.35).cgColor
 
+            // Liseré vertical degrade : la signature visuelle de l'app, en petit.
+            let stripe = CAGradientLayer()
+            let stripeW = renderSize.width * 0.009
+            stripe.frame = CGRect(x: 0, y: 0, width: stripeW, height: blockH)
+            stripe.colors = [Self.repsCyan.cgColor, Self.repsMagenta.cgColor]
+            stripe.startPoint = CGPoint(x: 0.5, y: 0)
+            stripe.endPoint = CGPoint(x: 0.5, y: 1)
+            container.addSublayer(stripe)
+
+            let textX = stripeW + renderSize.width * 0.018
+
+            // Ligne de contexte (« EMOM · ROUND 2/3 ») : cyan, espacee, en capitales.
             let topL = CATextLayer()
-            topL.string = topS
-            topL.fontSize = renderSize.height * 0.02
-            topL.foregroundColor = UIColor(white: 1, alpha: 0.9).cgColor
+            topL.string = NSAttributedString(string: topS.uppercased(), attributes: [
+                .font: UIFont(name: "AvenirNextCondensed-DemiBold", size: renderSize.height * 0.021)
+                    ?? UIFont.systemFont(ofSize: renderSize.height * 0.021, weight: .semibold),
+                .kern: renderSize.height * 0.004,
+                .foregroundColor: Self.repsCyan
+            ])
             topL.alignmentMode = .left
             topL.contentsScale = UIScreen.main.scale
-            topL.frame = CGRect(x: renderSize.width * 0.016, y: blockH - topH - renderSize.height * 0.008,
-                                width: blockW - renderSize.width * 0.03, height: topH)
+            topL.frame = CGRect(x: textX, y: blockH - topH - renderSize.height * 0.010,
+                                width: blockW - textX - renderSize.width * 0.02, height: topH)
             container.addSublayer(topL)
 
+            // Chrono. Monospace pour que les chiffres ne dansent pas. Blanc, magenta REPS
+            // sur les 3 dernieres secondes (le rouge pur jurait avec la palette).
+            let timeFont = UIFont(name: "Menlo-Bold", size: renderSize.height * 0.062)
+                ?? UIFont.monospacedDigitSystemFont(ofSize: renderSize.height * 0.062, weight: .bold)
             let timeL = CATextLayer()
-            timeL.string = timeS
-            timeL.font = CTFontCreateWithName("Menlo-Bold" as CFString, renderSize.height * 0.058, nil)
-            timeL.fontSize = renderSize.height * 0.058
-            timeL.foregroundColor = (alert ? UIColor.systemRed : UIColor.white).cgColor
+            timeL.string = NSAttributedString(string: timeS, attributes: [
+                .font: timeFont,
+                .kern: renderSize.height * 0.002,
+                .foregroundColor: alert ? Self.repsMagenta : UIColor.white
+            ])
             timeL.alignmentMode = .left
             timeL.contentsScale = UIScreen.main.scale
-            timeL.frame = CGRect(x: renderSize.width * 0.016, y: renderSize.height * 0.008,
-                                 width: blockW - renderSize.width * 0.03, height: timeH)
+            // Halo discret : garde le chrono lisible sur un fond clair (salle, plein jour).
+            timeL.shadowColor = (alert ? Self.repsMagenta : Self.repsCyan).cgColor
+            timeL.shadowOpacity = alert ? 0.55 : 0.35
+            timeL.shadowRadius = renderSize.height * 0.006
+            timeL.shadowOffset = .zero
+            timeL.frame = CGRect(x: textX, y: renderSize.height * 0.010,
+                                 width: blockW - textX - renderSize.width * 0.02, height: timeH)
             container.addSublayer(timeL)
 
             let anim = CAKeyframeAnimation(keyPath: "opacity")
@@ -352,15 +392,46 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
             parentLayer.addSublayer(container)
         }
 
-        let brand = CATextLayer()
-        brand.string = "REPS"
-        brand.fontSize = renderSize.height * 0.03
-        brand.foregroundColor = UIColor(white: 1, alpha: 0.85).cgColor
-        brand.alignmentMode = .right
-        brand.contentsScale = UIScreen.main.scale
-        let bw = renderSize.width * 0.3
-        brand.frame = CGRect(x: renderSize.width - bw - pad, y: pad, width: bw, height: renderSize.height * 0.04)
-        parentLayer.addSublayer(brand)
+        // Logo « R·E·P·S » en degrade, comme l'en-tete de l'app : c'est la signature
+        // qui doit rendre la video reconnaissable. Repli sur du texte blanc si le
+        // rendu de l'image echoue, pour ne jamais exporter une video sans marque.
+        if let logo = makeLogoImage(height: renderSize.height * 0.038), logo.size.height > 0 {
+            let bh = renderSize.height * 0.050
+            let bw = bh * (logo.size.width / logo.size.height)
+            // Pastille sombre derriere le logo : sans elle, le degrade disparait sur un
+            // fond clair (carrelage, mur blanc, plein jour). Meme matiere que la carte
+            // du chrono, pour que l'ensemble se lise comme une seule identite.
+            let padH = renderSize.height * 0.012
+            let padW = renderSize.width * 0.022
+            let plate = CALayer()
+            plate.frame = CGRect(x: renderSize.width - bw - pad - padW,
+                                 y: pad - padH * 0.5,
+                                 width: bw + padW * 2, height: bh + padH)
+            plate.backgroundColor = UIColor(white: 0.02, alpha: 0.5).cgColor
+            plate.cornerRadius = (bh + padH) / 2
+            parentLayer.addSublayer(plate)
+
+            let bl = CALayer()
+            bl.contents = logo.cgImage
+            bl.contentsGravity = .resizeAspect
+            bl.contentsScale = logo.scale
+            bl.frame = CGRect(x: renderSize.width - bw - pad, y: pad, width: bw, height: bh)
+            bl.shadowColor = UIColor.black.cgColor
+            bl.shadowOpacity = 0.7
+            bl.shadowRadius = renderSize.height * 0.005
+            bl.shadowOffset = .zero
+            parentLayer.addSublayer(bl)
+        } else {
+            let brand = CATextLayer()
+            brand.string = "R·E·P·S"
+            brand.fontSize = renderSize.height * 0.03
+            brand.foregroundColor = UIColor(white: 1, alpha: 0.85).cgColor
+            brand.alignmentMode = .right
+            brand.contentsScale = UIScreen.main.scale
+            let bw = renderSize.width * 0.3
+            brand.frame = CGRect(x: renderSize.width - bw - pad, y: pad, width: bw, height: renderSize.height * 0.04)
+            parentLayer.addSublayer(brand)
+        }
 
         vc.animationTool = AVVideoCompositionCoreAnimationTool(postProcessingAsVideoLayer: videoLayer, in: parentLayer)
 
@@ -443,6 +514,41 @@ extension VideoOverlayPlugin: PHPickerViewControllerDelegate {
                 self.resolvePick(["path": dst.path, "duration": dur])
             } catch {
                 self.rejectPick("Copie KO: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - Identite visuelle REPS (incrustation video)
+
+    /// Couleurs de marque, reprises telles quelles du CSS de l'app (--accent / --accent2).
+    static let repsMagenta = UIColor(red: 0.902, green: 0.247, blue: 1.0, alpha: 1.0)   // #e63fff
+    static let repsCyan    = UIColor(red: 0.0,   green: 0.898, blue: 1.0, alpha: 1.0)   // #00e5ff
+
+    /// Rend le logo « R·E·P·S » en degrade magenta -> cyan, comme dans l'en-tete de l'app.
+    ///
+    /// On passe par une IMAGE plutot que par un CATextLayer masque par un CAGradientLayer :
+    /// AVVideoCompositionCoreAnimationTool rend l'arbre de calques hors ecran, et les masques
+    /// y sont capricieux. Une bitmap, elle, est toujours rendue telle quelle.
+    private func makeLogoImage(height: CGFloat) -> UIImage? {
+        let text = "R·E·P·S"
+        let font = UIFont(name: "AvenirNextCondensed-Bold", size: height)
+            ?? UIFont.systemFont(ofSize: height, weight: .heavy)
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .kern: height * 0.16,          // le logo de l'app est tres espace
+            .foregroundColor: UIColor.white
+        ]
+        let s = (text as NSString).size(withAttributes: attrs)
+        let w = ceil(s.width) + 6, h = ceil(s.height) + 6
+        guard w > 0, h > 0 else { return nil }
+        return UIGraphicsImageRenderer(size: CGSize(width: w, height: h)).image { ctx in
+            let cg = ctx.cgContext
+            (text as NSString).draw(at: CGPoint(x: 3, y: 3), withAttributes: attrs)
+            // On repeint le degrade UNIQUEMENT sur les pixels du texte deja traces.
+            cg.setBlendMode(.sourceIn)
+            let cols = [Self.repsMagenta.cgColor, Self.repsCyan.cgColor] as CFArray
+            if let g = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: cols, locations: [0, 1]) {
+                cg.drawLinearGradient(g, start: CGPoint(x: 0, y: 0), end: CGPoint(x: w, y: 0), options: [])
             }
         }
     }
