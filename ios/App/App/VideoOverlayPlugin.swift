@@ -122,14 +122,18 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
                 //
                 // ⚠ camFraction DOIT rester egal a --cam-h dans index.html (40dvh).
                 // Si l'un change, changer l'autre, sinon il y a un trou ou un recouvrement.
+                // Hauteur pilotee par le WEB depuis le 17/08/2026 : --cam-h est la seule
+                // source de verite, toggleFilm() l'envoie en camHeightPx. Le repli sur
+                // 0.40 ne sert que si un ancien build web appelle sans ce parametre.
+                let camPxAsked = call.getDouble("camHeightPx") ?? 0
                 if let host = self.bridge?.viewController?.view {
                     let pv = AVCaptureVideoPreviewLayer(session: session)
                     pv.videoGravity = .resizeAspectFill
-                    let camFraction: CGFloat = 0.40
                     let H = host.bounds.height
                     let W = host.bounds.width
+                    let camH = camPxAsked > 40 ? CGFloat(camPxAsked) : H * 0.40
                     // Plein bord depuis le haut de l'ecran (on passe sous la barre d'etat).
-                    pv.frame = CGRect(x: 0, y: 0, width: W, height: H * camFraction)
+                    pv.frame = CGRect(x: 0, y: 0, width: W, height: camH)
                     // Coins arrondis en bas seulement : l'apercu se lit comme un bandeau.
                     pv.cornerRadius = 18
                     pv.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
@@ -373,7 +377,7 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
             // --- 1. La carte : statique, une seule couche pour toute la video ---
             let card = CALayer()
             card.frame = CGRect(x: pad, y: pad, width: blockW, height: blockH)
-            card.backgroundColor = UIColor(white: 0.02, alpha: 0.62).cgColor
+            card.backgroundColor = UIColor(white: 0.02, alpha: 1.0).cgColor // opaque : les couches d'effacement doivent se fondre dedans
             card.cornerRadius = renderSize.width * 0.024
             card.masksToBounds = true
             card.borderWidth = max(1, renderSize.width * 0.0022)
@@ -422,6 +426,14 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
                     topL.contentsScale = UIScreen.main.scale
                     topL.frame = ctxFrame
                     topL.opacity = 0
+                    let effaceCtx = CALayer()
+                    effaceCtx.frame = ctxFrame
+                    effaceCtx.backgroundColor = UIColor(white: 0.02, alpha: 1.0).cgColor
+                    effaceCtx.opacity = 0
+                    effaceCtx.add(visibilite(goOffset + Double(i),
+                                             min(videoDur, goOffset + Double(j))), forKey: "vis")
+                    parentLayer.addSublayer(effaceCtx)
+
                     topL.add(visibilite(goOffset + Double(i),
                                         min(videoDur, goOffset + Double(j))), forKey: "vis")
                     parentLayer.addSublayer(topL)
@@ -455,8 +467,20 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
                 timeL.shadowOffset = .zero
                 timeL.frame = timeFrame
                 timeL.opacity = 0
+                // FANTOME (corrige le 16/08/2026) : le rendu ne repeint que la zone qui
+                // change, donc le chiffre de la seconde precedente restait visible dessous.
+                // Une couche opaque, meme cadre et meme fenetre de visibilite, efface
+                // la seconde precedente avant que le texte ne soit dessine par-dessus.
+                let effaceTime = CALayer()
+                effaceTime.frame = timeFrame
+                effaceTime.backgroundColor = UIColor(white: 0.02, alpha: 1.0).cgColor
+                effaceTime.opacity = 0
+                effaceTime.add(visibilite(goOffset + Double(k),
+                                          min(videoDur, goOffset + Double(k) + 0.96)), forKey: "vis")
+                parentLayer.addSublayer(effaceTime)
+
                 timeL.add(visibilite(goOffset + Double(k),
-                                     min(videoDur, goOffset + Double(k) + 1.0)), forKey: "vis")
+                                     min(videoDur, goOffset + Double(k) + 0.96)), forKey: "vis")
                 parentLayer.addSublayer(timeL)
             }
         }
