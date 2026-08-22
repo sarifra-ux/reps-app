@@ -2023,7 +2023,7 @@ function choisirVoix(cle){
     try{ a.pause(); a.removeAttribute('src'); a._repsSrc=''; if(a.load) a.load(); }catch(_){}
   }); }catch(e){}
   // Filet : si une annonce a ete coupee en plein ducking, la musique doit remonter.
-  try{ _duckCount=0; if(musicAudio) musicAudio.volume=musicTargetVolume(); }catch(e){}
+  try{ _duckCount=0; if(musicAudio) setElVolume(musicAudio, musicTargetVolume()); }catch(e){}
   try{ for(const k in _recBuf) delete _recBuf[k]; }catch(e){}
   try{ for(const k in _naLoaded) delete _naLoaded[k]; }catch(e){}
   try{ for(const k in countBuffers) delete countBuffers[k]; }catch(e){}
@@ -2125,7 +2125,7 @@ function _couperVoixEnCours(){
     // Une voix coupee ne declenche pas 'ended', donc son restore() ne part jamais :
     // sans ca la musique resterait baissee a 25% pour le reste du WOD.
     if(liste.length && typeof musicAudio!=='undefined' && musicAudio){
-      try{ musicAudio.volume=musicTargetVolume(); }catch(_){}
+      try{ setElVolume(musicAudio, musicTargetVolume()); }catch(_){}
     }
   }catch(_){}
 }
@@ -2858,11 +2858,13 @@ function startMusic(){
   musicAudio=getCachedAudio('music_'+firstKey, MUSIC[firstKey]);
   musicAudio.loop=loopMode;
   musicAudio.currentTime=0;
-  musicAudio.volume=parseInt(document.getElementById('volMusic').value)/100;
+  musicAudio.volume=musicTargetVolume();
   musicAudio.onended=(loopMode?null:playNextShuffle);
   _watchMusic(musicAudio, firstKey, loopMode);
   musicAudio.play().catch(err=>{ DBG('musique: play REFUSE "'+firstKey+'" : '+((err&&err.message)||err)); });
   busAttachEl(musicAudio);
+  mixAttachMusic(musicAudio);
+  setElVolume(musicAudio, musicTargetVolume());
 }
 
 function playNextShuffle(){
@@ -2883,11 +2885,15 @@ function playNextShuffle(){
   musicAudio=getCachedAudio('music_'+nextKey, MUSIC[nextKey]);
   musicAudio.loop=false;
   musicAudio.currentTime=0;
-  musicAudio.volume=(_duckCount>0?musicTargetVolume()*0.12:musicTargetVolume());
+  musicAudio.volume=(_duckCount>0?musicTargetVolume()*DUCK_ANNONCE:musicTargetVolume());
   musicAudio.onended=playNextShuffle;
   _watchMusic(musicAudio, nextKey, false);
   musicAudio.play().catch(err=>{ DBG('musique: enchainement REFUSE "'+nextKey+'" : '+((err&&err.message)||err)); });
   busAttachEl(musicAudio);
+  mixAttachMusic(musicAudio);
+  // Un morceau qui demarre pendant une annonce ne doit pas revenir a plein volume
+  // par-dessus la voix : on reprend le niveau courant du ducking.
+  setElVolume(musicAudio, _duckCount>0?musicTargetVolume()*DUCK_ANNONCE:musicTargetVolume());
 }
 function stopMusic(){
   _arretVoulu=true; // coupure demandee : ne pas relancer
@@ -2927,13 +2933,29 @@ function resumeMusic(){
   musicAudio.volume=musicTargetVolume();
   musicAudio.play().catch(err=>console.warn('music resume',err));
   busAttachEl(musicAudio);
+  mixAttachMusic(musicAudio);
+  setElVolume(musicAudio, _duckCount>0?musicTargetVolume()*DUCK_ANNONCE:musicTargetVolume());
   return true;
 }
 
 // === SYSTÈME DE DUCKING CENTRALISÉ ===
 // Le volume de référence vient TOUJOURS du slider (jamais du volume courant qui peut être déjà ducké)
 let _duckCount=0; // nombre de "ducks" actifs en parallèle
+// Niveau auquel tombe la musique pendant que le coach parle. 1 = pas de ducking.
+// ATTENTION : ces valeurs n'ont jamais ete entendues sur iPhone. Jusqu'au 22/08/2026
+// le ducking ne s'appliquait pas du tout (Apple ignore el.volume sur un <audio>) :
+// mesure sur l'enregistrement du 22/08, -1,0 dB pendant les annonces au lieu des
+// -18,4 dB que le code croyait appliquer. C'est ici, et nulle part ailleurs, qu'on
+// regle le dosage a l'oreille sur la sono.
+const DUCK_ANNONCE  = 0.25;  // ROUND / REST / TIME        (-12 dB)
+const DUCK_CRUNCH   = 0.12;  // decompte EMOM "crunch"     (-18 dB)
+const DUCK_DECOMPTE = 0.15;  // decompte 3-2-1-GO du depart (-16 dB)
 function musicTargetVolume(){
+  // Sur iPhone le curseur musique est masque (cf. bloc CSS "VOLUME SUR iOS") : la
+  // reference reste donc 100 %, comme aujourd'hui, et seul le ducking fait varier
+  // le niveau. Sans ca, activer le mix Web Audio baisserait d'un coup toute la
+  // musique a 60 % sur les iPhone, ce qui n'a rien a voir avec le correctif.
+  if(_isIOS) return 1;
   const el=document.getElementById('volMusic');
   return el?(parseInt(el.value)/100):0.6;
 }
@@ -2941,14 +2963,14 @@ function duckStart(){
   // On incrémente le compteur ; tant qu'il est > 0 la musique reste baissée
   _duckCount++;
   if(musicAudio){
-    try{musicAudio.volume=musicTargetVolume()*0.12;}catch(e){}
+    setElVolume(musicAudio, musicTargetVolume()*DUCK_ANNONCE);
   }
 }
 function duckEnd(){
   _duckCount=Math.max(0,_duckCount-1);
   // On ne remonte la musique QUE si plus aucun duck actif
   if(_duckCount===0 && musicAudio){
-    try{musicAudio.volume=musicTargetVolume();}catch(e){}
+    setElVolume(musicAudio, musicTargetVolume());
   }
 }
 
@@ -3031,6 +3053,50 @@ let recBus=null;              // MediaStreamAudioDestinationNode
 let _busActive=false;         // vrai uniquement pendant un enregistrement
 const _busRouted=new WeakSet(); // elements <audio> déjà routés (createMediaElementSource = 1 seule fois)
 const _busGains=[];           // {el,gain} : reflète muted/volume sur la sortie (iOS ignore el.muted une fois routé)
+const _gainParEl=new WeakMap(); // element -> GainNode qui porte reellement son volume
+
+// ===== MIX PERMANENT DE LA MUSIQUE (correctif ducking iOS, 22/08/2026) =====
+// Apple ignore `el.volume` sur un element <audio>. Le ducking, qui passait par la,
+// ne faisait donc RIEN sur iPhone : la voix du coach ne passait pas au-dessus de la
+// musique, elle se battait avec. C'est le differenciateur numero un de REPS.
+// Correctif : la musique passe en permanence par un GainNode Web Audio, et c'est ce
+// gain qui porte le volume. Deux garde-fous, parce qu'un correctif audio rate est
+// pire que le bug :
+//   1. on ne route QUE si l'AudioContext tourne deja. Router dans un contexte
+//      suspendu rendrait la musique totalement muette ;
+//   2. si le routage echoue, setElVolume retombe sur el.volume, donc exactement sur
+//      le comportement d'avant. Aucun chemin ne peut finir sans son.
+// Prealable natif : AVAudioSession en categorie .playback (cf. AppDelegate.swift),
+// sinon la Web Audio est muette quand l'interrupteur silencieux est actif.
+function mixAttachMusic(el){
+  if(!el || _busRouted.has(el)) return;
+  const ctx=ensureAudioCtx();
+  if(!ctx || ctx.state!=='running') return;   // on reessaiera au morceau suivant
+  try{
+    const node=ctx.createMediaElementSource(el);
+    const g=ctx.createGain();
+    g.gain.value = el.muted ? 0 : (isFinite(el.volume)?el.volume:1);
+    node.connect(g);
+    g.connect(ctx.destination);
+    if(_busActive){ const bus=ensureRecBus(); if(bus){ try{ g.connect(bus); }catch(e){} } }
+    _busRouted.add(el);
+    _busGains.push({el:el,gain:g});
+    _gainParEl.set(el,g);
+    try{DBG('mix: musique routee en Web Audio, ducking actif');}catch(_){}
+  }catch(e){ try{DBG('mix: routage KO '+e.name+' -> repli el.volume');}catch(_){} }
+}
+// Regle le volume d'un element. On ecrit TOUJOURS el.volume (repli, et valeur lue
+// par busSyncGains) et, si l'element est route, le gain qui commande vraiment.
+function setElVolume(el, v){
+  if(!el) return;
+  const x=Math.max(0, Math.min(1, isFinite(v)?v:1));
+  try{ el.volume=x; }catch(e){}
+  const g=_gainParEl.get(el);
+  if(!g) return;
+  // Rampe courte : un saut de gain instantane s'entend comme un clic.
+  try{ g.gain.setTargetAtTime(x, (audioCtx?audioCtx.currentTime:0), 0.02); }
+  catch(e){ try{ g.gain.value=x; }catch(_){} }
+}
 function ensureRecBus(){
   const ctx=ensureAudioCtx();
   if(!ctx) return null;
@@ -3040,8 +3106,18 @@ function ensureRecBus(){
   }
   return recBus;
 }
-function busActivate(){ _busActive=true; ensureRecBus(); try{ preloadRecCountdown(); }catch(e){} try{ preloadRecVoice(); }catch(e){} }
-function busDeactivate(){ _busActive=false; }
+function busActivate(){
+  _busActive=true;
+  const bus=ensureRecBus();
+  // La musique est deja routee par le mix permanent : sans ce branchement, la video
+  // sortirait avec les voix mais SANS musique.
+  if(bus){ for(let i=0;i<_busGains.length;i++){ try{ _busGains[i].gain.connect(bus); }catch(e){} } }
+  try{ preloadRecCountdown(); }catch(e){} try{ preloadRecVoice(); }catch(e){}
+}
+function busDeactivate(){
+  _busActive=false;
+  if(recBus){ for(let i=0;i<_busGains.length;i++){ try{ _busGains[i].gain.disconnect(recBus); }catch(e){} } }
+}
 // Route un element <audio> (musique, annonce, voix) vers sortie normale + bus.
 function busAttachEl(el){
   if(!_busActive||!el) return;
@@ -3067,7 +3143,10 @@ function busSyncGains(){
   if(!_busActive) return;
   for(let i=0;i<_busGains.length;i++){
     const it=_busGains[i];
-    try{ it.gain.gain.value = it.el.muted ? 0 : (isFinite(it.el.volume)?it.el.volume:1); }catch(e){}
+    try{
+      const v = it.el.muted ? 0 : (isFinite(it.el.volume)?it.el.volume:1);
+      it.gain.gain.setTargetAtTime(v, (audioCtx?audioCtx.currentTime:0), 0.02);
+    }catch(e){}
   }
 }
 // Route un noeud de gain Web Audio (décompte / round / rest) vers le bus.
@@ -3481,10 +3560,9 @@ function playVoiceFile(file, onFail){
       // vers 25-30 elements (c'est la cause du gel corrige en v113).
       try{ a.pause(); a.removeAttribute('src'); if(a.load) a.load(); }catch(_){}
     };
-    const vmEl=document.getElementById('volMusic');
-    const vMus=vmEl?parseInt(vmEl.value)/100:1;
-    if(musicAudio) musicAudio.volume=vMus*0.12;
-    const restore=()=>{ if(musicAudio) musicAudio.volume=vMus; };
+    const vMus=musicTargetVolume();
+    if(musicAudio) setElVolume(musicAudio, vMus*DUCK_ANNONCE);
+    const restore=()=>{ if(musicAudio) setElVolume(musicAudio, vMus); };
     a.onended=()=>{ restore(); drop(); };
     a.onerror=()=>{ restore(); drop(); if(onFail) onFail(); };
     a.play().catch(()=>{ restore(); drop(); if(onFail) onFail(); });
@@ -3528,11 +3606,11 @@ function speak(text, opts){
   } else if(isShortNum){u.rate=1.6;u.pitch=1.8;u.volume=1.0;}
   else if(isTime){u.rate=0.9;u.pitch=0.8;u.volume=1.0;}
   else{u.rate=1.3;u.pitch=1.3;u.volume=1.0;}
-  const vMus=parseInt(document.getElementById('volMusic').value)/100;
-  // Ducking plus fort en mode EMOM crunch (musique tombe à 8% au lieu de 25%)
-  const duckLevel=opts.emomCrunch?0.08:0.25;
-  if(musicAudio) musicAudio.volume=vMus*duckLevel;
-  u.onend=()=>{if(musicAudio) musicAudio.volume=vMus;};
+  const vMus=musicTargetVolume();
+  // Ducking plus fort en mode EMOM crunch : la voix doit trancher.
+  const duckLevel=opts.emomCrunch?DUCK_CRUNCH:DUCK_ANNONCE;
+  if(musicAudio) setElVolume(musicAudio, vMus*duckLevel);
+  u.onend=()=>{if(musicAudio) setElVolume(musicAudio, vMus);};
   window.speechSynthesis.speak(u);
 }
 
@@ -3925,8 +4003,8 @@ function launch(){
   const countAudioList=S.lang==='fr'?COUNT_AUDIO_FR:(S.lang==='pt'?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
   S.cdAudioTimers=[];
   // Ducking musique pendant tout le décompte pour que la voix soit bien audible
-  const vMus=parseInt(document.getElementById('volMusic').value)/100;
-  if(musicAudio) musicAudio.volume=vMus*0.05;
+  const vMus=musicTargetVolume();
+  if(musicAudio) setElVolume(musicAudio, vMus*DUCK_DECOMPTE);
   // Calibrage : on cale le mot sur la seconde en compensant le silence de tête de chaque
   // fichier (cf. COUNT_ONSET). attaque0 = ancre du "10" (on ne peut pas jouer avant t=0).
   const _onsets=onsetsVoix();
@@ -3963,7 +4041,7 @@ function launch(){
     // Chrono + remontée musique : tolèrent la gigue, restent sur runAbsSchedule (décalés du lead).
     S.cdSched=runAbsSchedule([
       {t:leadMs+10500+_onset0, fn:()=>startChrono()},
-      {t:leadMs+10800+_onset0, fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }}
+      {t:leadMs+10800+_onset0, fn:()=>{ if(musicAudio) setElVolume(musicAudio, vMus); }}
     ]);
     DBG('launch(décompte horloge audio): mode='+S.mode+' total='+S.total+'s');
     return;
@@ -3985,7 +4063,7 @@ function launch(){
     }});
   });
   cdSteps.push({t:10500+_onset0,fn:()=>startChrono()});
-  cdSteps.push({t:10800+_onset0,fn:()=>{ if(musicAudio) musicAudio.volume=vMus; }});
+  cdSteps.push({t:10800+_onset0,fn:()=>{ if(musicAudio) setElVolume(musicAudio, vMus); }});
   cdSteps.sort((a,b)=>a.t-b.t);
   DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
   S.cdT0=Date.now(); // top réel du décompte, pour caler l'overlay vidéo dessus
@@ -4405,7 +4483,7 @@ function updateVolMusic(v){
   // On respecte le ducking : si la voix parle, la musique reste baissée.
   if(musicAudio){
     const vol=parseInt(v)/100;
-    try{musicAudio.volume=(_duckCount>0 ? vol*0.25 : vol);}catch(e){}
+    setElVolume(musicAudio, _duckCount>0 ? vol*DUCK_ANNONCE : vol);
   }
 }
 function updateVolVoice(v){

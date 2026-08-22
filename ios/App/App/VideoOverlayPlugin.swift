@@ -189,6 +189,11 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
             // aux autres apps (Spotify) et laisser REPS reprendre son audio normal.
             if restoreAudio {
                 try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+                // Le filmage a bascule la session en .playAndRecord. Si on ne remet pas
+                // .playback, l'app reste dans cette categorie apres le tournage et le son
+                // repasse sous le controle de l'interrupteur silencieux : plus de musique
+                // pour le WOD suivant si l'interrupteur est actif.
+                DispatchQueue.main.async { AppDelegate.activerSessionAudio() }
             }
         }
     }

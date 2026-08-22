@@ -1,13 +1,35 @@
 import UIKit
 import Capacitor
+import AVFoundation
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
 
+    /// Categorie audio de l'app : `.playback`.
+    ///
+    /// Pourquoi c'est indispensable depuis le 22/08/2026 : la musique passe desormais
+    /// par un GainNode Web Audio (seul moyen de faire marcher le ducking sur iPhone,
+    /// Apple ignorant `el.volume` sur un <audio>). Or sur iOS la Web Audio est MUETTE
+    /// quand le petit interrupteur lateral est sur silencieux, alors que l'audio HTML
+    /// continue de sortir. Sans `.playback`, un coach en mode silencieux se retrouverait
+    /// donc sans musique du tout : on aurait repare le ducking en cassant le son.
+    ///
+    /// `.playback` fait sortir le son quel que soit l'interrupteur. Sans `.mixWithOthers` :
+    /// un chrono de WOD doit couvrir Spotify, pas se melanger avec.
+    static func activerSessionAudio() {
+        let s = AVAudioSession.sharedInstance()
+        do {
+            try s.setCategory(.playback, mode: .default, options: [])
+            try s.setActive(true)
+        } catch {
+            NSLog("REPS: AVAudioSession .playback KO — \(error.localizedDescription)")
+        }
+    }
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        AppDelegate.activerSessionAudio()
         return true
     }
 
