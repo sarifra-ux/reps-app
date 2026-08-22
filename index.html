@@ -2023,7 +2023,7 @@ function choisirVoix(cle){
     try{ a.pause(); a.removeAttribute('src'); a._repsSrc=''; if(a.load) a.load(); }catch(_){}
   }); }catch(e){}
   // Filet : si une annonce a ete coupee en plein ducking, la musique doit remonter.
-  try{ _duckCount=0; if(musicAudio) setElVolume(musicAudio, musicTargetVolume()); }catch(e){}
+  try{ duckResetAll(); }catch(e){}
   try{ for(const k in _recBuf) delete _recBuf[k]; }catch(e){}
   try{ for(const k in _naLoaded) delete _naLoaded[k]; }catch(e){}
   try{ for(const k in countBuffers) delete countBuffers[k]; }catch(e){}
@@ -2119,14 +2119,15 @@ function _couperVoixEnCours(){
     _activeVoices.length=0;
     liste.forEach(a=>{
       try{ a.onended=null; a.onerror=null; }catch(_){}
+      // Une voix coupee ne declenche jamais 'ended' : on referme SON duck ici, sinon
+      // il reste ouvert et la musique ne remonte plus de tout le WOD.
+      try{ if(a._repsDuckId!=null){ duckEnd(a._repsDuckId); a._repsDuckId=null; } }catch(_){}
       try{ a.pause(); a.removeAttribute('src'); if(a.load) a.load(); }catch(_){}
       try{ const j=window.__repsAudios?window.__repsAudios.indexOf(a):-1; if(j>=0) window.__repsAudios.splice(j,1); }catch(_){}
     });
-    // Une voix coupee ne declenche pas 'ended', donc son restore() ne part jamais :
-    // sans ca la musique resterait baissee a 25% pour le reste du WOD.
-    if(liste.length && typeof musicAudio!=='undefined' && musicAudio){
-      try{ setElVolume(musicAudio, musicTargetVolume()); }catch(_){}
-    }
+    // On se recale sur les ducks encore ouverts, sans forcer le plein volume : une
+    // AUTRE annonce peut etre en train de parler.
+    try{ appliquerNiveauMusique(); }catch(_){}
   }catch(_){}
 }
 
@@ -2669,6 +2670,7 @@ let manualPicks=[]; // morceaux cochés par l'utilisateur en mode manuel
 let byoMusic=false; // "Ma musique" : REPS ne joue aucun morceau, le client met sa propre musique (Spotify/Apple Music) et REPS passe ses voix par-dessus
 let _shuffleCurrentKey=null;
 let _singleGenreMix=false; // vrai = on mixe dans le genre du morceau sans mode explicite
+let _dejaJoues=[];         // morceaux deja passes dans CE wod (sac de tirage)
 
 // Retrouve le genre d'un morceau
 function genreOfTrack(key){
@@ -2772,6 +2774,34 @@ function toggleTrackPick(el, key){
   document.getElementById('mixManualCount').textContent=manualPicks.length;
 }
 
+// Choisit le morceau suivant (22/08/2026).
+//
+// Avant : pickRandomTrack se contentait d'exclure le morceau precedent. Sur un genre
+// a deux morceaux ca donnait A, B, A, B... et sur un genre a UN SEUL morceau (techno,
+// house, hymne) startMusic mettait loop=true : la meme piste tournait en boucle
+// pendant tout le WOD. C'est ce que Francois a entendu.
+//
+// Maintenant : sac de tirage. On ne rejoue pas un morceau tant qu'il en reste un
+// jamais joue. On pioche d'abord dans le genre choisi ; genre epuise, on continue sur
+// TOUS les genres (techno peut donc enchainer sur du rap). En mode manuel on reste
+// strictement dans les morceaux coches.
+function pickNextTrack(pool, strict){
+  const base=(pool&&pool.length)?pool:ALL_TRACK_KEYS;
+  let reste=base.filter(k=>_dejaJoues.indexOf(k)<0);
+  if(!reste.length && !strict) reste=ALL_TRACK_KEYS.filter(k=>_dejaJoues.indexOf(k)<0);
+  if(!reste.length){
+    // Tout a ete joue : on vide le sac, en gardant seulement le morceau en cours
+    // pour ne pas le rejouer deux fois de suite.
+    _dejaJoues=_shuffleCurrentKey?[_shuffleCurrentKey]:[];
+    const univers=strict?base:ALL_TRACK_KEYS;
+    reste=univers.filter(k=>k!==_shuffleCurrentKey);
+    if(!reste.length) reste=univers.slice();
+  }
+  const choisi=reste[Math.floor(Math.random()*reste.length)];
+  _dejaJoues.push(choisi);
+  return choisi;
+}
+
 function pickRandomTrack(excludeKey, pool){
   let list=(pool && pool.length)?pool:ALL_TRACK_KEYS;
   let filtered=list.filter(k=>k!==excludeKey);
@@ -2842,19 +2872,22 @@ function startMusic(){
     firstKey=manualPicks[0];
     loopMode=true;
   } else {
-    // Pas de mode explicite : on mixe dans le genre du morceau (par défaut)
+    // Pas de mode explicite : on enchaine, en commencant par le genre du morceau.
+    // Un genre a un seul morceau ne boucle plus sur lui-meme : quand il est epuise,
+    // pickNextTrack part sur les autres genres.
     firstKey=S.track;
     const g=genreOfTrack(firstKey);
-    const gTracks=g?window.CATEGORY_TRACKS[g]:null;
-    if(gTracks && gTracks.length>1){
-      window._mixCategory=g;
+    if(ALL_TRACK_KEYS.indexOf(firstKey)>=0){
+      window._mixCategory=g||null;
       _singleGenreMix=true;
-      loopMode=false; // on enchaînera dans le genre
+      loopMode=false;
     } else {
-      loopMode=true;  // genre à 1 seul morceau : boucle
+      // Morceau importe par l'utilisateur : on boucle dessus, on ne part pas ailleurs.
+      loopMode=true;
     }
   }
   _shuffleCurrentKey=firstKey;
+  _dejaJoues=[firstKey];   // le sac de tirage repart a chaque WOD
   musicAudio=getCachedAudio('music_'+firstKey, MUSIC[firstKey]);
   musicAudio.loop=loopMode;
   musicAudio.currentTime=0;
@@ -2874,18 +2907,20 @@ function playNextShuffle(){
   if(!mixMode && !_singleGenreMix){ DBG('musique: enchainement ANNULE (aucun mode de mix) -> silence'); return; }
   let nextKey;
   if(mixMode==='manual'){
-    // Aléatoire dans les morceaux cochés
-    nextKey=pickRandomTrack(_shuffleCurrentKey, manualPicks);
+    // Morceaux coches : on reste dedans, mais sans rejouer deux fois le meme
+    // tant qu'il en reste un non joue.
+    nextKey=pickNextTrack(manualPicks, true);
   } else {
-    // Auto ou mix-genre par défaut : on pioche dans le genre (ou tous si non défini)
+    // Auto ou mix-genre : on pioche dans le genre, puis dans tous les genres.
     const pool=(window._mixCategory && window.CATEGORY_TRACKS[window._mixCategory]) ? window.CATEGORY_TRACKS[window._mixCategory] : ALL_TRACK_KEYS;
-    nextKey=pickRandomTrack(_shuffleCurrentKey, pool);
+    nextKey=pickNextTrack(pool, false);
   }
+  DBG('musique: enchainement '+_shuffleCurrentKey+' -> '+nextKey+' (deja joues : '+_dejaJoues.length+')');
   _shuffleCurrentKey=nextKey;
   musicAudio=getCachedAudio('music_'+nextKey, MUSIC[nextKey]);
   musicAudio.loop=false;
   musicAudio.currentTime=0;
-  musicAudio.volume=(_duckCount>0?musicTargetVolume()*DUCK_ANNONCE:musicTargetVolume());
+  musicAudio.volume=niveauMusique();
   musicAudio.onended=playNextShuffle;
   _watchMusic(musicAudio, nextKey, false);
   musicAudio.play().catch(err=>{ DBG('musique: enchainement REFUSE "'+nextKey+'" : '+((err&&err.message)||err)); });
@@ -2893,12 +2928,12 @@ function playNextShuffle(){
   mixAttachMusic(musicAudio);
   // Un morceau qui demarre pendant une annonce ne doit pas revenir a plein volume
   // par-dessus la voix : on reprend le niveau courant du ducking.
-  setElVolume(musicAudio, _duckCount>0?musicTargetVolume()*DUCK_ANNONCE:musicTargetVolume());
+  setElVolume(musicAudio, niveauMusique());
 }
 function stopMusic(){
   _arretVoulu=true; // coupure demandee : ne pas relancer
   if(musicAudio){try{musicAudio.pause();}catch(e){}musicAudio=null;}
-  _duckCount=0;
+  duckResetAll();
   // FUITE MÉMOIRE corrigée : chaque WOD mettait en cache un morceau ENTIER décodé dans
   // audioCache (clé 'music_…') sans jamais le libérer. Décodé, un MP3 pèse des dizaines de
   // Mo ; au bout de ~4 WOD la WebView saturait et figeait par à-coups. On purge ici TOUS les
@@ -2924,7 +2959,7 @@ function stopMusic(){
 function pauseMusic(){
   _arretVoulu=true; // pause demandee par l'utilisateur : ne pas relancer
   if(musicAudio){try{musicAudio.pause();}catch(e){}}
-  _duckCount=0; // on repart d'un volume propre à la reprise
+  duckResetAll(); // on repart d'un volume propre à la reprise
 }
 // Reprend le morceau en cours. Renvoie false s'il n'y a rien à reprendre.
 function resumeMusic(){
@@ -2934,13 +2969,13 @@ function resumeMusic(){
   musicAudio.play().catch(err=>console.warn('music resume',err));
   busAttachEl(musicAudio);
   mixAttachMusic(musicAudio);
-  setElVolume(musicAudio, _duckCount>0?musicTargetVolume()*DUCK_ANNONCE:musicTargetVolume());
+  setElVolume(musicAudio, niveauMusique());
   return true;
 }
 
 // === SYSTÈME DE DUCKING CENTRALISÉ ===
 // Le volume de référence vient TOUJOURS du slider (jamais du volume courant qui peut être déjà ducké)
-let _duckCount=0; // nombre de "ducks" actifs en parallèle
+let _duckCount=0; // nombre de ducks ouverts (miroir de _ducks.size, lu ailleurs)
 // Niveau auquel tombe la musique pendant que le coach parle. 1 = pas de ducking.
 // ATTENTION : ces valeurs n'ont jamais ete entendues sur iPhone. Jusqu'au 22/08/2026
 // le ducking ne s'appliquait pas du tout (Apple ignore el.volume sur un <audio>) :
@@ -2959,20 +2994,47 @@ function musicTargetVolume(){
   const el=document.getElementById('volMusic');
   return el?(parseInt(el.value)/100):0.6;
 }
-function duckStart(){
-  // On incrémente le compteur ; tant qu'il est > 0 la musique reste baissée
-  _duckCount++;
-  if(musicAudio){
-    setElVolume(musicAudio, musicTargetVolume()*DUCK_ANNONCE);
-  }
+// REGISTRE DES DUCKS (refonte du 22/08/2026)
+//
+// Avant, il y avait DEUX mecanismes concurrents pour baisser la musique :
+//   - un compteur (playAnnounceEl, decompte, ROUND, REST) ;
+//   - des ecritures directes de volume (playVoiceFile, speak).
+// Ils ne se connaissaient pas. En Tabata les annonces se chevauchent en permanence
+// (« 3, 2, 1 » puis REST dans la meme seconde, et playAnnounceEl garde un filet de
+// 4 s), donc le duckEnd du decompte remontait la musique A FOND en plein milieu de
+// l'annonce REST. En EMOM les annonces sont espacees d'une minute : la collision
+// n'arrivait pas, et le ducking avait l'air de marcher. C'est exactement ce que
+// Francois a entendu le 22/08 au soir.
+//
+// Desormais un seul registre. Chaque annonce ouvre un duck et le referme par son id.
+// Tant qu'il reste un duck ouvert la musique reste baissee, et c'est le PLUS PROFOND
+// qui commande.
+const _ducks=new Map();  // id -> niveau (0..1)
+let _duckSeq=0;
+function niveauMusique(){
+  const base=musicTargetVolume();
+  let plusProfond=1;
+  for(const v of _ducks.values()) if(v<plusProfond) plusProfond=v;
+  return base*plusProfond;
 }
-function duckEnd(){
-  _duckCount=Math.max(0,_duckCount-1);
-  // On ne remonte la musique QUE si plus aucun duck actif
-  if(_duckCount===0 && musicAudio){
-    setElVolume(musicAudio, musicTargetVolume());
-  }
+function appliquerNiveauMusique(){ if(musicAudio) setElVolume(musicAudio, niveauMusique()); }
+function duckStart(niveau){
+  const id=++_duckSeq;
+  _ducks.set(id, (isFinite(niveau)&&niveau>0&&niveau<=1)?niveau:DUCK_ANNONCE);
+  _duckCount=_ducks.size;
+  appliquerNiveauMusique();
+  return id;
 }
+function duckEnd(id){
+  if(id===undefined||id===null){
+    const p=_ducks.keys().next();   // compat : referme le plus ancien
+    if(!p.done) _ducks.delete(p.value);
+  } else _ducks.delete(id);
+  _duckCount=_ducks.size;
+  appliquerNiveauMusique();
+}
+// Remise a plat : fin de WOD, reset, coupure de toutes les annonces.
+function duckResetAll(){ _ducks.clear(); _duckCount=0; appliquerNiveauMusique(); }
 
 function playBeep(){
   if(nativeVoiceOn()){ nativeVoicePlay(BEEP_AUDIO); return; }
@@ -3280,7 +3342,7 @@ function stopAllAnnounces(){
   _activeVoices=[];
   // Filet ultime : couper TOUT son enregistré, quelle que soit sa source.
   try{ stopAllAudio(); }catch(e){}
-  _duckCount=0;
+  duckResetAll();
 }
 // Tous les fichiers d'annonce de la langue courante
 function _announceFiles(){
@@ -3560,12 +3622,16 @@ function playVoiceFile(file, onFail){
       // vers 25-30 elements (c'est la cause du gel corrige en v113).
       try{ a.pause(); a.removeAttribute('src'); if(a.load) a.load(); }catch(_){}
     };
-    const vMus=musicTargetVolume();
-    if(musicAudio) setElVolume(musicAudio, vMus*DUCK_ANNONCE);
-    const restore=()=>{ if(musicAudio) setElVolume(musicAudio, vMus); };
+    // Duck par id, pas par ecriture directe : sinon la fermeture du duck du decompte
+    // remonte la musique a fond pendant cette annonce (cf. bug Tabata du 22/08).
+    a._repsDuckId=duckStart(DUCK_ANNONCE);
+    const restore=()=>{ if(a._repsDuckId==null) return; duckEnd(a._repsDuckId); a._repsDuckId=null; };
     a.onended=()=>{ restore(); drop(); };
     a.onerror=()=>{ restore(); drop(); if(onFail) onFail(); };
     a.play().catch(()=>{ restore(); drop(); if(onFail) onFail(); });
+    // Filet : si ni 'ended' ni 'error' ne partent, le duck doit se refermer quand meme,
+    // sinon la musique reste baissee jusqu'a la fin du WOD.
+    setTimeout(restore, 6000);
   }catch(e){ if(onFail) onFail(); }
 }
 
@@ -3606,11 +3672,13 @@ function speak(text, opts){
   } else if(isShortNum){u.rate=1.6;u.pitch=1.8;u.volume=1.0;}
   else if(isTime){u.rate=0.9;u.pitch=0.8;u.volume=1.0;}
   else{u.rate=1.3;u.pitch=1.3;u.volume=1.0;}
-  const vMus=musicTargetVolume();
   // Ducking plus fort en mode EMOM crunch : la voix doit trancher.
-  const duckLevel=opts.emomCrunch?DUCK_CRUNCH:DUCK_ANNONCE;
-  if(musicAudio) setElVolume(musicAudio, vMus*duckLevel);
-  u.onend=()=>{if(musicAudio) setElVolume(musicAudio, vMus);};
+  const _did=duckStart(opts.emomCrunch?DUCK_CRUNCH:DUCK_ANNONCE);
+  let _duckRendu=false;
+  const _finDuck=()=>{ if(_duckRendu) return; _duckRendu=true; duckEnd(_did); };
+  u.onend=_finDuck;
+  u.onerror=_finDuck;
+  setTimeout(_finDuck, 8000); // la synthese vocale ne garantit pas onend
   window.speechSynthesis.speak(u);
 }
 
@@ -4003,8 +4071,8 @@ function launch(){
   const countAudioList=S.lang==='fr'?COUNT_AUDIO_FR:(S.lang==='pt'?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
   S.cdAudioTimers=[];
   // Ducking musique pendant tout le décompte pour que la voix soit bien audible
-  const vMus=musicTargetVolume();
-  if(musicAudio) setElVolume(musicAudio, vMus*DUCK_DECOMPTE);
+  // Duck long, tenu sur tout le decompte 10 -> GO, referme au GO.
+  const _duckDepart=duckStart(DUCK_DECOMPTE);
   // Calibrage : on cale le mot sur la seconde en compensant le silence de tête de chaque
   // fichier (cf. COUNT_ONSET). attaque0 = ancre du "10" (on ne peut pas jouer avant t=0).
   const _onsets=onsetsVoix();
@@ -4041,7 +4109,7 @@ function launch(){
     // Chrono + remontée musique : tolèrent la gigue, restent sur runAbsSchedule (décalés du lead).
     S.cdSched=runAbsSchedule([
       {t:leadMs+10500+_onset0, fn:()=>startChrono()},
-      {t:leadMs+10800+_onset0, fn:()=>{ if(musicAudio) setElVolume(musicAudio, vMus); }}
+      {t:leadMs+10800+_onset0, fn:()=>{ duckEnd(_duckDepart); }}
     ]);
     DBG('launch(décompte horloge audio): mode='+S.mode+' total='+S.total+'s');
     return;
@@ -4063,7 +4131,7 @@ function launch(){
     }});
   });
   cdSteps.push({t:10500+_onset0,fn:()=>startChrono()});
-  cdSteps.push({t:10800+_onset0,fn:()=>{ if(musicAudio) setElVolume(musicAudio, vMus); }});
+  cdSteps.push({t:10800+_onset0,fn:()=>{ duckEnd(_duckDepart); }});
   cdSteps.sort((a,b)=>a.t-b.t);
   DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
   S.cdT0=Date.now(); // top réel du décompte, pour caler l'overlay vidéo dessus
@@ -4483,7 +4551,7 @@ function updateVolMusic(v){
   // On respecte le ducking : si la voix parle, la musique reste baissée.
   if(musicAudio){
     const vol=parseInt(v)/100;
-    setElVolume(musicAudio, _duckCount>0 ? vol*DUCK_ANNONCE : vol);
+    setElVolume(musicAudio, niveauMusique());
   }
 }
 function updateVolVoice(v){
