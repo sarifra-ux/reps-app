@@ -2837,8 +2837,19 @@ function _watchMusic(el, cle, boucle){
             + ' src='+(el.src?'ok':'VIDE');
       if(ev==='error' && el.error) d += ' codeErreur='+el.error.code;
       DBG(d);
+      // Fin naturelle : c'est onended -> playNextShuffle qui prend la suite.
+      if(ev==='ended') el._repsFini=true;
       // Coupure SUBIE en plein WOD -> on relance.
-      if(ev==='pause' && !_arretVoulu && S.state==='playing' && el.src){
+      //
+      // BUG CORRIGE LE 22/08/2026 : un element qui finit naturellement emet 'ended'
+      // PUIS 'pause'. Ce 'pause' passait ici, et le surveillant relancait le morceau
+      // qui venait de se terminer, depuis le debut, PAR-DESSUS celui que
+      // playNextShuffle venait de lancer. D'ou "la musique se repete". Ca ne se voyait
+      // pas avant parce que les genres a un seul morceau bouclaient (loop=true) et
+      // n'emettaient donc jamais 'ended'.
+      // Deux verrous : on ne relance QUE le morceau courant, et jamais un morceau fini.
+      if(ev==='pause' && !_arretVoulu && S.state==='playing' && el.src
+         && el===musicAudio && !el._repsFini && !el.ended){
         el._repsReprises=(el._repsReprises||0)+1;
         if(el._repsReprises>5){ DBG('musique: 5 reprises refusees, on arrete d\'insister'); return; }
         DBG('musique: pause NON VOULUE (retrait d\'ecouteur ?) -> reprise, essai '+el._repsReprises);
@@ -2891,6 +2902,7 @@ function startMusic(){
   musicAudio=getCachedAudio('music_'+firstKey, MUSIC[firstKey]);
   musicAudio.loop=loopMode;
   musicAudio.currentTime=0;
+  musicAudio._repsFini=false;   // element recycle depuis le cache : il n'est plus "fini"
   musicAudio.volume=musicTargetVolume();
   musicAudio.onended=(loopMode?null:playNextShuffle);
   _watchMusic(musicAudio, firstKey, loopMode);
@@ -2920,6 +2932,7 @@ function playNextShuffle(){
   musicAudio=getCachedAudio('music_'+nextKey, MUSIC[nextKey]);
   musicAudio.loop=false;
   musicAudio.currentTime=0;
+  musicAudio._repsFini=false;
   musicAudio.volume=niveauMusique();
   musicAudio.onended=playNextShuffle;
   _watchMusic(musicAudio, nextKey, false);
@@ -3046,6 +3059,12 @@ function playBeep(){
 }
 
 let tickAudio=null;
+// Bip des 3 dernieres secondes de chaque intervalle (demande du 22/08/2026).
+// Il S'AJOUTE a la voix « three, two, one » : dans une salle bruyante le bip tranche
+// mieux que le mot, mais la voix reste pour ceux qui la suivent. Pour l'enlever, il
+// suffit de vider cette fonction : elle n'est appelee que sur les secondes 3, 2 et 1.
+function playBipDecompte(){ try{ playTick(); }catch(e){} }
+
 function playTick(){
   if(nativeVoiceOn()){ nativeVoicePlay(TICK_AUDIO); return; }
   // Bip aigu tranchant pour le décompte EMOM (volume forcé à 100% pour être audible par-dessus la musique)
@@ -4291,9 +4310,9 @@ function checkAnnounce(){
 
   // Annonces communes: 10s, 5..1, 0 — décompte 5-4-3-2-1 en voix Brian Web Audio
   if(r===10){showAnnounce(L3('10 SECONDES !','10 SECONDS !','10 SEGUNDOS !'));speak(t.s10);return;}
-  if(r===3){showAnnounce('3');playCount(3);return;}
-  if(r===2){showAnnounce('2');playCount(2);return;}
-  if(r===1){showAnnounce('1');playCount(1);return;}
+  if(r===3){showAnnounce('3');playBipDecompte();playCount(3);return;}
+  if(r===2){showAnnounce('2');playBipDecompte();playCount(2);return;}
+  if(r===1){showAnnounce('1');playBipDecompte();playCount(1);return;}
   // r===0 : l'annonce TIME est faite une seule fois par end() (évite la double voix)
 
   // Tabata : pas d'annonces horaires (trop court)
@@ -4385,6 +4404,7 @@ function checkAnnounce(){
       if(!isLastPhase){
         const num=secsToNext;
         showAnnounce('⏰ '+num);
+        playBipDecompte();
         playCount(num);
         return;
       }
