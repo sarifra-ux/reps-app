@@ -2339,14 +2339,17 @@ function updateTotalFromMode(){
     S.tabPhase='work';S.tabRound=1;
     S.total=w; S.remain=w;
   } else if(S.mode==='emom'){
-    // Total EMOM = rounds × (work + rest)
+    // Total EMOM = cycles × [rounds × (work + rest)] + (cycles − 1) × repos de cycle
     const work=S.emomIntervalSec||60;
     const rest=S.emomRestSec||0;
     const rounds=S.emomRounds||5;
-    S.total=rounds*(work+rest);
+    const cycles=Math.max(1,S.emomCycles||1);
+    const cRest=Math.max(0,S.emomCycleRestSec||0);
+    S.total=cycles*(rounds*(work+rest))+(cycles-1)*cRest;
     S.remain=S.total;
     S.emomPhase='work';
     S.emomCurrentRound=1;
+    S.emomCurrentCycle=1;
   } else {
     S.total=S.dur*60;
     S.remain=S.total;
@@ -2392,6 +2395,9 @@ S.emomRestSec=0; // durée REST en secondes (défaut 0)
 S.emomRounds=5; // nombre de tours (défaut 5)
 S.emomPhase='work'; // phase courante en mode EMOM : 'work' ou 'rest'
 S.emomCurrentRound=1; // tour courant
+S.emomCycles=1; // nombre de CYCLES (1 = comportement historique, aucun changement)
+S.emomCycleRestSec=0; // repos ENTRE deux cycles, distinct du repos entre rounds
+S.emomCurrentCycle=1; // cycle courant
 function activateCustom(){
   if(S.state!=='idle')return;
   document.querySelectorAll('.dur-btn').forEach(b=>b.classList.remove('active'));
@@ -2438,6 +2444,52 @@ function emomRestStep(part,delta){
   document.getElementById('emomRestSec').textContent=String(secs).padStart(2,'0');
   emomRecomputeRounds();
   renderSched();
+}
+
+/**
+ * Position dans la séance EMOM à un instant donné.
+ *
+ * Vocabulaire, et il faut s'y tenir :
+ *   round = work + rest
+ *   cycle = rounds × round
+ *   séance = cycles × cycle, séparés par un repos de cycle
+ *
+ * Renvoie {cycle, round, phase, inPhase, phaseLen}.
+ * phase vaut 'work', 'rest' ou 'cyclerest'.
+ *
+ * Avec cycles=1 et cycleRest=0, les valeurs sont identiques à l'ancien calcul
+ * modulo : c'est volontaire, c'est ce qui garantit la non-régression.
+ */
+function emomPos(elapsed){
+  const work=S.emomIntervalSec||60;
+  const rest=S.emomRestSec||0;
+  const rounds=S.emomRounds||5;
+  const cycles=Math.max(1,S.emomCycles||1);
+  const cRest=Math.max(0,S.emomCycleRestSec||0);
+  const roundLen=work+rest;
+  if(roundLen<=0) return null;
+  const cycleLen=rounds*roundLen;
+  const superLen=cycleLen+cRest;
+
+  let cycle=1, pos=elapsed;
+  if(cycles>1 && superLen>0){
+    cycle=Math.floor(elapsed/superLen)+1;
+    if(cycle>cycles) cycle=cycles; // dernier cycle : pas de repos derrière
+    pos=elapsed-(cycle-1)*superLen;
+  }
+
+  // Repos entre deux cycles : seulement s'il en reste un après celui-ci
+  if(cRest>0 && cycle<cycles && pos>=cycleLen){
+    return {cycle:cycle, round:rounds, phase:'cyclerest',
+            inPhase:pos-cycleLen, phaseLen:cRest, cycles:cycles, rounds:rounds};
+  }
+
+  const round=Math.floor(pos/roundLen)+1;
+  const inRound=pos-(round-1)*roundLen;
+  const inWork=inRound<work;
+  return {cycle:cycle, round:round, phase:inWork?'work':'rest',
+          inPhase:inWork?inRound:(inRound-work), phaseLen:inWork?work:rest,
+          cycles:cycles, rounds:rounds};
 }
 
 function emomRecomputeRounds(){
@@ -2595,14 +2647,15 @@ function updateClock(){
 
   let cls='timer-clock';
   if(S.mode==='tabata' && S.tabPhase==='rest'){cls+=' rest';}
-  else if(S.mode==='emom' && S.emomPhase==='rest' && S.state==='playing'){cls+=' rest';}
+  else if(S.mode==='emom' && (S.emomPhase==='rest'||S.emomPhase==='cyclerest') && S.state==='playing'){cls+=' rest';}
   else if(r<=10) cls+=' danger';
   else if(r<=60 && S.mode!=='emom') cls+=' warn';
   clock.className=cls;
   
   // En EMOM, l'eyebrow affiche la phase (le round est dans #roundBadge)
   if(S.mode==='emom' && S.state==='playing'){
-    const phaseLabel=S.emomPhase==='rest'?L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'):L3('⚡ EFFORT','⚡ WORK','⚡ ESFORÇO');
+    const phaseLabel=S.emomPhase==='cyclerest'?L3('😮‍💨 REPOS DE CYCLE','😮‍💨 CYCLE REST','😮‍💨 DESCANSO DE CICLO')
+      :(S.emomPhase==='rest'?L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'):L3('⚡ EFFORT','⚡ WORK','⚡ ESFORÇO'));
     const eb=document.getElementById('timerEyebrow');
     // Le numero de round est deja affiche par #roundBadge (coin haut droit de la carte) :
     // le repeter ici allongeait l'eyebrow au point qu'il passait SOUS le badge.
@@ -2623,8 +2676,11 @@ function updateClock(){
     const cycle=(S.emomIntervalSec||60)+(S.emomRestSec||0);
     const totalRounds=S.emomRounds||Math.max(1,Math.floor(S.total/cycle));
     const elapsed=S.total-r;
-    const currentRound=Math.min(totalRounds, Math.floor(elapsed/cycle)+1);
-    rb.textContent=`ROUND ${currentRound}/${totalRounds}`;
+    const P=emomPos(elapsed);
+    const currentRound=P?Math.min(totalRounds,P.round):Math.min(totalRounds, Math.floor(elapsed/cycle)+1);
+    // Un seul cycle : on n'affiche rien de plus, l'écran reste celui d'avant.
+    if(P && P.cycles>1) rb.textContent=`CYCLE ${P.cycle}/${P.cycles} · ROUND ${currentRound}/${totalRounds}`;
+    else rb.textContent=`ROUND ${currentRound}/${totalRounds}`;
   } else rb.textContent='';
 
   // Phase indicator
@@ -4277,12 +4333,31 @@ function emomPhaseCheck(){
   if(cycleSec<=0) return false;
   const elapsed=S.total-S.remain;
   if(elapsed<=0) return false;
-  const inCycle=elapsed%cycleSec;
-  const currentRound=Math.floor(elapsed/cycleSec)+1;
-  const phase=(inCycle<work)?'work':'rest';
-  if(S.emomPhase===phase) return false;
+  const P=emomPos(elapsed);
+  if(!P) return false;
+  const currentRound=P.round;
+  const phase=P.phase;
+  const cycleChange=(P.cycle!==S.emomCurrentCycle);
+  if(S.emomPhase===phase && !cycleChange) return false;
   S.emomPhase=phase;
   S.emomCurrentRound=currentRound;
+  S.emomCurrentCycle=P.cycle;
+  // Repos entre deux cycles. Pas de fichier voix « cycle » dans le projet :
+  // on réutilise l'annonce REST, et l'écran porte l'information du cycle.
+  if(phase==='cyclerest'){
+    showAnnounce(L3('😮‍💨 REPOS DE CYCLE','😮‍💨 CYCLE REST','😮‍💨 DESCANSO DE CICLO'));
+    DBG('EMOM -> REPOS DE CYCLE '+P.cycle+'/'+P.cycles+' (elapsed='+elapsed+'s)');
+    playRest();
+    return true;
+  }
+  // Premier round d'un nouveau cycle : il n'existe pas de fichier « round 1 »,
+  // donc un bip, plus l'annonce à l'écran. Voir la note dans l'état des lieux.
+  if(cycleChange && P.cycle>1 && phase==='work'){
+    showAnnounce('🔁 CYCLE '+P.cycle+'/'+P.cycles);
+    DBG('EMOM -> CYCLE '+P.cycle+' (elapsed='+elapsed+'s)');
+    try{ playTick(); }catch(e){}
+    return true;
+  }
   // Fin du WOD : on laisse la main à l'annonce "TIME"
   if(S.remain<=0){ DBG('EMOM: fin, pas de bascule'); return false; }
   // Pas de round fantôme au-delà du nombre de tours configuré
@@ -4347,16 +4422,14 @@ function checkAnnounce(){
     const rounds=S.emomRounds||5;
     const cycleSec=work+rest; // durée d'un tour complet (work + rest)
     const elapsed=S.total-r;
-    // Position dans le cycle courant
+    // Position réelle, cycles compris. emomPos() est la seule arithmétique de vérité.
+    const _P=emomPos(elapsed)||{cycle:1,round:1,phase:'work',inPhase:0,phaseLen:work,cycles:1,rounds:rounds};
     const inCycle=elapsed%cycleSec;
-    // Round courant (1-indexé)
-    const currentRound=Math.floor(elapsed/cycleSec)+1;
-    // Phase courante
-    const inWork=inCycle<work;
-    const phase=inWork?'work':'rest';
-    // Position dans la phase actuelle
-    const inPhase=inWork?inCycle:(inCycle-work);
-    const phaseLen=inWork?work:rest;
+    const currentRound=_P.round;
+    const inWork=(_P.phase==='work');
+    const phase=_P.phase;
+    const inPhase=_P.inPhase;
+    const phaseLen=_P.phaseLen;
     const secsToNext=phaseLen-inPhase; // sec avant fin de la phase
     
     // Détecter changement de phase pour déclencher l'audio
@@ -4399,7 +4472,7 @@ function checkAnnounce(){
     // Décompte 3-2-1 avant la fin de la phase (work ou rest), sauf sur les 10 dernières sec du WOD complet
     if(secsToNext>=1 && secsToNext<=3 && r>10){
       // Pour ne pas décompter à la fin du dernier rest si c'est aussi la fin du WOD
-      const isLastPhase=(currentRound===rounds && !inWork);
+      const isLastPhase=(_P.cycle===_P.cycles && currentRound===rounds && !inWork);
       // On garde le décompte 3-2-1 à la fin du dernier WORK (ex: minute 7 d'un EMOM 8min 1/1).
       // On ne le coupe que sur la toute dernière phase (dernier rest = fin du WOD),
       // car le décompte de fin de chrono s'en charge déjà (évite le doublon).
@@ -4480,7 +4553,7 @@ function resetTimer(){
   wakeLockOff();
   document.body.classList.remove('wod-live');
   if(S.mode==='tabata'){S.tabPhase='work';S.tabRound=1;updateTotalFromMode();}
-  if(S.mode==='emom'){S.emomPhase='work';S.emomCurrentRound=1;updateTotalFromMode();}
+  if(S.mode==='emom'){S.emomPhase='work';S.emomCurrentRound=1;S.emomCurrentCycle=1;updateTotalFromMode();}
   else{S.remain=S.total;}
   updateClock();
   document.getElementById('btnPlay').textContent='▶';
@@ -5132,6 +5205,7 @@ function showCustomChoice(mode){
   CS={
     mode:mode,
     work:S.emomIntervalSec||60, rest:S.emomRestSec||0, rounds:S.emomRounds||5,
+    cycles:S.emomCycles||1, cycleRest:S.emomCycleRestSec||0,
     tabWork:S.tabWorkSec||20, tabRest:S.tabRestSec||10, tabRounds:S.tabTotalRounds||8,
     durMin:S.dur||10
   };
@@ -5153,6 +5227,13 @@ function showCustomChoice(mode){
       + '</div></div>';
     html+='<div class="cs-block"><div class="cs-block-title">'+L3('🔁 Nombre de tours','🔁 Number of rounds','🔁 Número de rounds')+'</div><div class="emom-pickers">'
       + _csStepper('','csv_rounds',"csRounds(-1)","csRounds(1)",CS.rounds)
+      + '</div></div>';
+    html+='<div class="cs-block"><div class="cs-block-title">'+L3('🔁 Nombre de cycles','🔁 Number of cycles','🔁 Número de ciclos')+'</div><div class="emom-pickers">'
+      + _csStepper('','csv_cycles',"csCycles(-1)","csCycles(1)",CS.cycles)
+      + '</div></div>';
+    html+='<div class="cs-block"><div class="cs-block-title">'+L3('😮‍💨 Repos entre cycles','😮‍💨 Rest between cycles','😮‍💨 Descanso entre ciclos')+'</div><div class="emom-pickers">'
+      + _csStepper('MIN','csv_cmin',"csCycleRest('min',-1)","csCycleRest('min',1)",Math.floor(CS.cycleRest/60))
+      + _csStepper('SEC','csv_csec',"csCycleRest('sec',-1)","csCycleRest('sec',1)",String(CS.cycleRest%60).padStart(2,'0'))
       + '</div></div>';
   } else if(mode==='tabata'){
     html+='<div class="cs-block"><div class="cs-block-title">'+L3('⚡ Work (sec)','⚡ Work (sec)','⚡ Work (seg)')+'</div><div class="emom-pickers">'
@@ -5178,8 +5259,17 @@ function csRefreshSummary(){
   const sum=document.getElementById('customScreenSummary');
   if(!sum) return;
   if(CS.mode==='emom'){
-    const total=CS.rounds*(CS.work+CS.rest);
-    sum.textContent='→ '+CS.rounds+' × ('+_csFmt(CS.work)+' + '+_csFmt(CS.rest)+') = '+_csFmt(total);
+    const cy=Math.max(1,CS.cycles||1);
+    const cr=Math.max(0,CS.cycleRest||0);
+    const unCycle=CS.rounds*(CS.work+CS.rest);
+    const total=cy*unCycle+(cy-1)*cr;
+    if(cy>1){
+      sum.textContent='→ '+cy+' × ['+CS.rounds+' × ('+_csFmt(CS.work)+' + '+_csFmt(CS.rest)+')]'
+        +(cr>0?(' + '+(cy-1)+' × '+_csFmt(cr)+' '+L3('de repos','rest','de descanso')):'')
+        +' = '+_csFmt(total);
+    } else {
+      sum.textContent='→ '+CS.rounds+' × ('+_csFmt(CS.work)+' + '+_csFmt(CS.rest)+') = '+_csFmt(total);
+    }
   } else if(CS.mode==='tabata'){
     const total=CS.tabRounds*(CS.tabWork+CS.tabRest);
     sum.textContent='→ '+CS.tabRounds+' × ('+CS.tabWork+'s + '+CS.tabRest+'s) = '+_csFmt(total);
@@ -5194,6 +5284,20 @@ function csEmom(which,part,delta){
   v=Math.max(min,Math.min(600,v));
   if(which==='work'){CS.work=v;document.getElementById('csv_wmin').textContent=Math.floor(v/60);document.getElementById('csv_wsec').textContent=String(v%60).padStart(2,'0');}
   else{CS.rest=v;document.getElementById('csv_rmin').textContent=Math.floor(v/60);document.getElementById('csv_rsec').textContent=String(v%60).padStart(2,'0');}
+  csRefreshSummary();
+}
+function csCycles(delta){
+  CS.cycles=Math.max(1,Math.min(20,(CS.cycles||1)+delta));
+  const el=document.getElementById('csv_cycles'); if(el) el.textContent=CS.cycles;
+  csRefreshSummary();
+}
+function csCycleRest(part,delta){
+  let v=CS.cycleRest||0;
+  v += (part==='min')?delta*60:delta*5;
+  v=Math.max(0,Math.min(900,v));
+  CS.cycleRest=v;
+  const a=document.getElementById('csv_cmin'); if(a) a.textContent=Math.floor(v/60);
+  const b=document.getElementById('csv_csec'); if(b) b.textContent=String(v%60).padStart(2,'0');
   csRefreshSummary();
 }
 function csRounds(delta){
@@ -5215,6 +5319,7 @@ function csDur(delta){
 function csContinue(){
   if(CS.mode==='emom'){
     S.emomIntervalSec=CS.work; S.emomRestSec=CS.rest; S.emomRounds=CS.rounds;
+    S.emomCycles=Math.max(1,CS.cycles||1); S.emomCycleRestSec=Math.max(0,CS.cycleRest||0);
     try{
       const a=document.getElementById('emomMin'),b=document.getElementById('emomSec');
       const c=document.getElementById('emomRestMin'),d=document.getElementById('emomRestSec');
@@ -6008,7 +6113,10 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
       const cycle=(S.emomIntervalSec||60)+(S.emomRestSec||0);
       const totalRounds=S.emomRounds||Math.max(1,Math.floor(S.total/cycle));
       const cur=Math.min(totalRounds,Math.floor(elapsed/cycle)+1);
-      cx='EMOM · ROUND '+cur+'/'+totalRounds+(S.emomPhase==='rest'?' · REST':'');
+      const _po=emomPos(elapsed);
+      const _cy=(_po&&_po.cycles>1)?('CYCLE '+_po.cycle+'/'+_po.cycles+' · '):'';
+      cx='EMOM · '+_cy+'ROUND '+((_po?Math.min(totalRounds,_po.round):cur))+'/'+totalRounds
+        +(S.emomPhase==='cyclerest'?' · CYCLE REST':(S.emomPhase==='rest'?' · REST':''));
       const into=elapsed%cycle, work=S.emomIntervalSec||60;
       const segLeft=(into<work)?(work-into):(cycle-into);
       alert=(S.state==='playing')&&segLeft<=3&&segLeft>0;
@@ -6583,7 +6691,7 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
 
   // ⚠️ À REMPLIR quand la page sera en ligne. Sans elle, Apple et Google refusent
   // une app qui collecte des données personnelles.
-  var URL_CONFIDENTIALITE = "";
+  var URL_CONFIDENTIALITE = "https://reps-app.vercel.app/confidentialite.html";
 
   var TEXTES = {
     fr: { coach: "Je suis coach", supprimer: "Supprimer mes données", confirme: "Supprimer définitivement tes informations ?", fait: "C'est supprimé." },
