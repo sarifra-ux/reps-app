@@ -997,24 +997,14 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .btn-play{width:78px;height:78px;font-size:1.85rem;box-shadow:0 0 32px var(--glow-a),0 8px 24px rgba(0,0,0,0.55);}
   .new-wod-label{color:#9a96b8;}
 
-  /* ===== VOLUME SUR iOS ===== */
-  /* Apple bloque le réglage du volume par JavaScript sur iPhone/iPad : ces curseurs
-     bougeraient sans aucun effet sonore. On les retire et on indique d'utiliser les
-     boutons physiques. Sur web et Android, ils restent visibles et fonctionnels. */
-  html.is-ios .vol-row,
-  html.is-ios #settingsRowMusic,
-  html.is-ios #settingsRowVoice{
-    display:none !important;
-  }
-  html.is-ios .vol-section::before,
-  html.is-ios .settings-modal-body::before{
-    content:"🔊 " attr(data-iosvol);
-    display:block;
-    color:var(--muted);
-    font-size:0.8rem;
-    letter-spacing:1px;
-    padding:4px 0 10px;
-  }
+  /* ===== VOLUME SUR iOS (masquage retiré le 24/08/2026) =====
+     L'ancien commentaire disait « Apple bloque le réglage du volume par
+     JavaScript ». C'était vrai tant que le volume passait par el.volume. Depuis le
+     correctif de ducking du 22/08 la musique passe par un GainNode Web Audio, et un
+     gain s'ajuste très bien en JavaScript sur iPhone. La voix passe désormais par le
+     même chemin. Les deux curseurs sont donc réels sur iPhone, et on les affiche.
+     Demande des coachs : pouvoir doser la voix par rapport à la musique sans toucher
+     aux boutons physiques, qui montent tout ensemble. */
 
   /* ===== ADHÉRENTS & SCORES ===== */
   .mbr-history-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -1404,8 +1394,8 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <span class="settings-name" id="settingsMusicLabel">Musique</span>
         </div>
         <div class="settings-row-control">
-          <input type="range" min="0" max="100" value="60" id="settingsVolMusic" oninput="updateSettingsVolMusic(this.value)">
-          <span class="settings-val" id="settingsVolMusicVal">60%</span>
+          <input type="range" min="0" max="100" value="100" id="settingsVolMusic" oninput="updateSettingsVolMusic(this.value)">
+          <span class="settings-val" id="settingsVolMusicVal">100%</span>
         </div>
       </div>
       <div class="settings-row" id="settingsRowVoice">
@@ -1798,8 +1788,8 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
         <div class="vol-row">
           <span class="vol-lbl">🎵</span>
           <span class="vol-name" data-i18n="vol.music">MUSIQUE</span>
-          <input type="range" class="music" min="0" max="100" value="60" id="volMusic" oninput="updateVolMusic(this.value)">
-          <span class="vol-lbl" id="volMusicVal">60%</span>
+          <input type="range" class="music" min="0" max="100" value="100" id="volMusic" oninput="updateVolMusic(this.value)">
+          <span class="vol-lbl" id="volMusicVal">100%</span>
         </div>
         <div class="vol-row">
           <span class="vol-lbl">🎙️</span>
@@ -3057,13 +3047,21 @@ const DUCK_ANNONCE  = 0.25;  // ROUND / REST / TIME        (-12 dB)
 const DUCK_CRUNCH   = 0.12;  // decompte EMOM "crunch"     (-18 dB)
 const DUCK_DECOMPTE = 0.15;  // decompte 3-2-1-GO du depart (-16 dB)
 function musicTargetVolume(){
-  // Sur iPhone le curseur musique est masque (cf. bloc CSS "VOLUME SUR iOS") : la
-  // reference reste donc 100 %, comme aujourd'hui, et seul le ducking fait varier
-  // le niveau. Sans ca, activer le mix Web Audio baisserait d'un coup toute la
-  // musique a 60 % sur les iPhone, ce qui n'a rien a voir avec le correctif.
-  if(_isIOS) return 1;
+  // Le curseur est desormais visible et reel sur toutes les plateformes.
+  // Sa valeur par defaut est 100 %, pour que le son au premier lancement soit
+  // exactement celui d'avant sur iPhone.
   const el=document.getElementById('volMusic');
-  return el?(parseInt(el.value)/100):0.6;
+  const v=el?parseInt(el.value):100;
+  return isFinite(v)?Math.max(0,Math.min(1,v/100)):1;
+}
+
+// Niveau demande pour la VOIX (annonces, decompte, bip). Meme role que
+// musicTargetVolume pour la musique. La voix n'est jamais duckee : c'est elle
+// qui duck la musique.
+function niveauVoix(){
+  const el=document.getElementById('volVoice');
+  const v=el?parseInt(el.value):100;
+  return isFinite(v)?Math.max(0,Math.min(1,v/100)):1;
 }
 // REGISTRE DES DUCKS (refonte du 22/08/2026)
 //
@@ -3111,9 +3109,10 @@ function playBeep(){
   if(nativeVoiceOn()){ nativeVoicePlay(BEEP_AUDIO); return; }
   beepAudio=getCachedAudio('beep', BEEP_AUDIO);
   beepAudio.currentTime=0;
-  beepAudio.volume=parseInt(document.getElementById('volVoice').value)/100;
-  beepAudio.play().catch(()=>{});
+  mixAttachVoix(beepAudio);
   busAttachEl(beepAudio);
+  setElVolume(beepAudio, niveauVoix());
+  beepAudio.play().catch(()=>{});
 }
 
 let tickAudio=null;
@@ -3128,9 +3127,10 @@ function playTick(){
   // Bip aigu tranchant pour le décompte EMOM (volume forcé à 100% pour être audible par-dessus la musique)
   tickAudio=getCachedAudio('tick', TICK_AUDIO);
   tickAudio.currentTime=0;
-  tickAudio.volume=1.0;
-  tickAudio.play().catch(()=>{});
+  mixAttachVoix(tickAudio);
   busAttachEl(tickAudio);
+  setElVolume(tickAudio, niveauVoix());
+  tickAudio.play().catch(()=>{});
 }
 
 // === Web Audio API pour le décompte (haute fiabilité Android) ===
@@ -3258,6 +3258,28 @@ function busDeactivate(){
   if(recBus){ for(let i=0;i<_busGains.length;i++){ try{ _busGains[i].gain.disconnect(recBus); }catch(e){} } }
 }
 // Route un element <audio> (musique, annonce, voix) vers sortie normale + bus.
+// Meme principe que mixAttachMusic, applique aux elements d'annonce. Sans ca,
+// ecrire el.volume sur un <audio> ne fait RIEN sur iPhone : c'est la cause du bug
+// de ducking du 22/08, et c'etait aussi la cause du curseur Voix inerte.
+// Les elements du pool _elRing sont stables et reutilises : on les route une fois
+// chacun, ce que garantit deja _busRouted.
+function mixAttachVoix(el){
+  if(!el || _busRouted.has(el)) return;
+  const ctx=ensureAudioCtx();
+  if(!ctx || ctx.state!=='running') return;   // on reessaiera a l'annonce suivante
+  try{
+    const node=ctx.createMediaElementSource(el);
+    const g=ctx.createGain();
+    g.gain.value = el.muted ? 0 : (isFinite(el.volume)?el.volume:1);
+    node.connect(g);
+    g.connect(ctx.destination);
+    if(_busActive){ const bus=ensureRecBus(); if(bus){ try{ g.connect(bus); }catch(e){} } }
+    _busRouted.add(el);
+    _busGains.push({el:el,gain:g});
+    _gainParEl.set(el,g);
+  }catch(e){ try{DBG('mix voix: routage KO '+e.name+' -> repli el.volume');}catch(_){} }
+}
+
 function busAttachEl(el){
   if(!_busActive||!el) return;
   if(_busRouted.has(el)) return;
@@ -3274,6 +3296,7 @@ function busAttachEl(el){
     g.connect(bus);             // et on capture pour la vidéo
     _busRouted.add(el);
     _busGains.push({el:el,gain:g});
+    _gainParEl.set(el,g); // sans ca, setElVolume ne trouverait pas le gain de cet element
   }catch(e){ try{DBG('busAttachEl KO '+e.name);}catch(_){} }
 }
 // Recopie muted/volume des elements routés sur leur gain (appelé dans la boucle de dessin REC).
@@ -3471,7 +3494,9 @@ function playAnnounceEl(src, onFail){
   try{
     const a=_elFor(src);
     try{a.muted=false;}catch(e){} // garantir non-muet malgré un déverrouillage async en cours
+    mixAttachVoix(a);              // le gain porte le volume ; sur iPhone el.volume ne fait rien
     busAttachEl(a);
+    setElVolume(a, niveauVoix());
     DBG('play <audio> '+src);
     duckStart();
     let done=false;
@@ -3515,7 +3540,7 @@ function playBufferNow(buf, num){
   const source=ctx.createBufferSource();
   source.buffer=buf;
   const gain=ctx.createGain();
-  gain.gain.value=1.0;
+  gain.gain.value=niveauVoix(); // etait fige a 1.0 : le curseur Voix n'avait aucun effet
   source.connect(gain);
   gain.connect(ctx.destination);
   busAttachGain(gain);
@@ -3592,7 +3617,7 @@ function playRestBufferNow(buf){
   const source=ctx.createBufferSource();
   source.buffer=buf;
   const gain=ctx.createGain();
-  gain.gain.value=1.0;
+  gain.gain.value=niveauVoix();
   source.connect(gain);
   gain.connect(ctx.destination);
   busAttachGain(gain);
@@ -3629,7 +3654,7 @@ function playRoundBufferNow(buf){
   const source=ctx.createBufferSource();
   source.buffer=buf;
   const gain=ctx.createGain();
-  gain.gain.value=1.0;
+  gain.gain.value=niveauVoix();
   source.connect(gain);
   gain.connect(ctx.destination);
   busAttachGain(gain);
@@ -4653,9 +4678,14 @@ function updateVolVoice(v){
   document.getElementById('volVoiceVal').textContent=v+'%';
   // Avant, ce curseur ne faisait que changer l'étiquette : il ne pilotait aucun son.
   // On l'applique maintenant à la voix et au bip en cours de lecture.
-  const vol=parseInt(v)/100;
-  if(voiceAudio){try{voiceAudio.volume=vol;}catch(e){}}
-  if(beepAudio){try{beepAudio.volume=vol;}catch(e){}}
+  const vol=Math.max(0,Math.min(1,parseInt(v)/100));
+  // setElVolume ecrit el.volume ET le gain Web Audio : c'est le gain qui compte sur iPhone.
+  if(voiceAudio) setElVolume(voiceAudio, vol);
+  if(beepAudio) setElVolume(beepAudio, vol);
+  if(typeof tickAudio!=='undefined' && tickAudio) setElVolume(tickAudio, vol);
+  // Les annonces tournent sur un pool d'elements reutilises : on les met tous a jour,
+  // sinon la prochaine annonce repartirait a l'ancien niveau.
+  try{ if(_elRing && _elRing.length) _elRing.forEach(el=>setElVolume(el, vol)); }catch(e){}
 }
 
 // ===== FULLSCREEN =====
@@ -5753,13 +5783,11 @@ function choosePersoTrack(id){
 // ce qui garantit qu'il s'applique dès le premier affichage, sans dépendre du JS.
 // Ici on ne fait qu'alimenter le texte de l'indication dans la langue choisie.
 function applyIOSVolumeUI(){
-  if(!document.documentElement.classList.contains('is-ios')) return;
-  var hint = (typeof L3==='function')
-    ? L3("Volume : boutons de l'iPhone","Volume: use your iPhone buttons","Volume: botões do iPhone")
-    : "Volume : boutons de l'iPhone";
+  // Les curseurs fonctionnent maintenant sur iPhone : plus d'indication à afficher.
+  // La fonction est conservée, elle est appelée depuis applyI18n().
   ['.vol-section','.settings-modal-body'].forEach(function(sel){
     var el=document.querySelector(sel);
-    if(el) el.setAttribute('data-iosvol', hint);
+    if(el) el.removeAttribute('data-iosvol');
   });
 }
 window.addEventListener('DOMContentLoaded',applyIOSVolumeUI);
