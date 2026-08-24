@@ -1,5 +1,5 @@
 // R.E.P.S Service Worker — mode hors-ligne
-const CACHE_NAME = 'reps-v144';
+const CACHE_NAME = 'reps-v145';
 const ASSETS = [
   '/',
   '/index.html',
@@ -79,6 +79,27 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   // Seulement les requêtes GET
   if (event.request.method !== 'GET') return;
+
+  // NAVIGATION EN RESEAU D'ABORD (24/08/2026, build 4)
+  // Le cache-first servait l'ancien index.html au lancement suivant un deploiement :
+  // la nouvelle version n'apparaissait qu'au DEUXIEME lancement. Pour la page elle-meme
+  // on interroge donc le reseau d'abord, avec repli sur le cache si on est hors ligne.
+  // Les mp3 et les images restent en cache-first, ils ne changent pas en place.
+  const _estPage = event.request.mode === 'navigate'
+    || (event.request.destination === 'document')
+    || /\/(index\.html)?$/.test(new URL(event.request.url).pathname);
+  if (_estPage) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(event.request).then((c) => c || caches.match('/index.html')))
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => {

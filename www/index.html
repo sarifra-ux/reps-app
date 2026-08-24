@@ -1575,7 +1575,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <button type="button" class="lang-btn sens-chip" data-sens="down" onclick="choisirSens('down')">12 → 0</button>
           <button type="button" class="lang-btn sens-chip" data-sens="up" onclick="choisirSens('up')">0 → 12</button>
         </div>
-        <div class="voix-desc" id="sensDesc" style="margin-top:6px;text-align:center"></div>
+        <div class="voix-desc sens-desc" style="margin-top:6px;text-align:center"></div>
       </div>
     </div>
 
@@ -2424,19 +2424,23 @@ function choisirSens(s){
   try{ renderSched(); }catch(e){}
   try{ refreshModeLabels(); }catch(e){}
 }
+// Les boutons de sens existent A DEUX ENDROITS : dans l'ecran de reglages classique
+// (#sensSection) et dans l'ecran CUSTOM plein ecran, qui est le parcours reellement
+// emprunte depuis l'accueil. On met donc TOUS les boutons a jour, pas le premier
+// trouve, et la description est reperee par classe et non par id (sinon deux id
+// identiques dans la page).
 function majSensChips(){
-  const min=S.dur||Math.round((S.total||0)/60);
-  const bd=document.querySelector('.sens-chip[data-sens="down"]');
-  const bu=document.querySelector('.sens-chip[data-sens="up"]');
-  if(bd) bd.textContent=min+' → 0';
-  if(bu) bu.textContent='0 → '+min;
+  let min=S.dur||Math.round((S.total||0)/60);
+  try{ if(typeof CS!=='undefined' && CS && CS.mode==='amrap' && CS.durMin) min=CS.durMin; }catch(e){}
   document.querySelectorAll('.sens-chip').forEach(b=>{
-    b.classList.toggle('on', (b.dataset.sens==='up')===S_sensUp);
+    const up=(b.dataset.sens==='up');
+    b.textContent = up ? ('0 → '+min) : (min+' → 0');
+    b.classList.toggle('on', up===S_sensUp);
   });
-  const d=document.getElementById('sensDesc');
-  if(d) d.textContent = S_sensUp
+  const txt = S_sensUp
     ? L3('Le chrono monte. La voix annonce le temps qui reste.','The clock counts up. The voice still calls the time left.','O cronômetro sobe. A voz anuncia o tempo restante.')
     : L3('Le chrono descend.','The clock counts down.','O cronômetro desce.');
+  document.querySelectorAll('.sens-desc').forEach(d=>{ d.textContent=txt; });
 }
 
 function selectDur(btn,m){
@@ -5408,9 +5412,19 @@ function showCustomChoice(mode){
     html+='<div class="cs-block"><div class="cs-block-title">'+L3('⏱ Durée (min)','⏱ Duration (min)','⏱ Duração (min)')+'</div><div class="emom-pickers">'
       + _csStepper('','csv_dur',"csDur(-1)","csDur(1)",CS.durMin)
       + '</div></div>';
+    // Sens du chrono, AMRAP uniquement. C'est ici que le coach passe reellement,
+    // pas par #durSection : le bloc doit exister dans les deux ecrans (24/08, build 4).
+    if(mode==='amrap'){
+      html+='<div class="cs-block"><div class="cs-block-title">'+L3('↕ Sens du chrono','↕ Clock direction','↕ Sentido do cronômetro')+'</div>'
+        + '<div class="lang-switch">'
+        + '<button type="button" class="lang-btn sens-chip" data-sens="down" onclick="choisirSens(\'down\')">'+CS.durMin+' → 0</button>'
+        + '<button type="button" class="lang-btn sens-chip" data-sens="up" onclick="choisirSens(\'up\')">0 → '+CS.durMin+'</button>'
+        + '</div><div class="voix-desc sens-desc" style="margin-top:6px;text-align:center"></div></div>';
+    }
   }
   if(body) body.innerHTML=html;
   csRefreshSummary();
+  try{ majSensChips(); }catch(e){}  // le bloc vient d'etre recree : il faut le rallumer
   const screen=document.getElementById('customScreen');
   if(screen){ screen.style.display='flex'; screen.style.opacity='1'; }
 }
@@ -5474,6 +5488,7 @@ function csDur(delta){
   CS.durMin=Math.max(1,Math.min(90,CS.durMin+delta));
   document.getElementById('csv_dur').textContent=CS.durMin;
   csRefreshSummary();
+  try{ majSensChips(); }catch(e){}  // les libelles "12 → 0" suivent la duree
 }
 function csContinue(){
   if(CS.mode==='emom'){
