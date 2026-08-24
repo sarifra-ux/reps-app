@@ -1446,6 +1446,8 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       </div>
       <button class="settings-action-btn" onclick="closeSettings();openFavorites();"><span class="settings-icon">⭐</span><span data-i18n="fav.modalTitle">Favoris</span></button>
       <button class="settings-action-btn" onclick="closeSettings();toggleFullscreen();"><span class="settings-icon">⛶</span><span data-i18n="nav.fullscreen">Plein écran</span></button>
+      <button class="settings-action-btn" onclick="repsInscOuvrir();"><span class="settings-icon">📋</span><span id="repsInscLabelCoach">Je suis coach</span></button>
+      <button class="settings-action-btn" id="repsInscBtnSupprimer" style="display:none" onclick="repsInscSupprimer();"><span class="settings-icon">🗑️</span><span id="repsInscLabelSupprimer">Supprimer mes données</span></button>
     </div>
   </div>
 </div>
@@ -6182,5 +6184,519 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
   };
 })();
 </script>
+
+<!-- REPS-INSCRIPTION-DEBUT : formulaire coach + envoi vers le Worker Cloudflare. Retirer ce bloc suffit à tout désactiver. -->
+<script>
+/**
+ * REPS — module d'inscription
+ *
+ * À inclure dans index.html :
+ *   <script src="reps-inscription.js"><\/script>
+ *   <script>
+ *     REPSInscription.init({
+ *       url: 'https://reps-inscription.TON-SOUS-DOMAINE.workers.dev',
+ *       cle: 'LA_MEME_CHAINE_QUE_APP_KEY',
+ *       version: 'v143',
+ *       plateforme: 'iOS',     // ou 'Android'
+ *       langue: 'fr'           // fr | en | pt
+ *     });
+ *   <\/script>
+ *
+ * Puis, sur le bouton « Je suis coach » :
+ *   REPSInscription.ouvrir({ role: 'Coach' });
+ *
+ * Règles tenues par ce module :
+ *   - il ne bloque JAMAIS le chrono. Le formulaire s'ouvre à la demande, jamais au lancement.
+ *   - si le réseau est mauvais, l'envoi part dans une file locale et repart plus tard.
+ *   - il ne redemande rien à quelqu'un qui s'est déjà inscrit.
+ */
+(function (global) {
+  "use strict";
+
+  var CLE_PROFIL = "reps.inscription.profil";
+  var CLE_FILE = "reps.inscription.file";
+
+  var config = {
+    url: "",
+    cle: "",
+    version: "",
+    plateforme: "",
+    langue: "fr",
+    pays: "",
+    urlConfidentialite: "",
+  };
+
+  /* ---------------------------------------------------------------- */
+  /* Stockage local                                                    */
+  /* ---------------------------------------------------------------- */
+
+  function lire(cle, defaut) {
+    try {
+      var brut = localStorage.getItem(cle);
+      return brut ? JSON.parse(brut) : defaut;
+    } catch (e) {
+      return defaut;
+    }
+  }
+
+  function ecrire(cle, valeur) {
+    try {
+      localStorage.setItem(cle, JSON.stringify(valeur));
+    } catch (e) {
+      /* stockage plein ou désactivé : on continue sans planter */
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* File d'attente : le réseau est mauvais dans une salle             */
+  /* ---------------------------------------------------------------- */
+
+  function empiler(chemin, charge) {
+    var file = lire(CLE_FILE, []);
+    file.push({ chemin: chemin, charge: charge, essais: 0 });
+    ecrire(CLE_FILE, file.slice(-20));
+  }
+
+  function envoyer(chemin, charge) {
+    return fetch(config.url + chemin, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-reps-key": config.cle,
+      },
+      body: JSON.stringify(charge),
+    }).then(function (r) {
+      // 4xx = la charge est mauvaise, inutile de réessayer indéfiniment.
+      if (r.status >= 400 && r.status < 500) {
+        return r.json().catch(function () {
+          return { erreur: "inconnue" };
+        }).then(function (d) {
+          var e = new Error(d.erreur || "refuse");
+          e.definitif = true;
+          throw e;
+        });
+      }
+      if (!r.ok) throw new Error("reseau " + r.status);
+      return r.json();
+    });
+  }
+
+  function viderFile() {
+    var file = lire(CLE_FILE, []);
+    if (!file.length || !config.url) return Promise.resolve();
+
+    var restant = [];
+
+    return file
+      .reduce(function (chaine, item) {
+        return chaine.then(function () {
+          return envoyer(item.chemin, item.charge).catch(function (e) {
+            if (e.definitif) return; // on jette, ça ne passera jamais
+            item.essais += 1;
+            if (item.essais < 10) restant.push(item);
+          });
+        });
+      }, Promise.resolve())
+      .then(function () {
+        ecrire(CLE_FILE, restant);
+      });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* API publique                                                      */
+  /* ---------------------------------------------------------------- */
+
+  function init(options) {
+    for (var k in options) {
+      if (Object.prototype.hasOwnProperty.call(options, k)) config[k] = options[k];
+    }
+    injecterStyles();
+
+    // On tente de vider la file au lancement, puis dès que le réseau revient.
+    setTimeout(viderFile, 3000);
+    global.addEventListener("online", viderFile);
+  }
+
+  function profil() {
+    return lire(CLE_PROFIL, null);
+  }
+
+  function estInscrit() {
+    var p = profil();
+    return !!(p && p.email);
+  }
+
+  function inscrire(donnees) {
+    var charge = {
+      email: donnees.email,
+      prenom: donnees.prenom,
+      nom: donnees.nom,
+      telephone: donnees.telephone,
+      salle: donnees.salle,
+      ville: donnees.ville,
+      pays: config.pays || undefined,
+      role: donnees.role,
+      consentement: donnees.consentement === true,
+      langue: config.langue,
+      plateforme: config.plateforme,
+      version: config.version,
+    };
+
+    ecrire(CLE_PROFIL, {
+      email: charge.email,
+      prenom: charge.prenom,
+      nom: charge.nom,
+      salle: charge.salle,
+      ville: charge.ville,
+      role: charge.role,
+      le: new Date().toISOString(),
+    });
+
+    return envoyer("/inscription", charge).catch(function (e) {
+      if (!e.definitif) empiler("/inscription", charge);
+      throw e;
+    });
+  }
+
+  function supprimerMesDonnees() {
+    var p = profil();
+    if (!p || !p.email) return Promise.resolve({ ok: true, etat: "rien_a_supprimer" });
+
+    var charge = { email: p.email };
+
+    try {
+      localStorage.removeItem(CLE_PROFIL);
+    } catch (e) {}
+
+    return envoyer("/suppression", charge).catch(function (e) {
+      if (!e.definitif) empiler("/suppression", charge);
+      throw e;
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Le formulaire                                                     */
+  /* ---------------------------------------------------------------- */
+
+  function ouvrir(options) {
+    options = options || {};
+    var role = options.role || "Coach";
+    var p = profil() || {};
+
+    var fond = document.createElement("div");
+    fond.className = "reps-insc-fond";
+    fond.setAttribute("role", "dialog");
+    fond.setAttribute("aria-modal", "true");
+    fond.setAttribute("aria-label", "Inscription REPS");
+
+    fond.innerHTML =
+      '<div class="reps-insc-carte">' +
+      '<button type="button" class="reps-insc-fermer" aria-label="Fermer">✕</button>' +
+      '<h2 class="reps-insc-titre">' +
+      (role === "Coach" ? "Je suis coach" : "Mon profil") +
+      "</h2>" +
+      '<p class="reps-insc-chapo">Pour te prévenir des nouveautés et suivre les salles où REPS tourne. Rien n\'est envoyé sur tes adhérents.</p>' +
+      '<form class="reps-insc-form" novalidate>' +
+      champ("prenom", "Prénom", "text", p.prenom, true) +
+      champ("nom", "Nom", "text", p.nom, true) +
+      champ("email", "Email", "email", p.email, true) +
+      champ("telephone", "Téléphone", "tel", "", false) +
+      champ("salle", "Salle où tu t'entraînes", "text", p.salle, true) +
+      champ("ville", "Ville", "text", p.ville, true) +
+      '<label class="reps-insc-consent">' +
+      '<input type="checkbox" name="consentement"> ' +
+      "<span>J'accepte que REPS conserve ces informations pour me contacter au sujet de l'app. " +
+      (config.urlConfidentialite
+        ? '<a href="' +
+          config.urlConfidentialite +
+          '" target="_blank" rel="noopener">Politique de confidentialité</a>.'
+        : "") +
+      "</span></label>" +
+      '<p class="reps-insc-erreur" hidden></p>' +
+      '<button type="submit" class="reps-insc-valider">Envoyer</button>' +
+      '<button type="button" class="reps-insc-plustard">Plus tard</button>' +
+      "</form></div>";
+
+    document.body.appendChild(fond);
+
+    var form = fond.querySelector("form");
+    var erreur = fond.querySelector(".reps-insc-erreur");
+    var valider = fond.querySelector(".reps-insc-valider");
+
+    function fermer() {
+      if (fond.parentNode) fond.parentNode.removeChild(fond);
+    }
+
+    fond.querySelector(".reps-insc-fermer").addEventListener("click", fermer);
+    fond.querySelector(".reps-insc-plustard").addEventListener("click", fermer);
+
+    form.addEventListener("submit", function (ev) {
+      ev.preventDefault();
+      erreur.hidden = true;
+
+      var d = {
+        prenom: form.prenom.value.trim(),
+        nom: form.nom.value.trim(),
+        email: form.email.value.trim(),
+        telephone: form.telephone.value.trim(),
+        salle: form.salle.value.trim(),
+        ville: form.ville.value.trim(),
+        role: role,
+        consentement: form.consentement.checked,
+      };
+
+      var probleme = valider3(d);
+      if (probleme) {
+        erreur.textContent = probleme;
+        erreur.hidden = false;
+        return;
+      }
+
+      valider.disabled = true;
+      valider.textContent = "Envoi…";
+
+      inscrire(d)
+        .then(function () {
+          valider.textContent = "C'est fait";
+          setTimeout(fermer, 700);
+        })
+        .catch(function (e) {
+          if (e.definitif) {
+            erreur.textContent = messageErreur(e.message);
+            erreur.hidden = false;
+            valider.disabled = false;
+            valider.textContent = "Envoyer";
+          } else {
+            // Mis en file : pour l'utilisateur, c'est envoyé. Ça repartira tout seul.
+            valider.textContent = "C'est fait";
+            setTimeout(fermer, 700);
+          }
+        });
+    });
+  }
+
+  function champ(nom, libelle, type, valeur, requis) {
+    return (
+      '<label class="reps-insc-champ"><span>' +
+      libelle +
+      (requis ? "" : " <em>(facultatif)</em>") +
+      "</span>" +
+      '<input name="' +
+      nom +
+      '" type="' +
+      type +
+      '" value="' +
+      (valeur ? String(valeur).replace(/"/g, "&quot;") : "") +
+      '" autocomplete="' +
+      autoComplete(nom) +
+      '" autocapitalize="' +
+      (type === "email" ? "off" : "words") +
+      '" spellcheck="false"></label>'
+    );
+  }
+
+  function autoComplete(nom) {
+    return {
+      prenom: "given-name",
+      nom: "family-name",
+      email: "email",
+      telephone: "tel",
+      salle: "organization",
+      ville: "address-level2",
+    }[nom] || "off";
+  }
+
+  function valider3(d) {
+    if (!d.prenom) return "Il manque ton prénom.";
+    if (!d.nom) return "Il manque ton nom.";
+    if (!/^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(d.email)) return "Cet email ne ressemble pas à un email.";
+    if (!d.salle) return "Il manque le nom de ta salle.";
+    if (!d.ville) return "Il manque la ville.";
+    if (!d.consentement) return "Coche la case pour qu'on puisse enregistrer tes informations.";
+    return null;
+  }
+
+  function messageErreur(code) {
+    return (
+      {
+        email_invalide: "Cet email ne ressemble pas à un email.",
+        consentement_requis: "Coche la case pour qu'on puisse enregistrer tes informations.",
+        cle_invalide: "L'app n'arrive pas à s'authentifier. Réessaie après une mise à jour.",
+      }[code] || "L'envoi a échoué. Réessaie dans un instant."
+    );
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* Styles                                                            */
+  /* ---------------------------------------------------------------- */
+
+  function injecterStyles() {
+    if (document.getElementById("reps-insc-styles")) return;
+    var s = document.createElement("style");
+    s.id = "reps-insc-styles";
+    s.textContent = [
+      ".reps-insc-fond{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:flex-end;justify-content:center;padding:0;overflow-y:auto}",
+      "@media(min-width:600px){.reps-insc-fond{align-items:center;padding:24px}}",
+      ".reps-insc-carte{position:relative;width:100%;max-width:460px;background:#11161a;color:#eef3f5;border:1px solid #2b373d;border-radius:14px 14px 0 0;padding:22px 20px 26px;font-family:inherit;box-shadow:0 -8px 40px rgba(0,0,0,.6)}",
+      "@media(min-width:600px){.reps-insc-carte{border-radius:14px}}",
+      ".reps-insc-fermer{position:absolute;top:10px;right:10px;background:none;border:0;color:#7f8f97;font-size:19px;line-height:1;padding:8px;cursor:pointer}",
+      ".reps-insc-titre{margin:0 0 6px;font-size:26px;letter-spacing:.02em;text-transform:uppercase}",
+      ".reps-insc-chapo{margin:0 0 18px;font-size:14px;line-height:1.5;color:#9fb0b8}",
+      ".reps-insc-form{display:flex;flex-direction:column;gap:12px}",
+      ".reps-insc-champ{display:flex;flex-direction:column;gap:5px;font-size:13px;color:#9fb0b8}",
+      ".reps-insc-champ em{font-style:normal;color:#6b7a82}",
+      ".reps-insc-champ input{background:#0a0e11;border:1px solid #2b373d;border-radius:8px;padding:12px 13px;color:#eef3f5;font-size:16px;font-family:inherit}",
+      ".reps-insc-champ input:focus{outline:2px solid #34d5e6;outline-offset:1px;border-color:#34d5e6}",
+      ".reps-insc-consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;line-height:1.45;color:#9fb0b8;margin-top:2px}",
+      ".reps-insc-consent input{margin-top:3px;width:19px;height:19px;flex:0 0 auto;accent-color:#34d5e6}",
+      ".reps-insc-consent a{color:#34d5e6}",
+      ".reps-insc-erreur{margin:0;font-size:13px;color:#ff6b5e}",
+      ".reps-insc-valider{margin-top:6px;background:#34d5e6;color:#06171b;border:0;border-radius:9px;padding:14px;font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;cursor:pointer;font-family:inherit}",
+      ".reps-insc-valider:disabled{opacity:.6;cursor:default}",
+      ".reps-insc-plustard{background:none;border:0;color:#7f8f97;font-size:14px;padding:8px;cursor:pointer;font-family:inherit}",
+    ].join("");
+    document.head.appendChild(s);
+  }
+
+  global.REPSInscription = {
+    init: init,
+    ouvrir: ouvrir,
+    inscrire: inscrire,
+    profil: profil,
+    estInscrit: estInscrit,
+    supprimerMesDonnees: supprimerMesDonnees,
+    viderFile: viderFile,
+  };
+})(window);
+
+/* ---------------------------------------------------------------- */
+/* REPS — branchement du module d'inscription                        */
+/* ---------------------------------------------------------------- */
+(function () {
+  "use strict";
+
+  // ⚠️ À REMPLIR : la suite de caractères produite par `openssl rand -hex 24`,
+  // celle que tu as mise dans APP_KEY côté Cloudflare.
+  var CLE_APP = "REMPLACE_PAR_TA_CLE_APP_KEY";
+
+  var URL_WORKER = "https://reps-inscription.reps-francois.workers.dev";
+
+  // ⚠️ À REMPLIR quand la page sera en ligne. Sans elle, Apple et Google refusent
+  // une app qui collecte des données personnelles.
+  var URL_CONFIDENTIALITE = "";
+
+  var TEXTES = {
+    fr: { coach: "Je suis coach", supprimer: "Supprimer mes données", confirme: "Supprimer définitivement tes informations ?", fait: "C'est supprimé." },
+    en: { coach: "I'm a coach", supprimer: "Delete my data", confirme: "Permanently delete your information?", fait: "Deleted." },
+    pt: { coach: "Sou treinador", supprimer: "Apagar meus dados", confirme: "Apagar definitivamente suas informações?", fait: "Apagado." },
+  };
+
+  function langue() {
+    try {
+      if (typeof S !== "undefined" && S && S.lang) return S.lang;
+      return localStorage.getItem("reps_lang") || "fr";
+    } catch (e) {
+      return "fr";
+    }
+  }
+
+  function textes() {
+    return TEXTES[langue()] || TEXTES.fr;
+  }
+
+  function version() {
+    var t = document.getElementById("buildTag");
+    return t ? (t.textContent || "").trim() : "";
+  }
+
+  function plateforme() {
+    try {
+      if (window.Capacitor && typeof window.Capacitor.getPlatform === "function") {
+        var p = window.Capacitor.getPlatform();
+        if (p === "ios") return "iOS";
+        if (p === "android") return "Android";
+      }
+    } catch (e) {}
+    return "web";
+  }
+
+  /* Met à jour les libellés et masque le bouton d'effacement si rien à effacer. */
+  function majUI() {
+    var t = textes();
+
+    var lCoach = document.getElementById("repsInscLabelCoach");
+    var lSuppr = document.getElementById("repsInscLabelSupprimer");
+    if (lCoach) lCoach.textContent = t.coach;
+    if (lSuppr) lSuppr.textContent = t.supprimer;
+
+    var btnSuppr = document.getElementById("repsInscBtnSupprimer");
+    if (btnSuppr) {
+      var inscrit = false;
+      try {
+        inscrit = window.REPSInscription && window.REPSInscription.estInscrit();
+      } catch (e) {}
+      btnSuppr.style.display = inscrit ? "" : "none";
+    }
+  }
+
+  window.repsInscOuvrir = function () {
+    try {
+      if (typeof closeSettings === "function") closeSettings();
+    } catch (e) {}
+    window.REPSInscription.ouvrir({ role: "Coach" });
+  };
+
+  window.repsInscSupprimer = function () {
+    var t = textes();
+    if (!window.confirm(t.confirme)) return;
+    window.REPSInscription.supprimerMesDonnees()
+      .catch(function () {})
+      .then(function () {
+        majUI();
+        window.alert(t.fait);
+      });
+  };
+
+  function init() {
+    try {
+      window.REPSInscription.init({
+        url: URL_WORKER,
+        cle: CLE_APP,
+        version: version(),
+        plateforme: plateforme(),
+        langue: langue(),
+        urlConfidentialite: URL_CONFIDENTIALITE,
+      });
+    } catch (e) {
+      // L'inscription ne doit jamais empêcher le chrono de démarrer.
+      return;
+    }
+
+    majUI();
+
+    // On rafraîchit les libellés à chaque ouverture des réglages, sans toucher
+    // au code existant : on enveloppe la fonction au lieu de la modifier.
+    if (typeof window.openSettings === "function" && !window.openSettings._repsInsc) {
+      var origine = window.openSettings;
+      var enveloppe = function () {
+        try {
+          majUI();
+        } catch (e) {}
+        return origine.apply(this, arguments);
+      };
+      enveloppe._repsInsc = true;
+      window.openSettings = enveloppe;
+    }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+
+</script>
+<!-- REPS-INSCRIPTION-FIN -->
 </body>
 </html>
