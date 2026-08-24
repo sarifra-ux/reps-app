@@ -1,5 +1,5 @@
 // R.E.P.S Service Worker — mode hors-ligne
-const CACHE_NAME = 'reps-v143';
+const CACHE_NAME = 'reps-v144';
 const ASSETS = [
   '/',
   '/index.html',
@@ -24,6 +24,12 @@ const ASSETS = [
   '/rest.mp3',
   '/time.mp3','/last-minute.mp3','/ten-sec.mp3',
   '/three-min.mp3',
+  // Annonces AMRAP ajoutees au build 4 (24/08/2026). Comme le reste de cette
+  // liste, seuls les fichiers de la RACINE (voix MUTANT) sont mis en cache ;
+  // les packs voix/<cle>/ sont charges a la demande.
+  '/two-min.mp3','/six-min.mp3','/nine-min.mp3','/twelve-min.mp3','/fifteen-min.mp3','/eighteen-min.mp3','/thirty-sec.mp3',
+  '/two-min-fr.mp3','/six-min-fr.mp3','/nine-min-fr.mp3','/twelve-min-fr.mp3','/fifteen-min-fr.mp3','/eighteen-min-fr.mp3','/thirty-sec-fr.mp3',
+  '/two-min-pt.mp3','/six-min-pt.mp3','/nine-min-pt.mp3','/twelve-min-pt.mp3','/fifteen-min-pt.mp3','/eighteen-min-pt.mp3','/thirty-sec-pt.mp3',
     '/count-en-10.mp3','/count-en-9.mp3','/count-en-8.mp3','/count-en-7.mp3','/count-en-6.mp3',
     '/count-en-5.mp3','/count-en-4.mp3','/count-en-3.mp3','/count-en-2.mp3','/count-en-1.mp3','/count-en-go.mp3',
     '/time-fr.mp3','/last-minute-fr.mp3','/ten-sec-fr.mp3',

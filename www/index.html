@@ -280,6 +280,11 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .voix-chip{flex:1 1 0;min-width:46px;padding:8px 3px;font-size:.66rem;letter-spacing:.3px;
     -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
   .voix-chip.on{border-color:#e63fff !important;color:#e63fff !important;box-shadow:0 0 0 1px #e63fff inset;}
+  /* Sens du chrono AMRAP (build 4). Classe distincte de .voix-chip : majBadgeVoix()
+     balaie .voix-chip et eteindrait ces boutons-la a chaque changement de langue. */
+  .sens-chip{flex:1 1 0;min-width:46px;padding:8px 3px;font-size:.66rem;letter-spacing:.3px;
+    -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
+  .sens-chip.on{border-color:var(--accent-amrap) !important;color:var(--accent-amrap) !important;box-shadow:0 0 0 1px var(--accent-amrap) inset;}
   .voix-desc{font-size:.68rem;color:var(--text-dim,#8b8b9e);min-height:1em;opacity:.85;}
   .emom-picker-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:50%;width:40px;height:40px;color:var(--text);cursor:pointer;font-size:1.4rem;font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
   .emom-picker-btn:active{transform:scale(0.92);}
@@ -1562,6 +1567,16 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <button class="custom-btn" onclick="event.stopPropagation();customStep(1)">+</button>
         </div>
       </div>
+
+      <!-- 3a-bis. SENS DU CHRONO (AMRAP) — build 4 -->
+      <div id="sensSection" style="display:none;margin-top:12px">
+        <div class="sec-label" id="sensLabel">↕ Sens du chrono</div>
+        <div class="lang-switch">
+          <button type="button" class="lang-btn sens-chip" data-sens="down" onclick="choisirSens('down')">12 → 0</button>
+          <button type="button" class="lang-btn sens-chip" data-sens="up" onclick="choisirSens('up')">0 → 12</button>
+        </div>
+        <div class="voix-desc" id="sensDesc" style="margin-top:6px;text-align:center"></div>
+      </div>
     </div>
 
     <!-- 3b. EMOM INTERVAL -->
@@ -1977,6 +1992,15 @@ const VOIX_PACKS={
 let S_voix='max';
 try{ const _v=localStorage.getItem('reps_voix'); if(_v&&VOIX_PACKS[_v]) S_voix=_v; }catch(e){}
 
+// ===== PLUS AUCUNE VOIX DE TELEPHONE (24/08/2026, build 4) =====
+// Jusqu'au build 3, toute phrase sans fichier mp3 partait dans speechSynthesis,
+// c'est-a-dire la voix systeme de l'iPhone. En AMRAP c'etait systematique : les
+// annonces "Il reste X minutes" n'ont jamais eu de fichier, donc des la premiere
+// minute une voix feminine du telephone coupait le pack choisi par le coach.
+// Regle desormais : une annonce sort dans la voix du pack, ou ne sort pas du tout
+// (bip + texte a l'ecran). Repasser a true reactive l'ancien comportement.
+const VOIX_TELEPHONE=false;
+
 // Prefixe un nom de fichier d'annonce par le dossier de la voix active.
 // Les CLES internes (caches, pool, _repsSrc) restent les noms nus : seul le
 // chemin reellement charge change. VPid() sert au plugin natif, dont l'assetId
@@ -2211,7 +2235,7 @@ const I18N={
   'score.label':['Enregistrer un score','Save a score','Salvar um score'],
   'score.save':['Enregistrer','Save','Salvar'],
   'sched.wod':['Programme des annonces','Announcements schedule','Programa de avisos'],
-  'sched.amrap':['Annonces chaque minute','Every-minute callouts','Avisos a cada minuto'],
+  'sched.amrap':['Annonces aux repères','Callouts at key marks','Avisos nos marcos'],
   'sched.emom':['Top à chaque intervalle','Cue each interval','Sinal a cada intervalo'],
   'sched.rounds':['Rounds','Rounds','Rounds'],
   'ph.prenom':['Prénom','First name','Nome'],
@@ -2273,9 +2297,20 @@ function refreshModeLabels(){
   if(!eyebrow) return;
   const m=S.mode;
   if(m==='wod'){ if(lbl)lbl.textContent=L3('Durée WOD','WOD duration','Duração WOD'); eyebrow.textContent=L3('// TEMPS RESTANT','// TIME LEFT','// TEMPO RESTANTE'); if(schedLbl)schedLbl.textContent=I18Nget('sched.wod'); }
-  else if(m==='amrap'){ if(lbl)lbl.textContent=L3('Durée AMRAP','AMRAP duration','Duração AMRAP'); eyebrow.textContent=L3('// AMRAP, TEMPS RESTANT','// AMRAP, TIME LEFT','// AMRAP, TEMPO RESTANTE'); if(schedLbl)schedLbl.textContent=I18Nget('sched.amrap'); }
+  else if(m==='amrap'){ if(lbl)lbl.textContent=L3('Durée AMRAP','AMRAP duration','Duração AMRAP');
+    eyebrow.textContent=S_sensUp
+      ? L3('// AMRAP, TEMPS ÉCOULÉ','// AMRAP, TIME ELAPSED','// AMRAP, TEMPO DECORRIDO')
+      : L3('// AMRAP, TEMPS RESTANT','// AMRAP, TIME LEFT','// AMRAP, TEMPO RESTANTE');
+    if(schedLbl)schedLbl.textContent=I18Nget('sched.amrap'); }
   else if(m==='emom'){ if(lbl)lbl.textContent=L3('Durée EMOM','EMOM duration','Duração EMOM'); eyebrow.textContent=L3('// EMOM, TEMPS ÉCOULÉ','// EMOM, TIME ELAPSED','// EMOM, TEMPO DECORRIDO'); if(schedLbl)schedLbl.textContent=I18Nget('sched.emom'); }
   else if(m==='tabata'){ eyebrow.textContent='// TABATA'; if(schedLbl)schedLbl.textContent=I18Nget('sched.rounds'); }
+  // Le choix du sens n'a de sens qu'en AMRAP : l'EMOM monte deja, le Tabata n'a pas
+  // de chrono global, et on ne touche pas au WOD For Time deux jours avant la demo.
+  const sensBloc=document.getElementById('sensSection');
+  if(sensBloc) sensBloc.style.display=(m==='amrap')?'':'none';
+  const sensLbl=document.getElementById('sensLabel');
+  if(sensLbl) sensLbl.textContent=L3('↕ Sens du chrono','↕ Clock direction','↕ Sentido do cronômetro');
+  try{ majSensChips(); }catch(e){}
 }
 
 // ===== MODE =====
@@ -2368,6 +2403,40 @@ function selectTrack(btn,key){
   document.getElementById('tCover').textContent=info.emoji;
   document.getElementById('tName').textContent=info.name.toUpperCase();
   if(S.state==='playing'){stopMusic();startMusic();}
+}
+
+// ===== SENS DU CHRONO EN AMRAP (24/08/2026, build 4) =====
+// Demande de François : le coach choisit si le chrono descend de 12 a 0 ou monte de
+// 0 a 12. Ca ne touche QUE l'affichage. Le moteur continue de raisonner en temps
+// restant (S.remain) : annonces, barre de progression, fin de WOD et enregistrement
+// video sont donc rigoureusement inchanges, quel que soit le sens choisi.
+// La VOIX annonce toujours le temps restant, y compris chrono montant : c'est ce qui
+// compte pour l'athlete en AMRAP, et c'est le seul jeu de fichiers qui existe.
+let S_sensUp=false;
+try{ S_sensUp = localStorage.getItem('reps_sens_amrap')==='up'; }catch(e){}
+function choisirSens(s){
+  const up=(s==='up');
+  if(up===S_sensUp) return;
+  S_sensUp=up;
+  try{ localStorage.setItem('reps_sens_amrap', up?'up':'down'); }catch(e){}
+  try{ majSensChips(); }catch(e){}
+  try{ updateClock(); }catch(e){}
+  try{ renderSched(); }catch(e){}
+  try{ refreshModeLabels(); }catch(e){}
+}
+function majSensChips(){
+  const min=S.dur||Math.round((S.total||0)/60);
+  const bd=document.querySelector('.sens-chip[data-sens="down"]');
+  const bu=document.querySelector('.sens-chip[data-sens="up"]');
+  if(bd) bd.textContent=min+' → 0';
+  if(bu) bu.textContent='0 → '+min;
+  document.querySelectorAll('.sens-chip').forEach(b=>{
+    b.classList.toggle('on', (b.dataset.sens==='up')===S_sensUp);
+  });
+  const d=document.getElementById('sensDesc');
+  if(d) d.textContent = S_sensUp
+    ? L3('Le chrono monte. La voix annonce le temps qui reste.','The clock counts up. The voice still calls the time left.','O cronômetro sobe. A voz anuncia o tempo restante.')
+    : L3('Le chrono descend.','The clock counts down.','O cronômetro desce.');
 }
 
 function selectDur(btn,m){
@@ -2544,15 +2613,13 @@ function buildAnnouncesWOD(totalSec){
 
 function buildAnnouncesAMRAP(totalSec){
   const a=[];
-  const totalMin=Math.floor(totalSec/60);
-  // Annonces toutes les minutes restantes (sauf dernière qui est gérée en warnings)
-  for(let m=totalMin-1;m>=2;m--){
-    const at=m*60;
-    if(at===180 || at===60) continue;
-    a.push({at:at,label:schedLblMinLeft(m),icon:'⏱',tts:'minLeft',arg:m});
+  // La grille doit montrer EXACTEMENT ce qui sonnera : on interroge amrapMarque(),
+  // la seule source de vérité des repères AMRAP, seconde par seconde.
+  for(let r=totalSec-1;r>=30;r--){
+    const mq=amrapMarque(r);
+    if(!mq) continue;
+    a.push({at:r,label:mq.txt,icon:(r<=60?'⚡':(r===180?'🔥':'⏱')),tts:mq.cle});
   }
-  if(totalMin>=4) a.push({at:180,label:schedLbl3min(),icon:'🔥',tts:'min3'});
-  a.push({at:60,label:schedLblLastMin(),icon:'⚡',tts:'min1'});
   a.push({at:10,label:schedLbl10s(),icon:'🎯',tts:'s10'});
   [5,4,3,2,1].forEach(n=>a.push({at:n,label:''+n,icon:'🔔',tts:'s'+n}));
   a.push({at:0,label:'TIME !',icon:'🏁',tts:'time'});
@@ -2590,6 +2657,7 @@ function buildAnnouncesTabata(){
 }
 
 function renderSched(){
+  try{ majSensChips(); }catch(e){}  // les libelles "12 → 0" suivent la duree choisie
   let items;
   if(S.mode==='tabata') items=buildAnnouncesTabata();
   else if(S.mode==='amrap') items=buildAnnouncesAMRAP(S.total);
@@ -2604,7 +2672,12 @@ function renderSched(){
     let tl;
     if(S.mode==='tabata'){tl='R'+item.roundIdx;}
     else if(item.at===0) tl=L3('FIN','END','FIM');
-    else {const m=Math.floor(item.at/60).toString().padStart(2,'0');const s=(item.at%60).toString().padStart(2,'0');tl=m+':'+s;}
+    else {
+      // La grille suit le sens choisi par le coach : sinon elle afficherait 09:00
+      // pendant que le chrono affiche 03:00 sur le meme repere.
+      const aff=(S.mode==='amrap' && S_sensUp) ? (S.total-item.at) : item.at;
+      const m=Math.floor(aff/60).toString().padStart(2,'0');const s=(aff%60).toString().padStart(2,'0');tl=m+':'+s;
+    }
     el.innerHTML=`<span class="s-time">${tl}</span><span class="s-icon">${item.icon}</span><span class="s-text">${item.label}</span>`;
     grid.appendChild(el);
   });
@@ -2631,6 +2704,10 @@ function updateClock(){
   if(S.mode==='emom'){
     const elapsed=S.total-r;
     clock.textContent=pad(Math.floor(elapsed/60))+':'+pad(elapsed%60);
+  } else if(S.mode==='amrap' && S_sensUp){
+    // Chrono montant demande par le coach : seul l'affichage change (cf. choisirSens).
+    const ecoule=S.total-r;
+    clock.textContent=pad(Math.floor(ecoule/60))+':'+pad(ecoule%60);
   } else {
     clock.textContent=pad(Math.floor(r/60))+':'+pad(r%60);
   }
@@ -3664,13 +3741,59 @@ function playRoundBufferNow(buf){
   source.start(0);
 }
 
-// ===== VOIX FÉMININE PAR FICHIERS (ElevenLabs), fallback voix du téléphone =====
+// ===== ANNONCES PAR FICHIERS (ElevenLabs) =====
 // Réutilise les noms déjà présents dans le cache du service worker.
+// Les clés min2/min6/min9/min12/min15/min18 et s30 sont arrivées au build 4 pour les
+// annonces AMRAP. Une clé dont le fichier n'a pas encore été généré tombe simplement
+// sur le bip : rien ne casse, l'annonce est juste muette.
 const VOICE_FILES={
-  fr:{min3:'three-min-fr.mp3',min1:'last-minute-fr.mp3',s10:'ten-sec-fr.mp3',time:'time-fr.mp3',rest:'rest-fr.mp3'},
-  en:{min3:'three-min.mp3',min1:'last-minute.mp3',s10:'ten-sec.mp3',time:'time.mp3',rest:'rest.mp3'},
-  pt:{min3:'three-min-pt.mp3',min1:'last-minute-pt.mp3',s10:'ten-sec-pt.mp3',time:'time-pt.mp3',rest:'rest-pt.mp3'}
+  fr:{min3:'three-min-fr.mp3',min1:'last-minute-fr.mp3',s10:'ten-sec-fr.mp3',time:'time-fr.mp3',rest:'rest-fr.mp3',
+      min2:'two-min-fr.mp3',min6:'six-min-fr.mp3',min9:'nine-min-fr.mp3',
+      min12:'twelve-min-fr.mp3',min15:'fifteen-min-fr.mp3',min18:'eighteen-min-fr.mp3',s30:'thirty-sec-fr.mp3'},
+  en:{min3:'three-min.mp3',min1:'last-minute.mp3',s10:'ten-sec.mp3',time:'time.mp3',rest:'rest.mp3',
+      min2:'two-min.mp3',min6:'six-min.mp3',min9:'nine-min.mp3',
+      min12:'twelve-min.mp3',min15:'fifteen-min.mp3',min18:'eighteen-min.mp3',s30:'thirty-sec.mp3'},
+  pt:{min3:'three-min-pt.mp3',min1:'last-minute-pt.mp3',s10:'ten-sec-pt.mp3',time:'time-pt.mp3',rest:'rest-pt.mp3',
+      min2:'two-min-pt.mp3',min6:'six-min-pt.mp3',min9:'nine-min-pt.mp3',
+      min12:'twelve-min-pt.mp3',min15:'fifteen-min-pt.mp3',min18:'eighteen-min-pt.mp3',s30:'thirty-sec-pt.mp3'}
 };
+
+// Fichiers réellement embarqués. Une clé à false fait le bip au lieu de la voix.
+// Les 7 lignes AMRAP sont générées et déposées dans les 4 packs depuis le 24/08 au soir,
+// à -11,4 dB RMS comme les annonces d'origine. Seule exception connue : EVA n'a pas
+// "Quinze minutes" en français (ElevenLabs rallongeait le rendu, deux essais écartés).
+// Ce cas-là tombe sur le repli de playVoiceFile, donc bip, sans rien casser.
+const VOICE_FILES_PRESENTS={
+  min3:true, min1:true, s10:true, time:true, rest:true,
+  min2:true, min6:true, min9:true, min12:true, min15:true, min18:true, s30:true
+};
+
+// Joue une annonce par sa CLÉ, dans la voix du pack actif. Aucun repli téléphone :
+// si le fichier manque, on fait le bip et le texte reste à l'écran.
+function annonceVoix(cle){
+  const f=(VOICE_FILES[S.lang]||{})[cle];
+  if(!f || !VOICE_FILES_PRESENTS[cle]){ try{ playTick(); }catch(e){} return; }
+  playVoiceFile(f, ()=>{ try{ playTick(); }catch(e){} });
+}
+
+// ===== REPÈRES AMRAP (24/08/2026, build 4) =====
+// Demande de François, sur son AMRAP 12 min : annonces à 3, 6, 9, 10 et 11 minutes
+// de WOD, puis à 30 secondes, puis les 10 dernières secondes.
+// Exprimé en temps RESTANT, ça donne une règle qui vaut pour toutes les durées :
+// tous les 3 min jusqu'à 3 min restantes, puis chaque minute sous 3 min, puis 30 s.
+// Sur 12 min : 9, 6, 3, 2, 1 min, 30 s, 10 s = exactement les 7 marques demandées.
+// Le 10 s, le 5-4-3-2-1 et le TIME restent gérés par le tronc commun de checkAnnounce.
+function amrapMarque(r){
+  if(r===30) return {cle:'s30', txt:L3('30 SECONDES','30 SECONDS','30 SEGUNDOS')};
+  if(r===60) return {cle:'min1', txt:L3('DERNIÈRE MIN','LAST MIN','ÚLTIMO MIN')};
+  if(r===120) return {cle:'min2', txt:schedLblMinLeft(2)};
+  if(r>=180 && r%180===0){
+    const min=r/60;
+    if(!VOICE_FILES['fr']['min'+min]) return null; // au-delà de 18 min : pas de ligne enregistrée
+    return {cle:'min'+min, txt:schedLblMinLeft(min)};
+  }
+  return null;
+}
 function roundFile(n){return S.lang==='fr'?('round-'+n+'-fr.mp3'):(S.lang==='pt'?('round-'+n+'-pt.mp3'):('round-'+n+'.mp3'));}
 
 // Retrouve le fichier voix correspondant à une phrase (ou null -> voix téléphone)
@@ -3743,6 +3866,13 @@ function speak(text, opts){
   if(!opts._noFile){
     const vf=voiceFileForText(text);
     if(vf){ playVoiceFile(vf, ()=>speak(text, Object.assign({},opts,{_noFile:true}))); return; }
+  }
+  // Pas de fichier pour cette phrase : bip, et le texte reste a l'ecran. Jamais la
+  // voix du telephone (cf. VOIX_TELEPHONE). Les appelants EMOM ont deja joue leur
+  // bip juste avant, on ne le double pas.
+  if(!VOIX_TELEPHONE){
+    if(!opts.emomCrunch){ try{ playTick(); }catch(e){} }
+    return;
   }
   if(!window.speechSynthesis)return;
   window.speechSynthesis.cancel();
@@ -3853,7 +3983,10 @@ function _announceFilesForLang(){
   ((L==='fr')?COUNT_AUDIO_FR:((L==='pt')?COUNT_AUDIO_PT:COUNT_AUDIO_EN)).forEach(f=>out.push(f)); // décompte 10->GO
   const c3=COUNT_AUDIO[L]||{}; Object.keys(c3).forEach(k=>out.push(c3[k]));                       // 3-2-1
   const ra=ROUND_AUDIO[L]||{}; Object.keys(ra).forEach(k=>out.push(ra[k]));                       // ROUND 2..10
-  const vf=VOICE_FILES[L]||{}; Object.keys(vf).forEach(k=>out.push(vf[k]));                       // rest/time/ten-sec/…
+  // Seulement les cles dont le fichier est reellement embarque : sinon on prechargerait
+  // les 7 lignes AMRAP du build 4 avant qu'elles n'existent, et on occuperait des places
+  // du pool natif pour un son qui ne peut pas partir (meme piege que halfway, ci-dessous).
+  const vf=VOICE_FILES[L]||{}; Object.keys(vf).forEach(k=>{ if(VOICE_FILES_PRESENTS[k]) out.push(vf[k]); });
   out.push(BEEP_AUDIO, TICK_AUDIO);
   // NOTE (10/08/2026) : le prechargement de halfway-*.mp3 a ete retire. Il n'existe
   // AUCUNE annonce « a la moitie » dans l'app : pas de cle dans TXT, pas de mapping
@@ -4427,16 +4560,12 @@ function checkAnnounce(){
     return;
   }
 
-  // AMRAP : annonces toutes les minutes restantes
+  // AMRAP : repères fixes, plus une annonce à chaque minute (cf. amrapMarque).
+  // L'ancienne version parlait toutes les minutes via speak(t.minLeft(min)), phrase
+  // qui n'a jamais eu de fichier : c'est de là que sortait la voix du téléphone.
   if(S.mode==='amrap'){
-    if(r===180){showAnnounce(L3('IL RESTE 3 MIN','3 MIN LEFT','FALTAM 3 MIN'));speak(t.min3);return;}
-    if(r===60){showAnnounce(L3('DERNIÈRE MIN','LAST MIN','ÚLTIMO MIN'));speak(t.min1);return;}
-    if(r>60 && r%60===0){
-      const min=r/60;
-      showAnnounce(schedLblMinLeft(min)); // meme libelle que la grille (etait fige en anglais)
-      speak(t.minLeft(min));
-      return;
-    }
+    const mq=amrapMarque(r);
+    if(mq){ showAnnounce(mq.txt); annonceVoix(mq.cle); }
     return;
   }
 
