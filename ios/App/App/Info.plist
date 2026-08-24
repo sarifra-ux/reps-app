@@ -53,5 +53,7 @@
 	<true/>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>REPS enregistre ta vidéo de WOD avec le chrono incrusté dans ta photothèque.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
