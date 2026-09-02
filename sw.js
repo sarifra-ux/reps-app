@@ -1,5 +1,5 @@
 // R.E.P.S Service Worker — mode hors-ligne
-const CACHE_NAME = 'reps-v145';
+const CACHE_NAME = 'reps-v157';
 const ASSETS = [
   '/',
   '/index.html',
@@ -12,11 +12,22 @@ const ASSETS = [
   '/techno.mp3',
   '/house.mp3',
   '/hymne.mp3',
-  '/censured.mp3','/cartier.mp3','/crime.mp3','/cyrilgane.mp3','/introduction.mp3','/vibes.mp3',
+    // 31/08/2026 : la ligne cyrilgane a ete retiree. Le fichier n'existe plus sur le disque depuis
+  // longtemps, la ligne ne faisait qu'un 404 avale par le catch de l'install. Au passage
+  // ca ferme le risque de rejet 5.2.1 (nom d'un athlete UFC reel) : plus rien ne l'evoque.
+  // ringside AJOUTE : il est dans ALL_TRACK_KEYS et jouable depuis toujours, mais il
+  // etait le seul des 11 morceaux a ne pas etre precache. Hors ligne, il ne sortait pas.
+  '/censured.mp3','/cartier.mp3','/crime.mp3','/ringside.mp3','/introduction.mp3','/vibes.mp3',
   // Retires le 10/08/2026 car jamais joues : brian-fr.mp3 et brian-en.mp3
   // (table GO_AUDIO morte), halfway*.mp3, thirty-sec*.mp3, two-min*.mp3.
+  // 31/08/2026 : thirty-sec* et two-min* sont revenus au build 4, et halfway-fr revient
+  // ici. L'annonce de mi-parcours du 25/08 le joue pour de bon (annonceVoix('half')),
+  // il n'etait plus precache depuis trois semaines. halfway.mp3 et halfway-pt.mp3 restent
+  // dehors : la cle 'half' n'existe que dans VOICE_FILES.fr, ils ne sonnent nulle part.
+  '/halfway-fr.mp3',
   '/beep.mp3',
   '/tick.mp3',
+  '/start-signal.mp3',
   '/fr-1.mp3','/fr-2.mp3','/fr-3.mp3','/fr-4.mp3','/fr-5.mp3',
   '/en-1.mp3','/en-2.mp3','/en-3.mp3','/en-4.mp3','/en-5.mp3',
   '/round-2.mp3','/round-3.mp3','/round-4.mp3','/round-5.mp3','/round-6.mp3',

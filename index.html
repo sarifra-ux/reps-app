@@ -242,6 +242,11 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .music-tile-perso:hover,.music-tile-perso:active{border-color:var(--accent2);box-shadow:0 0 18px rgba(0,229,255,0.25);}
   .music-tile-byo:hover,.music-tile-byo:active{border-color:var(--accent);box-shadow:0 0 18px rgba(157,78,221,0.30);}
   .music-tile-byo.on{border-color:var(--accent);box-shadow:0 0 18px rgba(157,78,221,0.30);}
+  /* Le bouton « Ouvrir Spotify » n'existe que dans le mode qui le justifie, et jamais
+     pendant un WOD : quitter l'app en plein chrono le figerait. */
+  .byo-open-btn{display:none;}
+  body.byo-music .byo-open-btn{display:flex;}
+  body.wod-live .byo-open-btn{display:none !important;}
   .perso-row{display:flex;align-items:center;gap:8px;}
   .perso-pick{flex:1;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--card),var(--card-hover));border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--text);text-align:left;transition:all 0.2s;}
   .perso-pick:hover,.perso-pick:active{border-color:var(--accent);box-shadow:0 0 12px rgba(230,63,255,0.2);}
@@ -356,6 +361,30 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .timer-clock.danger{-webkit-text-fill-color:var(--accent);background:none;filter:drop-shadow(0 0 30px var(--glow-a));animation:throb 0.4s ease-in-out infinite alternate;}
   .timer-clock.rest{-webkit-text-fill-color:var(--accent2);background:none;filter:drop-shadow(0 0 28px var(--glow-b));animation:none;}
   @keyframes throb{from{transform:scale(1)}to{transform:scale(1.03)}}
+  /* ===== ANNEAU DE LA MINUTE (31/08/2026, maquette A) =====
+     L'anneau se vide sur soixante secondes puis repart. Il ne dit pas la meme chose
+     que les chiffres : eux donnent le temps total, lui donne la seconde en cours.
+     Rien n'a ete SUPPRIME du DOM : les elements retires de l'ecran sont masques par
+     .chrono-anneau plus bas. Tout le JS qui ecrit dedans continue de fonctionner,
+     donc aucun risque de reference nulle, et on revient en arriere en enlevant une
+     seule classe sur <body>. */
+  .dial-wrap{position:relative;display:grid;place-items:center;margin:6px auto 0;
+    width:min(272px,72vw);aspect-ratio:1;}
+  .dial-svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);}
+  .dial-piste{fill:none;stroke:var(--border);stroke-width:6;}
+  .dial-arc{fill:none;stroke:var(--accent);stroke-width:6;stroke-linecap:round;
+    filter:drop-shadow(0 0 9px var(--glow-a));transition:stroke .3s ease;}
+  .dial-wrap .timer-clock{position:relative;z-index:2;margin:0;}
+  /* Trois dernieres secondes : la couleur de l'anneau suffit, pas un texte de plus. */
+  .dial-alerte .dial-arc{stroke:var(--accent-tabata);
+    filter:drop-shadow(0 0 14px var(--glow-tabata));}
+
+  /* L'ecran depouille demande par Francois : « je veux voir que ca ». */
+  body.chrono-anneau .now-playing-bar,
+  body.chrono-anneau .timer-eyebrow,
+  body.chrono-anneau .timer-status,
+  body.chrono-anneau .prog-wrap{display:none;}
+
   .timer-status{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:2px;margin-top:8px;min-height:16px;}
   .prog-wrap{margin-top:18px;}
   .prog-track{height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:visible;position:relative;box-shadow:inset 0 0 4px rgba(0,0,0,0.45);}
@@ -888,6 +917,13 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     font-size:2rem;
     line-height:1;
   }
+  /* 31/08/2026 : « MA MUSIQUE » ne disait a personne de quoi il s'agissait. Le bouton
+     des reglages avait deja son sous-titre, la tuile du wizard non — et c'est elle que
+     les gens voient en premier. */
+  .music-tile-sub{
+    display:block;margin-top:3px;font:600 9px/1.2 -apple-system,system-ui,sans-serif;
+    letter-spacing:.4px;text-transform:uppercase;opacity:.55;
+  }
   .music-tile-name{
     font-size:1.5rem;letter-spacing:3px;
   }
@@ -1345,6 +1381,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       <button class="music-tile music-tile-byo" onclick="chooseByoMusic()">
         <span class="music-tile-icon">🎧</span>
         <span class="music-tile-name" data-i18n="tile.byo">MA MUSIQUE</span>
+        <span class="music-tile-sub" data-i18n="tile.byosub">Spotify · Apple Music…</span>
       </button>
     </div>
     <div class="music-choice-tiles" id="musicTrackTiles" style="display:none"></div>
@@ -1422,7 +1459,14 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <button type="button" class="lang-btn voix-chip" data-voix="max"  onclick="choisirVoix('max')">MUTANT</button>
           <button type="button" class="lang-btn voix-chip" data-voix="sam"  onclick="choisirVoix('sam')">SAM</button>
           <button type="button" class="lang-btn voix-chip" data-voix="nina" onclick="choisirVoix('nina')">MIKE</button>
+          <!-- EVA retiree le 31/08/2026. Le selecteur est du HTML ECRIT A LA MAIN, il
+               n'est pas engendre depuis VOIX_PACKS : commenter le pack ne suffisait donc
+               pas, la pastille restait affichee. Elle etait inerte (choisirVoix sort si
+               la cle n'est pas dans VOIX_PACKS) mais visible, ce qui est pire.
+               Pour la remettre : decommenter ici ET dans VOIX_PACKS. Les deux.
           <button type="button" class="lang-btn voix-chip" data-voix="eva"  onclick="choisirVoix('eva')">EVA</button>
+          -->
+          <button type="button" class="lang-btn voix-chip" data-voix="leo"  onclick="choisirVoix('leo')">LEO</button>
         </div>
       </div>
       <div class="settings-row" style="padding-top:0;">
@@ -1656,6 +1700,16 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
             <div class="mix-btn-sub" data-i18n="byo.sub">Joue ta propre musique (Spotify, Apple Music…)</div>
           </div>
         </button>
+        <!-- Visible UNIQUEMENT quand « Ma musique » est actif ET hors WOD (cf. CSS).
+             Hors WOD, parce que passer en arriere-plan relache le verrou d'ecran et
+             peut suspendre la WebView : le chrono se figerait. -->
+        <button class="mix-btn byo-open-btn" id="btnOuvrirSpotify" onclick="ouvrirSpotify()">
+          <span class="mix-btn-ic">▶</span>
+          <div class="mix-btn-txt">
+            <div class="mix-btn-title" data-i18n="byo.open">OUVRIR SPOTIFY</div>
+            <div class="mix-btn-sub" data-i18n="byo.opensub">Lance ta playlist, puis reviens dans REPS</div>
+          </div>
+        </button>
         -->
         <div class="mix-modes">
           <button class="mix-btn" id="mixAutoBtn" onclick="setMixMode('auto')">
@@ -1830,7 +1884,13 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
         <div class="brian-badge">🎙️ BRIAN</div>
       </div>
       <div class="timer-eyebrow" id="timerEyebrow">// TEMPS RESTANT</div>
-      <div class="timer-clock" id="timerClock">05:00</div>
+      <div class="dial-wrap">
+        <svg class="dial-svg" viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="dial-piste" cx="50" cy="50" r="44"></circle>
+          <circle class="dial-arc" id="dialArc" cx="50" cy="50" r="44"></circle>
+        </svg>
+        <div class="timer-clock" id="timerClock">05:00</div>
+      </div>
       <div class="timer-status" id="timerStatus">Prêt à démarrer</div>
       <div class="prog-wrap"><div class="prog-track"><div class="prog-fill" id="progFill"></div></div></div>
     </div>
@@ -1845,6 +1905,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       <button class="btn-ctrl btn-done" id="btnDone" onclick="finishNow()" style="display:none" data-i18n="ctrl.done">✓ FINI</button>
       <button class="btn-ctrl" id="btnFilm" onclick="toggleFilm()" style="display:none" data-i18n="film.rec">🎥 Filmer</button>
       <button class="btn-ctrl on" id="btnFilmAudio" onclick="toggleFilmAudio()" style="display:none" data-i18n="film.audio">🔊 Son ambiant</button>
+      <button class="btn-ctrl" id="btnFilmCam" onclick="toggleFilmCam()" style="display:none">📷 Arrière</button>
     </div>
 
     <button id="addVideoBtn" onclick="startVideoOverlayFlow()" style="display:none;width:100%;margin-top:10px;padding:14px;font:800 15px/1 -apple-system,system-ui,sans-serif;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,#7c3aed,#a855f7);border:0;border-radius:12px;box-shadow:0 6px 18px rgba(124,58,237,.35);"></button>
@@ -1937,6 +1998,18 @@ const COUNT_AUDIO_FR=['count-fr-10.mp3','count-fr-9.mp3','count-fr-8.mp3','count
 const COUNT_AUDIO_PT=['count-pt-10.mp3','count-pt-9.mp3','count-pt-8.mp3','count-pt-7.mp3','count-pt-6.mp3','count-pt-5.mp3','count-pt-4.mp3','count-pt-3.mp3','count-pt-2.mp3','count-pt-1.mp3','count-pt-go.mp3'];
 const BEEP_AUDIO='beep.mp3';
 const TICK_AUDIO='tick.mp3';
+// ===== SIGNAL DE DEPART (26/08/2026) =====
+// Demande de Francois : un vrai son de depart, facon depart de course, sur le GO.
+// Le fichier ne depend d'AUCUN pack : il est a la racine, comme tick.mp3, et doit
+// donc figurer dans FICHIERS_HORS_PACK, sinon VP() le prefixe par le dossier de la
+// voix active et on obtient un 404 silencieux (le piege exact du bip).
+const START_AUDIO='start-signal.mp3';
+// true  : le signal REMPLACE la voix du GO (« PARTEZ ! » / « GO! »). Un seul son,
+//         comme un vrai depart de course.
+// false : la voix du GO reste, et le signal part EN PLUS, au meme instant.
+// Change cette seule constante pour basculer : les deux chemins du decompte
+// (horloge Web Audio en enregistrement, elements <audio> sinon) la lisent.
+const SIGNAL_DEPART_REMPLACE_VOIX=true;
 // Voix Brian découpée pour le décompte 5-4-3-2-1 par langue
 const COUNT_AUDIO={
   fr:{1:'fr-1.mp3',2:'fr-2.mp3',3:'fr-3.mp3',4:'fr-4.mp3',5:'fr-5.mp3'},
@@ -1983,11 +2056,45 @@ const COUNT_ONSET={
 // MAX reste la voix par defaut et ses fichiers restent a la RACINE du bundle :
 // le comportement d'origine est donc strictement inchange tant qu'on ne choisit
 // rien. Les trois autres packs vivent dans voix/<cle>/ et sont resolus par VP().
+// `langues` = les langues que le pack parle VRAIMENT (25/08/2026).
+// MUTANT et MIKE sont des voix anglophones. Leur francais sonnait americain :
+// un coach qui annonce « Trente secondes » avec cet accent, ca sonne faux. Ils
+// n'ont donc plus de francais du tout. En francais ils annoncent en ANGLAIS,
+// ce qui est coherent avec la decision de garder TIME et REST : en box on parle
+// comme ca. Le portugais reste en place, le sujet bresilien est ouvert.
+// Un pack sans `langues` parle tout, c'est le cas de SAM et EVA.
+// `langues` = ce que le pack parle vraiment. `repli` = la langue de secours quand
+// l'app est dans une langue que le pack ne parle pas.
+//
+// MUTANT et MIKE : anglais et portugais, repli anglais. En francais ils annoncent
+// donc en anglais, ce qui est coherent avec ce qu'ils sont.
+//
+// LEO (25/08/2026) : FRANCAIS SEULEMENT, et AUCUN repli. Il n'a pas un fichier
+// hors francais, il ne peut donc rien dire ailleurs. Consequence assumee : il
+// disparait du selecteur hors francais, au lieu d'y rester et d'etre muet.
+// Voir voixDisponible().
 const VOIX_PACKS={
-  max :{dossier:'',           nom:'MUTANT', desc:['la voix de monstre','the monster voice','a voz de monstro']},
-  nina:{dossier:'voix/nina/', nom:'MIKE', desc:['le coach americain','the american coach','o coach americano']},
+  max :{dossier:'',           nom:'MUTANT', langues:['en','pt'], repli:'en', desc:['la voix de monstre (annonce en anglais)','the monster voice','a voz de monstro']},
+  nina:{dossier:'voix/nina/', nom:'MIKE',   langues:['en','pt'], repli:'en', desc:['le coach americain (annonce en anglais)','the american coach','o coach americano']},
   sam :{dossier:'voix/sam/',  nom:'SAM',  desc:['le pote qui encourage','the mate who cheers','o parceiro que anima']},
-  eva :{dossier:'voix/eva/',  nom:'EVA',  desc:['la voix posee','the calm voice','a voz calma']}
+  // EVA RETIREE LE 31/08/2026, decision de Francois.
+  //
+  // Motif mesure, pas une impression : son « 1 » du decompte est mauvais dans LES TROIS
+  // langues. Enveloppes relevees par cellules de 20 ms —
+  //   EVA    fr 0,48 s  ##ooo###oooo___oooo###o.
+  //   EVA    en 0,50 s  ooo__oo#######o##ooo_._..
+  //   EVA    pt 0,20 s  ####o##o_.            <- deux dixiemes, un clic, pas un mot
+  //   MUTANT fr 0,80 s  ###############oooo___.._._.............
+  // Ce n'est donc pas la voyelle nasale francaise : cette voix n'articule pas les mots
+  // courts isoles, quelle que soit la langue. Aucune regeneration ne corrige ca, et le
+  // tableau VOIX_FR du script ne sert a rien ici puisque le defaut est partout.
+  //
+  // Les 114 mp3 restent dans voix/eva/ (1,7 Mo par emplacement). Pour la remettre :
+  // decommenter la ligne ci-dessous. Pour la remplacer : nouvelle voix, 114 fichiers.
+  // Un utilisateur qui avait EVA en memoire retombe sur MUTANT, VOIX_PACKS servant de
+  // liste blanche a la relecture de localStorage.
+  // eva :{dossier:'voix/eva/',  nom:'EVA',  desc:['la voix posee','the calm voice','a voz calma']},
+  leo :{dossier:'voix/leo/',  nom:'LEO',  langues:['fr'], desc:['le coach francais','the French coach','o coach frances']}
 };
 let S_voix='max';
 try{ const _v=localStorage.getItem('reps_voix'); if(_v&&VOIX_PACKS[_v]) S_voix=_v; }catch(e){}
@@ -2005,7 +2112,58 @@ const VOIX_TELEPHONE=false;
 // Les CLES internes (caches, pool, _repsSrc) restent les noms nus : seul le
 // chemin reellement charge change. VPid() sert au plugin natif, dont l'assetId
 // ne doit pas contenir de slash et doit differer d'une voix a l'autre.
-function VP(f){ if(!f) return f; const d=(VOIX_PACKS[S_voix]||{}).dossier||''; return d?d+f:f; }
+// Repli vers l'anglais quand le pack actif ne parle pas la langue de l'app.
+//
+// On ne REECRIT que les fichiers qui portent deja un marqueur de langue, et on
+// ne va JAMAIS que vers l'anglais. Un fichier sans marqueur (time.mp3,
+// tick.mp3, beep.mp3, un morceau de musique) ressort tel quel.
+// C'est volontairement asymetrique : ajouter un suffixe a un nom qui n'en a pas
+// serait le moyen le plus simple de fabriquer un 404 sur un fichier qui n'a
+// rien a voir avec la voix. VP() est traverse par TOUS les chargements audio.
+function _versAnglais(f){
+  if(!f) return f;
+  let m=/^count-(?:fr|pt)-(.+)$/.exec(f);   if(m) return 'count-en-'+m[1];
+  m=/^(?:fr|pt)-(\d+\.mp3)$/.exec(f);      if(m) return 'en-'+m[1];
+  m=/^(.+)-(?:fr|pt)\.mp3$/.exec(f);        if(m) return m[1]+'.mp3';
+  return f;
+}
+// Vrai si le pack actif ne parle pas la langue de l'app ET sait se replier.
+// Un pack sans repli n'est jamais actif hors de ses langues : voixDisponible()
+// l'ecarte du selecteur et choisirVoix bascule ailleurs.
+function _packReplie(){
+  const p=VOIX_PACKS[S_voix]||{};
+  return !!(p.langues && p.langues.indexOf(S.lang)<0 && p.repli==='en');
+}
+
+// Un pack est proposable dans la langue courante s'il la parle, ou s'il a un
+// repli. LEO n'a que du francais et aucun repli : hors francais, il n'existe pas.
+function voixDisponible(cle){
+  const p=VOIX_PACKS[cle]||{};
+  if(!p.langues) return true;                       // SAM, EVA : les trois langues
+  if(p.langues.indexOf(S.lang)>=0) return true;
+  return !!p.repli;
+}
+// Prefixe un nom de fichier d'annonce par le dossier de la voix active.
+// Les CLES internes (caches, pool, _repsSrc) restent les noms nus : seul le
+// chemin reellement charge change. Le repli agit donc ici aussi, et deux cles
+// differentes peuvent pointer le meme fichier, ce qui est sans consequence.
+// Fichiers qui n'appartiennent a AUCUN pack : il n'en existe qu'un exemplaire,
+// a la racine. Les prefixer par le dossier de la voix active pointe un fichier
+// qui n'existe pas (voix/nina/tick.mp3 & co n'ont jamais ete crees).
+// Consequence avant ce correctif, sur iOS avec « Ma musique » : le prechargement
+// natif echouait et le BIP ne sortait pas des que la voix n'etait pas MUTANT.
+// Or le bip est justement le repli quand une annonce manque (le « Quinze
+// minutes » absent d'EVA, par exemple). Le repli etait donc muet.
+const FICHIERS_HORS_PACK={'tick.mp3':1,'beep.mp3':1,'start-signal.mp3':1};
+
+function VP(f){
+  if(!f) return f;
+  if(FICHIERS_HORS_PACK[f]) return f;
+  const p=VOIX_PACKS[S_voix]||{};
+  const n=_packReplie()?_versAnglais(f):f;
+  const d=p.dossier||'';
+  return d?d+n:n;
+}
 function VPid(f){ return VP(f).replace(/\//g,'_'); }
 
 // Onsets par voix. Mesures le 16/08/2026 par mesurer-onsets.py sur les packs
@@ -2018,9 +2176,38 @@ const COUNT_ONSET_VOIX={
   max : { fr:[0,0,0,0,0,0,0,0,0,0,60], en:[0,0,0,40,0,80,60,60,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
   nina: { fr:[0,0,20,20,0,20,0,0,0,0,0],       en:[0,0,0,0,40,60,0,0,0,0,0],     pt:[0,0,0,40,0,0,0,0,0,0,20] },
   sam : { fr:[60,0,0,0,0,0,0,0,60,0,0],        en:[0,0,0,20,0,0,60,60,0,0,0],    pt:[40,0,0,0,0,0,0,0,40,0,0] },
-  eva : { fr:[0,0,20,60,20,20,20,0,20,0,0],    en:[0,0,0,100,0,0,0,0,60,0,0],    pt:[0,0,0,0,100,40,20,0,0,0,60] }
+  eva : { fr:[0,0,20,60,20,20,20,0,20,0,0],    en:[0,0,0,100,0,0,0,0,60,0,0],    pt:[0,0,0,0,100,40,20,0,0,0,60] },
+  // LEO : mesure le 25/08/2026 par mesurer-onsets.py sur le pack normalise.
+  // Fenetres de 20 ms, seuil a -20 dB sous le pic. Pas de table en / pt : LEO
+  // ne parle que francais et n'apparait pas dans ces langues.
+  leo : { fr:[40,20,20,20,20,20,100,100,20,0,100] }
 };
-function onsetsVoix(){ return (COUNT_ONSET_VOIX[S_voix]||COUNT_ONSET)[S.lang]||[]; }
+// Les onsets suivent le fichier reellement joue, pas la langue de l'interface :
+// si MIKE annonce en anglais dans une app en francais, ce sont ses onsets EN
+// qu'il faut, sinon le decompte se decale a l'image pres.
+function onsetsVoix(){
+  const l=_packReplie()?'en':S.lang;
+  return (COUNT_ONSET_VOIX[S_voix]||COUNT_ONSET)[l]||[];
+}
+
+// Les 11 sons du decompte pour la langue courante. L'index 10 est le GO.
+// Quand le signal de depart remplace la voix, c'est ici, et nulle part ailleurs,
+// que la substitution a lieu : les deux chemins de launch() et le prechargement
+// passent tous par cette fonction, donc ils ne peuvent pas diverger.
+function listeDecompte(){
+  const base=(S.lang==='fr')?COUNT_AUDIO_FR:((S.lang==='pt')?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
+  if(!SIGNAL_DEPART_REMPLACE_VOIX) return base.slice();
+  const l=base.slice(); l[10]=START_AUDIO; return l;
+}
+// Onsets alignes sur listeDecompte(). Le signal de depart attaque a 0 : c'est une
+// synthese, il n'a aucun silence de tete, quel que soit le pack de voix actif.
+// Sans ce forcage on lui appliquerait l'onset du « PARTEZ » de la voix courante et
+// il partirait decale de la valeur de ce silence-la.
+function onsetsDecompte(){
+  const o=(onsetsVoix()||[]).slice();
+  if(SIGNAL_DEPART_REMPLACE_VOIX) o[10]=0;
+  return o;
+}
 
 // Changer de voix invalide TOUS les caches audio : sans ca l'ancienne voix
 // continuerait de sortir du pool natif et des buffers deja decodes.
@@ -2051,7 +2238,12 @@ function choisirVoix(cle){
 function majBadgeVoix(){
   const v=VOIX_PACKS[S_voix]||VOIX_PACKS.max;
   document.querySelectorAll('.brian-badge').forEach(el=>{ el.textContent='\uD83C\uDF99\uFE0F '+v.nom; });
-  document.querySelectorAll('.voix-chip').forEach(b=>{ b.classList.toggle('on', b.dataset.voix===S_voix); });
+  document.querySelectorAll('.voix-chip').forEach(b=>{
+    // Masquer plutot que griser : un bouton mort dans une interface lue a bout de
+    // bras au milieu d'un cours, ca ne sert personne.
+    b.style.display = voixDisponible(b.dataset.voix) ? '' : 'none';
+    b.classList.toggle('on', b.dataset.voix===S_voix);
+  });
   const d=document.getElementById('voixDesc');
   if(d){ const i=(S.lang==='en')?1:((S.lang==='pt')?2:0); d.textContent=v.desc[i]||v.desc[0]; }
 }
@@ -2202,6 +2394,10 @@ const I18N={
   'music.hint':['Choisis une catégorie','Pick a category','Escolha uma categoria'],
   'byo.title':['MA MUSIQUE','MY MUSIC','MINHA MÚSICA'],
   'tile.byo':['MA MUSIQUE','MY MUSIC','MINHA MÚSICA'],
+  'tile.byosub':['Spotify · Apple Music…','Spotify · Apple Music…','Spotify · Apple Music…'],
+  'byo.open':['OUVRIR SPOTIFY','OPEN SPOTIFY','ABRIR O SPOTIFY'],
+  'byo.opensub':['Lance ta playlist, puis reviens dans REPS','Start your playlist, then come back to REPS','Comece sua playlist e volte para o REPS'],
+  'byo.absent':['Spotify n\'est pas installé sur ce téléphone','Spotify is not installed on this phone','O Spotify não está instalado neste telefone'],
   'byo.sub':['Joue ta propre musique (Spotify, Apple Music…)','Play your own music (Spotify, Apple Music…)','Toque sua própria música (Spotify, Apple Music…)'],
   'tile.mytracks':['MES MORCEAUX','MY TRACKS','MINHAS FAIXAS'],
   'tile.hymne':['HYMNE','ANTHEM','HINO'],
@@ -2285,8 +2481,14 @@ function applyI18n(){
   if(st && (S.state==='idle'||!S.state)) st.textContent=L3('Prêt à démarrer','Ready to start','Pronto para começar');
   // Garde le texte de l'indication volume iOS dans la bonne langue (défini plus bas)
   if(typeof applyIOSVolumeUI==='function') applyIOSVolumeUI();
+  // Si la langue choisie rend la voix active impossible (LEO hors francais), on
+  // bascule sur MUTANT. choisirVoix fait le travail complet : caches audio vides,
+  // pool natif invalide, badge remis a jour. Le faire a la main laisserait
+  // l'ancienne voix sortir du pool.
+  try{ if(!voixDisponible(S_voix)) choisirVoix('max'); }catch(e){}
   try{ majBadgeVoix(); }catch(e){}        // badge + chips + description suivent la langue
   try{ membersRefreshI18n(); }catch(e){}  // libelles du bloc score, ecrits en JS
+  try{ setFilmCamBtn(); }catch(e){}       // libelle du bouton camera, ecrit en JS aussi
 }
 
 // Libellés qui dépendent du mode courant (durée, eyebrow, planning)
@@ -2390,6 +2592,7 @@ function updateTotalFromMode(){
 
 function selectTrack(btn,key){
   _byoOff(); // choisir un morceau REPS sort du mode "Ma musique"
+  _sacNeuf=true;   // morceau choisi a la main : le sac repart
   document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');S.track=key;
   // Ouvrir la catégorie parent et fermer les autres
@@ -2733,6 +2936,7 @@ function updateClock(){
     if(eb) eb.textContent=`// EMOM ${phaseLabel}`;
   }
 
+  majAnneau(r);
   const progFill=document.getElementById('progFill');
   progFill.style.width=((S.total-r)/S.total*100)+'%';
   progFill.className='prog-fill'+(S.mode==='tabata' && S.tabPhase==='rest'?' rest':'');
@@ -2799,7 +3003,8 @@ let manualPicks=[]; // morceaux cochés par l'utilisateur en mode manuel
 let byoMusic=false; // "Ma musique" : REPS ne joue aucun morceau, le client met sa propre musique (Spotify/Apple Music) et REPS passe ses voix par-dessus
 let _shuffleCurrentKey=null;
 let _singleGenreMix=false; // vrai = on mixe dans le genre du morceau sans mode explicite
-let _dejaJoues=[];         // morceaux deja passes dans CE wod (sac de tirage)
+let _dejaJoues=[];         // morceaux deja passes (le sac SURVIT d'un wod a l'autre)
+let _sacNeuf=true;         // vrai = choix musical tout neuf, le prochain wod doit l'honorer
 
 // Retrouve le genre d'un morceau
 function genreOfTrack(key){
@@ -2811,6 +3016,7 @@ function genreOfTrack(key){
 // Appelé par le wizard : repart en mode par défaut (mix dans le genre choisi)
 function applyWizardMix(category){
   _byoOff();
+  _sacNeuf=true;   // nouveau choix musical : le sac repart (cf. startMusic)
   mixMode=null;
   window._mixCategory=category;
   manualPicks=[];
@@ -2821,13 +3027,23 @@ function applyWizardMix(category){
 
 // Mode "Ma musique" : le client joue sa propre musique dans son app (Spotify, Apple
 // Music, YouTube…). REPS ne diffuse aucun morceau, il ne passe que les voix et les bips
-// PAR-DESSUS. Côté iOS, la session audio est en .mixWithOthers (cf. AppDelegate.swift),
-// donc les voix ne coupent pas la musique du client. Pas de ducking en v1.
+// PAR-DESSUS.
+//
+// CE COMMENTAIRE ETAIT FAUX JUSQU'AU 31/08/2026. Il affirmait que la session iOS etait
+// en .mixWithOthers. Elle ne l'etait pas : AppDelegate.swift posait `options: []`, avec
+// son propre commentaire disant l'inverse — « un chrono de WOD doit couvrir Spotify ».
+// Consequence, remontee par Adriana le 31/08 : en sortie velo, chaque annonce COUPAIT
+// son podcast, sans reprise possible, il fallait le relancer a la main a chaque fois.
+//
+// Depuis le 31/08 la session a deux regimes et c'est appliquerMixageAudio() qui bascule :
+// mode REPS = REPS possede le son (sono de box) ; mode « Ma musique » = .mixWithOthers
+// + .duckOthers, l'autre app continue et iOS la baisse pendant l'annonce.
 function setByoMusic(){
   byoMusic=!byoMusic;
   const btn=document.getElementById('mixByoBtn');
   if(btn) btn.classList.toggle('on', byoMusic);
   document.body.classList.toggle('byo-music', byoMusic);
+  appliquerMixageAudio();   // la session audio doit suivre le mode, tout de suite
   if(byoMusic){
     // On coupe tout mix REPS : c'est la musique du client qui joue
     mixMode=null; manualPicks=[]; window._mixCategory=null;
@@ -2839,11 +3055,65 @@ function setByoMusic(){
     if(S.state==='playing'){ stopMusic(); startMusic(); }
   }
 }
+// ===== OUVRIR SPOTIFY SANS QUITTER REPS A LA MAIN (31/08/2026) =====
+// Demande de Francois. Attention a ce que ca fait vraiment : iOS bascule bel et bien
+// d'application, on n'evite pas le changement d'app, on evite juste d'aller la chercher
+// soi-meme. REPS reste vivant en arriere-plan.
+//
+// C'est pour ca que le bouton est cache pendant un WOD (CSS : body.wod-live). En
+// arriere-plan iOS relache le verrou d'ecran et peut suspendre la WebView : le chrono
+// se figerait et les annonces sauteraient. Le garde JS ci-dessous double le CSS, au cas
+// ou quelqu'un appellerait la fonction autrement.
+//
+// Le passage par le natif est obligatoire : depuis une WKWebView, un location.href sur
+// un schema inconnu comme spotify:// est avale sans rien faire ni rien dire.
+function ouvrirSpotify(){
+  if(S.state==='playing'||S.state==='paused'){ DBG('spotify: pas pendant un WOD'); return; }
+  const VO=_videoOverlayPlugin();
+  if(VO && typeof VO.openExternalApp==='function'){
+    VO.openExternalApp({url:'spotify://'})
+      .then(r=>{
+        DBG('spotify: '+JSON.stringify(r));
+        if(r && r.installed===false){ const m=I18N['byo.absent']; showAnnounce(L3(m[0],m[1],m[2])); }
+      })
+      .catch(e=>DBG('spotify KO: '+((e&&e.message)||e)));
+    return;
+  }
+  // Repli web / build sans le natif du 31/08 : sans effet sur iOS, utile en PWA.
+  try{ window.location.href='spotify://'; }catch(e){ DBG('spotify KO: '+((e&&e.message)||e)); }
+}
+
 function _byoOff(){ // repasse en musique REPS quand l'utilisateur choisit un mix/morceau REPS
   if(!byoMusic) return;
   byoMusic=false;
   document.body.classList.remove('byo-music');
   const bb=document.getElementById('mixByoBtn'); if(bb) bb.classList.remove('on');
+  appliquerMixageAudio();
+}
+
+// ===== BASCULE DE LA SESSION AUDIO iOS (31/08/2026) =====
+// Pousse l'etat courant de byoMusic au natif. A appeler a CHAQUE changement de mode,
+// et avant chaque WOD : la session doit etre dans le bon regime avant le premier son,
+// pas apres.
+//
+// Sans effet hors iOS (navigateur, PWA) : le plugin n'existe pas, on sort en silence.
+// Sans effet non plus sur un build ou le Swift du 31/08 n'a pas ete compile : la
+// methode est absente, l'appel echoue, on l'avale. L'app se comporte alors comme avant.
+//
+// LIMITE CONNUE, non corrigee : AppDelegate active la session en mode NON mixe des le
+// lancement de l'app, avant que ce code JS ne tourne. Ouvrir REPS coupe donc encore une
+// fois le podcast, meme en mode « Ma musique ». La bascule qui suit le fait repartir
+// (setActive(false, .notifyOthersOnDeactivation) cote Swift), mais la coupure initiale
+// existe. Pour la supprimer il faudrait que le natif lise la preference au demarrage.
+// A faire quand le reste sera valide sur iPhone, pas avant.
+function appliquerMixageAudio(){
+  try{
+    const VO=_videoOverlayPlugin();
+    if(!VO || typeof VO.setAudioMixing!=='function') return;
+    VO.setAudioMixing({mix: !!byoMusic})
+      .then(r=>DBG('session audio: mixage='+JSON.stringify(r)))
+      .catch(e=>DBG('session audio: bascule refusee : '+((e&&e.message)||e)));
+  }catch(e){ DBG('session audio: '+((e&&e.message)||e)); }
 }
 // Tuile "MA MUSIQUE" de l'écran wizard : active le mode BYO et ferme le wizard, comme
 // une tuile catégorie. REPS ne jouera aucun morceau, le client met sa propre musique.
@@ -2858,6 +3128,7 @@ function chooseByoMusic(){
   const ab=document.getElementById('mixAutoBtn'); if(ab) ab.classList.remove('on');
   const mb=document.getElementById('mixManualBtn'); if(mb) mb.classList.remove('on');
   if(S.state==='playing') stopMusic();
+  appliquerMixageAudio();   // .mixWithOthers + .duckOthers : le podcast du client survit
   try{ nativePreloadAnnounces(); }catch(e){} // prépare toutes les voix natives à l'avance
   try{localStorage.setItem('reps_music_category','byo');}catch(e){}
   // Libellé "en cours de lecture"
@@ -2874,6 +3145,7 @@ function chooseByoMusic(){
 
 function setMixMode(mode){
   _byoOff();
+  _sacNeuf=true;   // changement de mode de mix : le sac repart
   // Toggle : si on reclique sur le mode actif, on désactive
   window._mixCategory=null; // toggle manuel = tous genres
   if(mixMode===mode){
@@ -2892,6 +3164,7 @@ function setMixMode(mode){
 }
 
 function toggleTrackPick(el, key){
+  _sacNeuf=true;   // la selection manuelle change : le sac repart
   const idx=manualPicks.indexOf(key);
   if(idx>=0){
     manualPicks.splice(idx,1);
@@ -3026,8 +3299,40 @@ function startMusic(){
       loopMode=true;
     }
   }
+  // ===== LE SAC DE TIRAGE SURVIT D'UN WOD A L'AUTRE (31/08/2026) =====
+  //
+  // Avant : _dejaJoues repartait a zero a chaque startMusic, et firstKey valait
+  // toujours S.track, qui ne bouge plus une fois le wizard passe. Consequence : le
+  // MEME morceau au demarrage de chaque wod de la seance. Sur une tuile a un seul
+  // morceau (TECHNO, HOUSE, HYMNE) c'est le cas le pire. C'est ce que Francois a
+  // entendu chez On Air le 27/08 : « les chansons se repetent au moins 3 fois ».
+  // Ce n'etait pas une repetition DANS un wod (les morceaux font ~5 min, un AMRAP
+  // de 12 min en joue 2 ou 3 differents) mais ENTRE les wod.
+  //
+  // Maintenant : le premier wod apres un choix musical honore ce choix (le coach a
+  // clique TECHNO, il veut techno). Les wod suivants tirent la suite du sac, sans
+  // rejouer un morceau tant qu'il en reste un jamais joue. Le sac ne repart que
+  // lorsque le choix change (applyWizardMix, setMixMode, toggleTrackPick,
+  // selectTrack remettent _sacNeuf a true) ou lorsqu'il est epuise (pickNextTrack).
+  //
+  // loopMode (un seul morceau coche, ou un import perso) est exclu : la boucle est
+  // demandee explicitement, on ne tire rien.
+  if(loopMode){
+    _dejaJoues=[firstKey];
+  } else if(_sacNeuf){
+    _dejaJoues=[firstKey];
+    _sacNeuf=false;
+  } else {
+    const poolDepart = (mixMode==='manual' && manualPicks.length>=2)
+      ? manualPicks
+      : ((window._mixCategory && window.CATEGORY_TRACKS[window._mixCategory])
+          ? window.CATEGORY_TRACKS[window._mixCategory]
+          : ALL_TRACK_KEYS);
+    // pickNextTrack exclut _shuffleCurrentKey, donc on ne redemarre jamais sur le
+    // morceau qui vient de finir le wod precedent.
+    firstKey=pickNextTrack(poolDepart, mixMode==='manual');
+  }
   _shuffleCurrentKey=firstKey;
-  _dejaJoues=[firstKey];   // le sac de tirage repart a chaque WOD
   musicAudio=getCachedAudio('music_'+firstKey, MUSIC[firstKey]);
   musicAudio.loop=loopMode;
   musicAudio.currentTime=0;
@@ -3124,9 +3429,15 @@ let _duckCount=0; // nombre de ducks ouverts (miroir de _ducks.size, lu ailleurs
 // mesure sur l'enregistrement du 22/08, -1,0 dB pendant les annonces au lieu des
 // -18,4 dB que le code croyait appliquer. C'est ici, et nulle part ailleurs, qu'on
 // regle le dosage a l'oreille sur la sono.
-const DUCK_ANNONCE  = 0.25;  // ROUND / REST / TIME        (-12 dB)
-const DUCK_CRUNCH   = 0.12;  // decompte EMOM "crunch"     (-18 dB)
-const DUCK_DECOMPTE = 0.15;  // decompte 3-2-1-GO du depart (-16 dB)
+// REGLAGE DU 31/08/2026, apres la demo On Air du 27/08.
+// Francois : « les voix ne sont pas assez fortes en salle ». Ce n'est pas la voix
+// qu'on monte, c'est la musique qu'on baisse : les fichiers voix n'ont que 2 dB de
+// marge avant saturation, le ducking en avait 20 devant lui et n'en utilisait que 12.
+// Valeurs precedentes : 0.25 / 0.12 / 0.15 (-12 / -18 / -16 dB).
+// A REGLER A L'OREILLE SUR UNE VRAIE SONO. C'est ici, et nulle part ailleurs.
+const DUCK_ANNONCE  = 0.10;  // ROUND / REST / TIME        (-20 dB)
+const DUCK_CRUNCH   = 0.05;  // decompte EMOM "crunch"     (-26 dB)
+const DUCK_DECOMPTE = 0.06;  // decompte 3-2-1-GO du depart (-24 dB)
 function musicTargetVolume(){
   // Le curseur est desormais visible et reel sur toutes les plateformes.
   // Sa valeur par defaut est 100 %, pour que le son au premier lancement soit
@@ -3430,8 +3741,12 @@ function playFileViaBus(src, vol, estVoix){
 }
 // Précharge le décompte de départ (10..GO) de la langue courante, appelé à l'armement.
 async function preloadRecCountdown(){
-  const list=(typeof S!=='undefined' && S.lang==='fr')?COUNT_AUDIO_FR:((typeof S!=='undefined'&&S.lang==='pt')?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
+  // Meme source que launch() : si le signal de depart remplace la voix du GO,
+  // c'est lui qu'il faut avoir en buffer, pas le « PARTEZ ». Passer par
+  // listeDecompte() garantit que les deux ne peuvent pas diverger.
+  const list=listeDecompte();
   for(const f of list){ await _loadRecBuf(f); }
+  if(!SIGNAL_DEPART_REMPLACE_VOIX) await _loadRecBuf(START_AUDIO);
 }
 // Précharge les voix jouées par speak() pendant l'enregistrement : surtout "TIME" en fin
 // de WOD, plus les jalons 3min / 1min / 10s. Sans ce préchargement, "TIME" devrait décoder
@@ -3498,6 +3813,89 @@ function _elFor(src){
   if(a._repsSrc!==src){ try{ a.src=VP(src); }catch(e){} a._repsSrc=src; }
   return a;
 }
+
+// ===== ELEMENTS DEDIES AU DECOMPTE DE DEPART (31/08/2026) =====
+//
+// LE BUG, ET IL A ETE ENTENDU PAR TOUTE LA SALLE LE 27/08.
+//
+// Le pool ci-dessus fait 6 elements et tourne en rond. Son commentaire dit : « un son
+// d'annonce dure <1 s et il n'y en a jamais 6 a la fois -> 6 suffisent ». C'est vrai
+// pour des ANNONCES, espacees de plusieurs minutes. C'est faux pour le DECOMPTE, qui
+// joue ONZE sons en dix secondes, un par seconde.
+//
+// A partir du 7e son — c'est-a-dire a partir du « 4 » — le pool recycle ses elements.
+// Recycler, c'est reaffecter `a.src`, et affecter un src declenche un chargement
+// ASYNCHRONE. Une seconde plus tard on appelle play() sur un element qui n'a pas fini
+// de charger. Deux consequences, et ce sont exactement les deux plaintes :
+//
+//   - il joue encore l'ANCIEN son, celui d'avant le recyclage. Si un fichier d'une
+//     autre langue ou d'un autre pack trainait dans l'element, on entend un decompte
+//     qui change de langue en cours de route. C'est le « franco-portugais ».
+//   - ou il demarre en retard, ou pas du tout. D'ou « le 2 et le 1 sont acceleres »,
+//     « de 3 a 2 c'est accelere ». Les six premiers chiffres sont propres, la fin
+//     part en vrille : c'est la signature du recyclage.
+//
+// LA CORRECTION : le decompte ne partage plus rien. Onze elements a lui, un par
+// fichier, crees et charges AU LANCEMENT — donc avec dix secondes d'avance sur le
+// « 1 » au lieu d'une seconde — et liberes a la fin du wod.
+//
+// Total en memoire : 11 + 6 = 17 elements media, sous le plafond iOS de 25-30 qui
+// avait motive le pool de 6. Et ils sont relaches par clearCd() a chaque fin de wod.
+const _cdEls={};
+function _libererDecompte(){
+  for(const k in _cdEls){
+    const a=_cdEls[k];
+    try{ a.pause(); a.removeAttribute('src'); if(a.load) a.load(); }catch(e){}
+    try{ const i=window.__repsAudios?window.__repsAudios.indexOf(a):-1; if(i>=0) window.__repsAudios.splice(i,1); }catch(e){}
+    delete _cdEls[k];
+  }
+}
+// A appeler DANS le geste utilisateur (launch() vient de togglePlay(), donc c'est le
+// cas) : sans geste, iOS refuse le premier play() et tout le decompte reste muet.
+function preparerDecompte(fichiers){
+  _libererDecompte();
+  // ===== REGRESSION DU 31/08/2026, CORRIGEE LE MEME SOIR =====
+  // En mode « Ma musique » le decompte ne passe PAS par des elements <audio> : il part
+  // par le plugin natif (cf. le test nativeVoiceOn() dans les pas du decompte). Creer
+  // et debloquer onze elements WebKit ici etait donc inutile ET nuisible :
+  //
+  //   togglePlay() coupe deja expressement le loop silencieux WebKit en mode BYO, avec
+  //   ce commentaire — « il tiendrait la session en non-mix ». Mes onze WAV silencieux
+  //   faisaient exactement ce que cette ligne evite. Resultat constate par Francois :
+  //   EVA muette avec Spotify.
+  //
+  // On sort donc immediatement. Le natif a deja tout preche par nativePreloadAnnounces().
+  if(typeof nativeVoiceOn==='function' && nativeVoiceOn()){
+    DBG('decompte: mode Ma musique, elements <audio> non crees (voix natives)');
+    return;
+  }
+  const silent=_makeSilentWavURI(0.05);
+  fichiers.forEach(f=>{
+    if(!f || _cdEls[f]) return;
+    const a=new Audio();
+    a.preload='auto';
+    try{ a.playsInline=true; a.setAttribute('playsinline',''); }catch(e){}
+    _cdEls[f]=a;
+    // Deblocage silencieux pendant le geste, PUIS on pose le vrai fichier et on le
+    // charge tout de suite. L'ordre compte : poser le vrai src avant le deblocage
+    // ferait jouer le chiffre a plein volume au moment du deblocage.
+    const poserVrai=()=>{
+      try{ a.pause(); a.currentTime=0; }catch(e){}
+      a.muted=false; a.volume=1;
+      try{ a.src=VP(f); if(a.load) a.load(); }catch(e){}
+    };
+    try{
+      a.muted=true; a.volume=0; a.src=silent;
+      busAttachEl(a);
+      const pr=a.play();
+      if(pr&&pr.then) pr.then(poserVrai).catch(poserVrai);
+      else poserVrai();
+    }catch(e){ poserVrai(); }
+  });
+}
+// Repli sur le pool commun si l'element dedie n'existe pas (web, ou fichier ajoute
+// apres coup) : on ne veut jamais un decompte muet a cause de cette optimisation.
+function _cdElFor(f){ return _cdEls[f] || _elFor(f); }
 // Coupe et rembobine toutes les annonces du pool (résidus d'un WOD précédent)
 function stopAllAnnounces(){
   try{
@@ -3753,13 +4151,24 @@ function playRoundBufferNow(buf){
 const VOICE_FILES={
   fr:{min3:'three-min-fr.mp3',min1:'last-minute-fr.mp3',s10:'ten-sec-fr.mp3',time:'time-fr.mp3',rest:'rest-fr.mp3',
       min2:'two-min-fr.mp3',min6:'six-min-fr.mp3',min9:'nine-min-fr.mp3',
-      min12:'twelve-min-fr.mp3',min15:'fifteen-min-fr.mp3',min18:'eighteen-min-fr.mp3',s30:'thirty-sec-fr.mp3'},
+      min12:'twelve-min-fr.mp3',min15:'fifteen-min-fr.mp3',min18:'eighteen-min-fr.mp3',s30:'thirty-sec-fr.mp3',
+      // Mi-parcours : cle FRANCAISE uniquement (25/08/2026). Pas d'entree dans
+      // en: ni pt:, donc annonceVoix('half') n'y trouve rien et ne sort pas.
+      half:'halfway-fr.mp3',
+      // ENCOURAGEMENTS (31/08/2026). Les fichiers n'existent pas encore : les noms sont
+      // NUMEROTES et non parlants, exprès. Si la formulation d'une phrase change, on
+      // regenere le meme fichier, on ne renomme rien et le code ne bouge pas.
+      // enc1 « Athlète !! On lâche rien » · enc2 « Let's gooo » · enc3 « Ne lâchez rien !! »
+      // enc4 « C'est maintenant qu'il ne faut rien lâcher » (2 dernières minutes)
+      enc1:'enc-1-fr.mp3',enc2:'enc-2-fr.mp3',enc3:'enc-3-fr.mp3',enc4:'enc-4-fr.mp3'},
   en:{min3:'three-min.mp3',min1:'last-minute.mp3',s10:'ten-sec.mp3',time:'time.mp3',rest:'rest.mp3',
       min2:'two-min.mp3',min6:'six-min.mp3',min9:'nine-min.mp3',
-      min12:'twelve-min.mp3',min15:'fifteen-min.mp3',min18:'eighteen-min.mp3',s30:'thirty-sec.mp3'},
+      min12:'twelve-min.mp3',min15:'fifteen-min.mp3',min18:'eighteen-min.mp3',s30:'thirty-sec.mp3',
+      enc1:'enc-1.mp3',enc2:'enc-2.mp3',enc3:'enc-3.mp3',enc4:'enc-4.mp3'},
   pt:{min3:'three-min-pt.mp3',min1:'last-minute-pt.mp3',s10:'ten-sec-pt.mp3',time:'time-pt.mp3',rest:'rest-pt.mp3',
       min2:'two-min-pt.mp3',min6:'six-min-pt.mp3',min9:'nine-min-pt.mp3',
-      min12:'twelve-min-pt.mp3',min15:'fifteen-min-pt.mp3',min18:'eighteen-min-pt.mp3',s30:'thirty-sec-pt.mp3'}
+      min12:'twelve-min-pt.mp3',min15:'fifteen-min-pt.mp3',min18:'eighteen-min-pt.mp3',s30:'thirty-sec-pt.mp3',
+      enc1:'enc-1-pt.mp3',enc2:'enc-2-pt.mp3',enc3:'enc-3-pt.mp3',enc4:'enc-4-pt.mp3'}
 };
 
 // Fichiers réellement embarqués. Une clé à false fait le bip au lieu de la voix.
@@ -3769,7 +4178,17 @@ const VOICE_FILES={
 // Ce cas-là tombe sur le repli de playVoiceFile, donc bip, sans rien casser.
 const VOICE_FILES_PRESENTS={
   min3:true, min1:true, s10:true, time:true, rest:true,
-  min2:true, min6:true, min9:true, min12:true, min15:true, min18:true, s30:true
+  min2:true, min6:true, min9:true, min12:true, min15:true, min18:true, s30:true,
+  // halfway-*.mp3 dormait sur le disque depuis toujours : les fichiers existaient
+  // dans les quatre packs et les trois langues, mais AUCUN code ne les jouait.
+  // Constate et documente le 10/08/2026, le prechargement natif avait meme ete
+  // retire. L'annonce de mi-parcours du 25/08 leur donne enfin un usage.
+  half:true,
+  // ENCOURAGEMENTS : a passer a true pack par pack, quand les mp3 sont poses ET
+  // normalises. Tant que c'est false, encouragementDu() ne joue RIEN et surtout ne
+  // fait PAS le bip de repli : un encouragement absent doit rester silencieux, il
+  // n'apporte aucune information que l'athlete doive entendre.
+  enc1:true,enc2:true,enc3:true,enc4:true
 };
 
 // Joue une annonce par sa CLÉ, dans la voix du pack actif. Aucun repli téléphone :
@@ -3787,6 +4206,203 @@ function annonceVoix(cle){
 // tous les 3 min jusqu'à 3 min restantes, puis chaque minute sous 3 min, puis 30 s.
 // Sur 12 min : 9, 6, 3, 2, 1 min, 30 s, 10 s = exactement les 7 marques demandées.
 // Le 10 s, le 5-4-3-2-1 et le TIME restent gérés par le tronc commun de checkAnnounce.
+// ===== MI-PARCOURS (25/08/2026) =====
+// Annonce une fois, a la moitie du temps, en For Time et en AMRAP.
+//
+// FRANCAIS UNIQUEMENT, decision de Francois : la ligne n'est enregistree qu'en
+// francais. En anglais et en portugais, rien ne sonne et rien ne s'affiche.
+//
+// Le mot « captime » est exact en For Time, ou il y a bien un temps plafond.
+// En AMRAP il n'y a pas de plafond mais une duree : abus de langage assume et
+// tranche le 25/08, note ici pour que personne ne le corrige par erreur.
+//
+// Les packs anglophones (MUTANT, MIKE) tombent sur le repli de VP() et disent
+// « Halfway » : coherent avec leur regle, ils annoncent en anglais.
+function miParcoursSec(){
+  if(!S.total || S.total<=0) return -1;
+  return Math.round(S.total/2);
+}
+
+// ===== ENCOURAGEMENTS ALEATOIRES PENDANT LE WOD (31/08/2026) =====
+//
+// Demande de Francois apres la demo On Air du 27/08 : sur un AMRAP de 12 minutes on
+// entend le decompte de depart, puis 9, 6, 3, 2, 1 min, 30 s et les 3 dernieres
+// secondes. Sept prises de parole, et de longs trous de 3 minutes sans personne.
+//
+// LES PHRASES sont de Francois, ancien speaker. Deux familles, donc DEUX SACS :
+//
+//   sac general  enc1  « Athlete !! On lache rien »          valable a tout moment
+//                enc2  « Let's gooo »
+//                enc3  « Ne lachez rien !! »
+//   sac final    enc4  « C'est maintenant qu'il ne faut       UNIQUEMENT dans les
+//                        rien lacher »                        2 dernieres minutes
+//
+// Le decoupage n'est pas cosmetique : enc4 ment si elle sort a 2 minutes de course
+// sur un AMRAP de 12. Une phrase qui situe l'athlete doit tomber ou elle est vraie.
+//
+// PAS DE MI-PARCOURS ICI. « Nous sommes a la moitie du captime » existe deja depuis
+// le 25/08, c'est annonceVoix('half') plus haut, avec son propre calcul exact. Ne pas
+// la dupliquer dans un encouragement : les deux sortiraient a la meme seconde.
+//
+// PRINCIPE : le planning est calcule UNE FOIS au lancement, pas seconde par seconde.
+// C'est ce qui rend les collisions impossibles par construction plutot que par des
+// tests a rallonge dans checkAnnounce, et c'est ce qui rend le tout testable.
+//
+// TROIS REGLES, dans l'ordre d'importance :
+//   1. Un encouragement ne coupe JAMAIS une annonce utile : interdit a moins de
+//      ENCOURAGEMENT_GARDE secondes de tout repere. Sans ca, _couperVoixEnCours
+//      ferait taire un « Neuf minutes » au profit d'un « let's gooo ».
+//   2. Rien sous ENCOURAGEMENT_FIN : la derniere minute appartient au chrono.
+//   3. Pas deux fois la meme phrase tant qu'il en reste une non jouee. Sur un WOD
+//      long le sac se vide et se remplit, donc une phrase peut ressortir : c'est
+//      voulu, Francois l'a demande explicitement.
+//
+// MODES : wod et amrap seulement. Tabata est trop court. L'EMOM est ecarte
+// volontairement : il annonce deja un round et un decompte 3-2-1 a chaque intervalle,
+// ses reperes sont dynamiques donc non planifiables, et il n'a aucun trou a combler.
+//
+// TANT QUE ENCOURAGEMENTS_ACTIFS EST FALSE, RIEN N'EST PLANIFIE ET RIEN NE SONNE.
+// ALLUME LE 31/08/2026 au soir : les 8 fichiers sont generes, normalises entre -12,8
+// et -13,6 dB (dispersion 0,8 dB) et poses aux trois emplacements pour SAM et LEO.
+const ENCOURAGEMENTS_ACTIFS = true;
+// Packs qui possedent les fichiers d'encouragement. Sans ce garde, un pack anglophone
+// (MUTANT, MIKE) tomberait sur le repli anglais de VP() — 'enc-1.mp3' a la racine —
+// qui n'existe pas : silence et 404 pour rien. Les encouragements n'existent qu'en
+// francais, donc que chez les packs francophones.
+const ENCOURAGEMENTS_PACKS = {sam:1, leo:1};
+// Un encouragement du sac general par tranche de N secondes utiles.
+// Baisser = parler plus souvent. C'est LE reglage a bouger si Francois trouve que
+// ca ne parle toujours pas assez, ou au contraire que ca jacasse.
+//
+// 240 -> 180 le 01/09/2026, mesure a l'appui (300 tirages par duree) :
+//   - le seuil d'entree descend de 6 min 20 a 5 min : un AMRAP de 5 min n'avait
+//     AUCUN encouragement, il en a un maintenant ;
+//   - AMRAP 12 min : 3 -> 4 encouragements, plus grand silence 180 s -> 148 s ;
+//   - AMRAP 30 min : 7 -> 10, silence 180 s -> 159 s ;
+//   - for time 20 min : 5 -> 6, silence 286 s -> 239 s.
+// Pas descendu a 120 : sur un 30 min ca ferait 14 sorties pour un sac de 3 phrases,
+// soit 4 a 5 fois la meme, avec la meme intonation figee. Le sac general doit
+// grossir (2 ou 3 phrases de plus) avant que l'intervalle descende encore.
+const ENCOURAGEMENTS_INTERVALLE = 180;
+const ENCOURAGEMENT_GARDE  = 10;   // distance minimale a un repere existant, en secondes
+const ENCOURAGEMENT_FIN    = 60;   // rien sous une minute restante
+const ENCOURAGEMENT_DEBUT  = 20;   // rien dans les 20 premieres secondes du wod
+const ENCOURAGEMENT_FENETRE_FINALE = 120;  // sous 2 min restantes, seul le sac final parle
+const ENCOURAGEMENTS_GENERAL = ['enc1','enc2','enc3'];
+const ENCOURAGEMENTS_FINALE  = ['enc4'];
+
+let _encPlanning=[];      // [{r, finale}] : secondes RESTANTES ou un encouragement sort
+let _encSacGeneral=[];    // sacs de tirage : ils survivent d'un wod a l'autre
+let _encSacFinale=[];
+
+// Toutes les secondes restantes ou une annonce existante tombe deja.
+// Volontairement large : mieux vaut interdire une seconde de trop que couper un repere.
+function encReperesOccupes(total, mode, lang){
+  const occ=[0,1,2,3,10];
+  if(mode==='wod'){ occ.push(180,60); }
+  if(mode==='amrap'){
+    occ.push(30,60,120);
+    for(let r=180;r<=total;r+=180) occ.push(r);
+  }
+  if((mode==='wod'||mode==='amrap') && lang==='fr'){
+    const mi=Math.round(total/2);   // annonce de mi-parcours du 25/08
+    if(mi>0) occ.push(mi);
+  }
+  return occ;
+}
+
+// plancher : seconde sous laquelle on refuse (le sac general s'arrete a la fenetre
+// finale). Passer null pour la fenetre finale elle-meme.
+function encSecondeLibre(r, occ, deja, plancher){
+  if(r<=ENCOURAGEMENT_FIN) return false;
+  if(plancher!==null && plancher!==undefined && r<=plancher) return false;
+  for(let i=0;i<occ.length;i++){ if(Math.abs(r-occ[i])<=ENCOURAGEMENT_GARDE) return false; }
+  // Deux encouragements ne se collent pas non plus : garde doublee entre eux.
+  for(let i=0;i<deja.length;i++){ if(Math.abs(r-deja[i].r)<=ENCOURAGEMENT_GARDE*2) return false; }
+  return true;
+}
+
+// Appelee par launch(), une fois S.total connu. Jamais pendant le wod.
+function planifierEncouragements(total, mode, lang){
+  _encPlanning=[];
+  if(!ENCOURAGEMENTS_ACTIFS) return _encPlanning;
+  if(!ENCOURAGEMENTS_PACKS[S_voix]) return _encPlanning;   // rien a planifier
+  if(lang!=='fr') return _encPlanning;   // les 4 phrases n'existent qu'en francais
+  if(mode!=='wod' && mode!=='amrap') return _encPlanning;
+  if(!total || total<=0) return _encPlanning;
+  const occ=encReperesOccupes(total, mode, lang);
+
+  // --- SAC GENERAL : du debut du wod jusqu'a la fenetre finale, exclue.
+  const haut=total-ENCOURAGEMENT_DEBUT, bas=ENCOURAGEMENT_FENETRE_FINALE;
+  const etendue=haut-bas;
+  if(etendue>=ENCOURAGEMENTS_INTERVALLE){
+    const n=Math.floor(etendue/ENCOURAGEMENTS_INTERVALLE), largeur=etendue/n;
+    for(let i=0;i<n;i++){
+      const hautC=haut-i*largeur, basC=hautC-largeur;
+      // Tirage dans le TIERS CENTRAL du creneau : les bords sont la ou tombent les
+      // reperes reguliers, viser le milieu evite la plupart des rejets d'entree.
+      const a=basC+largeur/3, b=hautC-largeur/3;
+      let choisi=null;
+      for(let essai=0; essai<40 && choisi===null; essai++){
+        const r=Math.round(a+Math.random()*(b-a));
+        if(encSecondeLibre(r,occ,_encPlanning,ENCOURAGEMENT_FENETRE_FINALE)) choisi=r;
+      }
+      // Repli deterministe : sans lui, un creneau encombre rendrait le planning
+      // dependant de la chance des 40 tirages.
+      if(choisi===null){
+        for(let r=Math.round(hautC); r>Math.round(basC); r--){
+          if(encSecondeLibre(r,occ,_encPlanning,ENCOURAGEMENT_FENETRE_FINALE)){ choisi=r; break; }
+        }
+      }
+      if(choisi!==null) _encPlanning.push({r:choisi, finale:false});
+    }
+  }
+
+  // --- SAC FINAL : une seule phrase, entre 2 min et 1 min restantes.
+  // On balaye tous les candidats et on tire parmi eux : la fenetre est trop etroite
+  // (une quarantaine de secondes une fois les gardes posees) pour un tirage a l'aveugle.
+  if(total>=ENCOURAGEMENTS_INTERVALLE+ENCOURAGEMENT_FENETRE_FINALE){
+    const candidats=[];
+    for(let r=ENCOURAGEMENT_FENETRE_FINALE-1; r>ENCOURAGEMENT_FIN; r--){
+      if(encSecondeLibre(r,occ,_encPlanning,null)) candidats.push(r);
+    }
+    if(candidats.length){
+      _encPlanning.push({r:candidats[Math.floor(Math.random()*candidats.length)], finale:true});
+    }
+  }
+  return _encPlanning;
+}
+
+// Sac de tirage : pas deux fois la meme phrase tant qu'il en reste une non jouee.
+function tirerEncouragement(finale){
+  const pool = finale ? ENCOURAGEMENTS_FINALE : ENCOURAGEMENTS_GENERAL;
+  const sac  = finale ? _encSacFinale : _encSacGeneral;
+  let reste=pool.filter(k=>sac.indexOf(k)<0);
+  if(!reste.length){ sac.length=0; reste=pool.slice(); }
+  const cle=reste[Math.floor(Math.random()*reste.length)];
+  sac.push(cle);
+  return cle;
+}
+
+// Appelee par checkAnnounce. Renvoie true si un encouragement a ete joue.
+function encouragementDu(r){
+  if(!ENCOURAGEMENTS_ACTIFS) return false;
+  if(!ENCOURAGEMENTS_PACKS[S_voix]) return false;   // pack sans fichiers : on se tait
+  let i=-1;
+  for(let k=0;k<_encPlanning.length;k++){ if(_encPlanning[k].r===r){ i=k; break; } }
+  if(i<0) return false;
+  const finale=_encPlanning[i].finale;
+  _encPlanning.splice(i,1);   // une seule fois, meme si la seconde est reevaluee (pause/reprise)
+  const cle=tirerEncouragement(finale);
+  const f=(VOICE_FILES[S.lang]||{})[cle];
+  // PAS de repli sur playTick, contrairement a annonceVoix : un encouragement absent
+  // reste SILENCIEUX. Un bip a la place d'un « let's gooo » n'apprend rien a l'athlete
+  // et se confond avec le decompte des trois dernieres secondes.
+  if(!f || !VOICE_FILES_PRESENTS[cle]) return false;
+  playVoiceFile(f, ()=>{});
+  return true;
+}
+
 function amrapMarque(r){
   if(r===30) return {cle:'s30', txt:L3('30 SECONDES','30 SECONDS','30 SEGUNDOS')};
   if(r===60) return {cle:'min1', txt:L3('DERNIÈRE MIN','LAST MIN','ÚLTIMO MIN')};
@@ -3942,10 +4558,27 @@ function startVisualCountdown(){
   }}));
   const lastT=timings[timings.length-1].t;
   visSteps.push({t:lastT+500,fn:()=>overlay.classList.remove('show')});
-  S.cdVisSched=runAbsSchedule(visSteps);
+  S.cdVisSched=runAbsSchedule(visSteps,10);
 }
 
-function clearCd(){if(S.cdSched){clearInterval(S.cdSched);S.cdSched=null;}if(S.cdVisSched){clearInterval(S.cdVisSched);S.cdVisSched=null;}S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}if(S.cdWA){S.cdWA.forEach(s=>{try{s.stop();}catch(e){}});S.cdWA=[];}document.getElementById('cdOverlay').classList.remove('show');}
+// L'anneau de la minute. Appele par updateClock(), donc a chaque seconde affichee.
+// r = secondes restantes. On ne recalcule le perimetre qu'une fois.
+const _DIAL_C = 2 * Math.PI * 44;
+function majAnneau(r){
+  const arc=document.getElementById('dialArc');
+  if(!arc) return;
+  if(!arc._repsInit){ arc.style.strokeDasharray=_DIAL_C.toFixed(2); arc._repsInit=1; }
+  const reste=Math.max(0, r|0);
+  // La fraction de la MINUTE en cours, pas du WOD : c'est ce qui donne le battement
+  // visible toutes les soixante secondes, y compris sur un AMRAP de 30 minutes ou un
+  // anneau cale sur le total ne bougerait pas assez pour se voir.
+  const f=(reste%60)/60;
+  arc.style.strokeDashoffset=(_DIAL_C*(1-f)).toFixed(2);
+  const carte=document.getElementById('timerCard');
+  if(carte) carte.classList.toggle('dial-alerte', reste>0 && reste<=3);
+}
+
+function clearCd(){if(S.cdSched){clearInterval(S.cdSched);S.cdSched=null;}if(S.cdVisSched){clearInterval(S.cdVisSched);S.cdVisSched=null;}S.cdTimers.forEach(t=>clearTimeout(t));S.cdTimers=[];if(S.cdAudioTimers){S.cdAudioTimers.forEach(t=>clearTimeout(t));S.cdAudioTimers=[];}if(S.cdWA){S.cdWA.forEach(s=>{try{s.stop();}catch(e){}});S.cdWA=[];}try{_libererDecompte();}catch(e){}document.getElementById('cdOverlay').classList.remove('show');}
 
 // ===== VOIX NATIVES (mode "Ma musique") =====
 // En mode Ma musique, les voix passent par le plugin natif @capgo/native-audio (HORS WebKit),
@@ -3991,7 +4624,7 @@ function _announceFilesForLang(){
   // les 7 lignes AMRAP du build 4 avant qu'elles n'existent, et on occuperait des places
   // du pool natif pour un son qui ne peut pas partir (meme piege que halfway, ci-dessous).
   const vf=VOICE_FILES[L]||{}; Object.keys(vf).forEach(k=>{ if(VOICE_FILES_PRESENTS[k]) out.push(vf[k]); });
-  out.push(BEEP_AUDIO, TICK_AUDIO);
+  out.push(BEEP_AUDIO, TICK_AUDIO, START_AUDIO);
   // NOTE (10/08/2026) : le prechargement de halfway-*.mp3 a ete retire. Il n'existe
   // AUCUNE annonce « a la moitie » dans l'app : pas de cle dans TXT, pas de mapping
   // dans voiceFileForText(). Les fichiers etaient donc charges dans le pool audio
@@ -4106,6 +4739,27 @@ function toggleFilmAudio(){
   if(b){ b.textContent=(S.filmAudio?'🔊':'🔇')+' '+L3('Son ambiant','Ambient sound','Som ambiente'); b.classList.toggle('on',S.filmAudio); }
   DBG('son ambiant: '+(S.filmAudio?'ON':'OFF'));
 }
+// ===== CAMERA AVANT / ARRIERE (25/08/2026) =====
+// Le plugin natif acceptait deja camera:'front', le web envoyait 'back' en dur.
+// Ici on expose le choix, on le memorise, et on interdit le changement en cours
+// d'enregistrement : basculer de capteur oblige a reconfigurer la session
+// AVCapture, ce qui couperait le fichier en deux.
+// Le miroir n'est PAS un reglage web : il est applique cote natif, uniquement sur
+// la camera avant (VideoOverlayPlugin.swift).
+function setFilmCamBtn(){
+  const b=document.getElementById('btnFilmCam'); if(!b) return;
+  const av=(S.filmCam==='front');
+  b.textContent=av ? '\u{1F933} '+L3('Avant','Front','Frontal')
+                   : '\u{1F4F7} '+L3('Arrière','Back','Traseira');
+  b.classList.toggle('on',av);
+}
+function toggleFilmCam(){
+  if(S.filming){ DBG('caméra: pas pendant l\'enregistrement'); return; }
+  S.filmCam=(S.filmCam==='front')?'back':'front';
+  try{ localStorage.setItem('reps_cam',S.filmCam); }catch(e){}
+  setFilmCamBtn();
+  DBG('caméra: '+S.filmCam);
+}
 async function toggleFilm(){
   const VO=_videoOverlayPlugin();
   if(!VO){ DBG('film: plugin natif absent (web ?)'); return; }
@@ -4140,7 +4794,7 @@ async function toggleFilm(){
       _slot.style.transition=_tr;
     }
     DBG('cam: bas du slot a '+_camPx+' px');
-    const r=await VO.startRecording({camera:'back', withAudio:!!S.filmAudio, camHeightPx:_camPx});
+    const r=await VO.startRecording({camera:(S.filmCam==='front'?'front':'back'), withAudio:!!S.filmAudio, camHeightPx:_camPx});
     S.filming=true;
     S.recStartMs=(r&&r.startWallClockMs)||Date.now();
     setFilmBtn(true);
@@ -4194,9 +4848,20 @@ async function finishFilmAndExport(){
 }
 // Bouton Filmer visible seulement si le plugin natif répond (donc app iOS, pas web).
 document.addEventListener('DOMContentLoaded',()=>{
+  // Ecran depouille + anneau, actifs par defaut depuis le 31/08/2026.
+  // Retirer cette ligne remet exactement l'ancien ecran : rien n'a ete supprime.
+  try{ document.body.classList.add('chrono-anneau'); }catch(e){}
   // Son ambiant ON par défaut (c'est l'usage voulu). Le bouton reste dispo pour couper.
   try{ if(typeof S==='object' && S.filmAudio===undefined) S.filmAudio=true; }catch(e){}
-  const show=()=>{ if(!_videoOverlayPlugin()) return; ['btnFilm','btnFilmAudio'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display=''; }); };
+  // Camera arriere par defaut : c'est le cadrage de box, telephone cale face au coach.
+  try{
+    if(typeof S==='object'){
+      const _c=localStorage.getItem('reps_cam');
+      S.filmCam=(_c==='front')?'front':'back';
+    }
+  }catch(e){ try{ S.filmCam='back'; }catch(_){} }
+  try{ setFilmCamBtn(); }catch(e){}
+  const show=()=>{ if(!_videoOverlayPlugin()) return; ['btnFilm','btnFilmAudio','btnFilmCam'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display=''; }); };
   show(); setTimeout(show,800);
 });
 // Écran de calage manuel : gardé comme repli si le calage auto échoue (non utilisé par défaut).
@@ -4258,7 +4923,14 @@ function DBG(msg){
 // ===== ORDONNANCEUR SUR HORLOGE ABSOLUE =====
 // Les setTimeout/setInterval d'iOS peuvent être ralentis : on ne compte plus les
 // battements, on lit l'heure réelle à chaque passage et on rattrape le retard.
-function runAbsSchedule(steps){
+// periode : 50 ms suffit pour le chrono et l'affichage. Le DECOMPTE, lui, passe a
+// 10 ms (31/08/2026). Raison : un pas ne se declenche qu'au premier reveil ou
+// steps[i].t <= ecoule, donc il part avec un retard ALEATOIRE de 0 a la periode.
+// A 50 ms, deux chiffres consecutifs pouvaient etre espaces de 950 a 1050 ms. Sur un
+// decompte sec, 100 ms d'ecart s'entendent, et c'est la deuxieme moitie de ce que
+// Francois decrit comme « les chiffres vont trop vite ». A 10 ms, l'ecart maximal
+// tombe a 20 ms : inaudible.
+function runAbsSchedule(steps, periode){
   const t0=Date.now(); let i=0;
   const iv=setInterval(()=>{
     const el=Date.now()-t0;
@@ -4267,7 +4939,7 @@ function runAbsSchedule(steps){
       i++;
     }
     if(i>=steps.length) clearInterval(iv);
-  },50);
+  }, periode||50);
   return iv;
 }
 
@@ -4280,7 +4952,14 @@ function launch(){
   stopMusic();
   S.gen=(S.gen||0)+1; // invalide tout intervalle orphelin encore en vie
   if(window.speechSynthesis){ try{ speechSynthesis.cancel(); }catch(e){} }
+  S.miDit=false;   // mi-parcours : filet, au cas ou launch() ne passe pas par resetTimer
   updateTotalFromMode();
+  // Le planning des encouragements se calcule ici, une fois S.total connu, et jamais
+  // pendant le wod : c'est ce qui garantit qu'aucun ne tombera sur un repere.
+  planifierEncouragements(S.total, S.mode, S.lang);
+  // Filet : quel que soit le chemin par lequel le mode a ete restaure (localStorage,
+  // wizard, bouton), la session audio est remise dans le bon regime avant le premier son.
+  appliquerMixageAudio();
   updateClock();
   if(byoMusic){
     // Mode Ma musique : AUCUN audio WebKit (il couperait Spotify). Toutes les voix via plugin natif.
@@ -4307,15 +4986,22 @@ function launch(){
   if(voiceAudio){try{voiceAudio.pause();}catch(e){}}
   // Nouveau système unifié EN/FR : 11 fichiers synchronisés sur le timer (1 par seconde)
   const vol=parseInt(document.getElementById('volVoice').value)/100;
-  const countAudioList=S.lang==='fr'?COUNT_AUDIO_FR:(S.lang==='pt'?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
+  const countAudioList=listeDecompte();
+  // Onze elements <audio> dedies, charges MAINTENANT, dans le geste utilisateur.
+  // C'est ce qui donne au « 1 » et au GO dix secondes d'avance au lieu d'une.
+  // Le signal de depart en fait partie quand il s'ajoute a la voix du GO.
+  try{ preparerDecompte(SIGNAL_DEPART_REMPLACE_VOIX?countAudioList:countAudioList.concat([START_AUDIO])); }
+  catch(e){ DBG('preparerDecompte KO: '+((e&&e.message)||e)); }
   S.cdAudioTimers=[];
   // Ducking musique pendant tout le décompte pour que la voix soit bien audible
   // Duck long, tenu sur tout le decompte 10 -> GO, referme au GO.
   const _duckDepart=duckStart(DUCK_DECOMPTE);
   // Calibrage : on cale le mot sur la seconde en compensant le silence de tête de chaque
   // fichier (cf. COUNT_ONSET). attaque0 = ancre du "10" (on ne peut pas jouer avant t=0).
-  const _onsets=onsetsVoix();
+  const _onsets=onsetsDecompte();
   const _onset0=_onsets[0]||0;
+  // Instant du GO, commun aux deux chemins ci-dessous.
+  const _tGo=Math.max(0, 10*1000 - (_onsets[10]||0) + _onset0);
 
   if(_busActive){
     // ENREGISTREMENT : le thread principal est saturé (dessin canvas 30 i/s + encodage vidéo),
@@ -4343,6 +5029,13 @@ function launch(){
       if(b) startBuf(b, when);
       else _loadRecBuf(file).then(bb=>startBuf(bb, when)); // filet si pas préchargé
     });
+    // Signal de depart EN PLUS de la voix : meme instant que le GO.
+    if(!SIGNAL_DEPART_REMPLACE_VOIX){
+      const wGo=anchor + _tGo/1000;
+      const bs=_recBuf[START_AUDIO];
+      if(bs) startBuf(bs, wGo);
+      else _loadRecBuf(START_AUDIO).then(bb=>startBuf(bb, wGo));
+    }
     const leadMs=Math.round(lead*1000);
     S.cdT0=Date.now()+leadMs;                     // overlay vidéo calé sur l'audio
     // Chrono + remontée musique : tolèrent la gigue, restent sur runAbsSchedule (décalés du lead).
@@ -4360,8 +5053,21 @@ function launch(){
     const _t=Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
     cdSteps.push({t:_t,fn:()=>{
       if(nativeVoiceOn()){ nativeVoicePlay(file); return; } // Ma musique : voix native par-dessus Spotify
-      const a=_elFor(file);
+      const a=_cdElFor(file);
       try{a.muted=false;}catch(e){} // sinon le déverrouillage async laisse le "10" muet au 1er WOD
+      // COURSE DU « 10 », CORRIGEE LE 01/09/2026.
+      // preparerDecompte() debloque chaque element sur un WAV silencieux et ne pose le
+      // VRAI src que dans le .then() de ce play() de deblocage. Le pas t=0, lui, part
+      // tout de suite : sur le premier chiffre la promesse n'est pas encore resolue,
+      // l'element porte donc encore le data:audio silencieux et le « 10 » sort MUET.
+      // Les autres chiffres, planifies a une seconde ou plus, n'ont jamais le probleme.
+      // Constate par docs/test-signal-depart.mjs : la sequence entendue commencait au
+      // « 9 ». Le a.muted=false ci-dessus traitait le volume, pas la source.
+      // Filet : si la source n'est pas encore la bonne, on la pose avant de jouer.
+      try{
+        const _vrai=VP(file);
+        if(!a.src || a.src.indexOf(_vrai)<0){ a.src=_vrai; if(a.load) a.load(); }
+      }catch(e){}
       try{a.volume=Math.min(vol*2.0,1.0);}catch(e){}
       try{a.currentTime=0;}catch(e){}
       const pr=a.play();
@@ -4369,12 +5075,23 @@ function launch(){
       else DBG('countdown '+file);
     }});
   });
+  // Signal de depart EN PLUS de la voix : meme instant que le GO.
+  if(!SIGNAL_DEPART_REMPLACE_VOIX){
+    cdSteps.push({t:_tGo,fn:()=>{
+      if(nativeVoiceOn()){ nativeVoicePlay(START_AUDIO); return; }
+      const a=_cdElFor(START_AUDIO);
+      try{a.muted=false;}catch(e){}
+      try{a.volume=Math.min(vol*2.0,1.0);}catch(e){}
+      try{a.currentTime=0;}catch(e){}
+      const pr=a.play(); if(pr&&pr.catch) pr.catch(err=>DBG('signal depart REJETE '+err.name));
+    }});
+  }
   cdSteps.push({t:10500+_onset0,fn:()=>startChrono()});
   cdSteps.push({t:10800+_onset0,fn:()=>{ duckEnd(_duckDepart); }});
   cdSteps.sort((a,b)=>a.t-b.t);
   DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
   S.cdT0=Date.now(); // top réel du décompte, pour caler l'overlay vidéo dessus
-  S.cdSched=runAbsSchedule(cdSteps);
+  S.cdSched=runAbsSchedule(cdSteps,10);
 }
 
 // Enregistre l'état du chrono (contexte, temps, alerte) à cet instant, pour l'overlay vidéo natif.
@@ -4557,6 +5274,31 @@ function checkAnnounce(){
   // Tabata : pas d'annonces horaires (trop court)
   if(S.mode==='tabata') return;
 
+  // ENCOURAGEMENTS (31/08/2026). Place ici, apres le tronc commun 10/3/2/1 et avant
+  // tous les reperes de mode. La collision est deja impossible par construction : le
+  // planning a ete calcule en excluant ces secondes-la. Ce test ne peut donc pas
+  // « voler » la seconde d'une annonce utile, il ne fait que remplir un trou.
+  if(encouragementDu(r)) return;
+
+  // MI-PARCOURS — teste AVANT les reperes de mode, volontairement.
+  // En AMRAP la moitie peut tomber pile sur un repere existant : sur 12 minutes
+  // elle vaut 6:00 restantes, qui est deja annonce, et sur 30 minutes elle vaut
+  // 15:00. Deux annonces dans la meme seconde se couperaient l'une l'autre
+  // (_couperVoixEnCours). Regle retenue : LA MOITIE GAGNE, elle remplace le
+  // repere. Elle est plus rare et plus informative qu'un « Six minutes » de plus.
+  //
+  // S.miDit evite la repetition si la seconde est reevaluee (pause, reprise).
+  // Les secondes 10, 3, 2 et 1 sont traitees plus haut et sortent avant : sur un
+  // WOD assez court pour que la moitie tombe dessus, l'annonce saute. C'est voulu,
+  // le decompte final prime.
+  if((S.mode==='wod'||S.mode==='amrap') && S.lang==='fr' && !S.miDit
+     && r>0 && r===miParcoursSec()){
+    S.miDit=true;
+    showAnnounce('NOUS SOMMES À LA MOITIÉ DU CAPTIME');
+    annonceVoix('half');
+    return;
+  }
+
   // WOD : annonces classiques
   if(S.mode==='wod'){
     if(r===180){showAnnounce(L3('IL RESTE 3 MIN','3 MIN LEFT','FALTAM 3 MIN'));speak(t.min3);return;}
@@ -4710,6 +5452,8 @@ function resetTimer(){
   S.state='idle';
   wakeLockOff();
   document.body.classList.remove('wod-live');
+  S.miDit=false;   // mi-parcours : reactive pour le WOD suivant
+  _encPlanning=[];  // encouragements : le planning meurt avec le wod (les SACS, eux, survivent)
   if(S.mode==='tabata'){S.tabPhase='work';S.tabRound=1;updateTotalFromMode();}
   if(S.mode==='emom'){S.emomPhase='work';S.emomCurrentRound=1;S.emomCurrentCycle=1;updateTotalFromMode();}
   else{S.remain=S.total;}
