@@ -19,7 +19,9 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "exportOverlay", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "startRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "stopRecording", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "cancelRecording", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "cancelRecording", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setAudioMixing", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "openExternalApp", returnType: CAPPluginReturnPromise)
     ]
 
     private var pickCall: CAPPluginCall?
@@ -36,6 +38,39 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func ping(_ call: CAPPluginCall) {
         call.resolve(["value": "pong from native", "echo": call.getString("msg") ?? ""])
+    }
+
+    // Bascule la session audio entre « REPS possede le son » et « REPS se melange aux
+    // autres apps ». Ajoute le 31/08/2026 pour le bug du podcast coupe (cf. AppDelegate).
+    //
+    // Pose ici, et pas dans un nouveau plugin, pour une raison simple : ce plugin est
+    // deja enregistre et deja resolu par _videoOverlayPlugin() cote JS. Un plugin de
+    // plus, c'est un enregistrement de plus a rater.
+    // Ouvre une autre app par son schema d'URL (spotify://, music://...).
+    // Ajoute le 31/08/2026 : depuis une WKWebView, un simple location.href sur un
+    // schema inconnu est avale sans rien faire. Il faut passer par le natif.
+    @objc func openExternalApp(_ call: CAPPluginCall) {
+        guard let brut = call.getString("url"), let url = URL(string: brut) else {
+            call.reject("url manquante ou invalide"); return
+        }
+        DispatchQueue.main.async {
+            guard UIApplication.shared.canOpenURL(url) else {
+                // App absente du telephone. On ne rejette pas : le JS doit pouvoir
+                // afficher un message calme plutot qu'une erreur.
+                call.resolve(["opened": false, "installed": false]); return
+            }
+            UIApplication.shared.open(url, options: [:]) { ok in
+                call.resolve(["opened": ok, "installed": true])
+            }
+        }
+    }
+
+    @objc func setAudioMixing(_ call: CAPPluginCall) {
+        let mixer = call.getBool("mix") ?? false
+        DispatchQueue.main.async {
+            AppDelegate.activerSessionAudio(mixer: mixer)
+            call.resolve(["mix": mixer])
+        }
     }
 
     // Démarre la caméra + l'enregistrement dans un fichier propre, et affiche un petit
@@ -103,8 +138,21 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
                 DispatchQueue.main.async { call.reject("Sortie vidéo KO", "OUT_KO") }; return
             }
             session.addOutput(output)
-            if let conn = output.connection(with: .video), conn.isVideoOrientationSupported {
-                conn.videoOrientation = .portrait
+            if let conn = output.connection(with: .video) {
+                if conn.isVideoOrientationSupported { conn.videoOrientation = .portrait }
+                // MIROIR — camera avant uniquement (25/08/2026).
+                // On ne se fie PAS au reglage automatique : il ne donne pas la meme valeur
+                // sur une connexion d'apercu et sur une connexion de sortie, et ce n'est
+                // pas contractuel. On coupe l'automatisme AVANT d'ecrire isVideoMirrored :
+                // tant qu'il est actif la propriete est en lecture seule et l'affectation
+                // leve une exception.
+                // Le miroir est ecrit dans le fichier (transform de la piste). L'export
+                // le conserve : buildAndExport() applique videoTrack.preferredTransform.
+                // Le chrono, lui, est incruste APRES : il n'est jamais inverse.
+                if conn.isVideoMirroringSupported {
+                    conn.automaticallyAdjustsVideoMirroring = false
+                    conn.isVideoMirrored = front
+                }
             }
             session.commitConfiguration()
             session.startRunning()
@@ -138,7 +186,15 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
                     pv.cornerRadius = 18
                     pv.maskedCorners = [.layerMinXMaxYCorner, .layerMaxXMaxYCorner]
                     pv.masksToBounds = true
-                    if let c = pv.connection, c.isVideoOrientationSupported { c.videoOrientation = .portrait }
+                    if let c = pv.connection {
+                        if c.isVideoOrientationSupported { c.videoOrientation = .portrait }
+                        // L'apercu doit montrer EXACTEMENT ce qui part dans le fichier,
+                        // sinon le coach cadre sur une image et en obtient une autre.
+                        if c.isVideoMirroringSupported {
+                            c.automaticallyAdjustsVideoMirroring = false
+                            c.isVideoMirrored = front
+                        }
+                    }
                     host.layer.addSublayer(pv)
                     self.previewLayer = pv
                 }

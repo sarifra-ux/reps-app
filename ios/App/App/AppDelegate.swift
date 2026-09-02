@@ -16,12 +16,44 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     /// continue de sortir. Sans `.playback`, un coach en mode silencieux se retrouverait
     /// donc sans musique du tout : on aurait repare le ducking en cassant le son.
     ///
-    /// `.playback` fait sortir le son quel que soit l'interrupteur. Sans `.mixWithOthers` :
-    /// un chrono de WOD doit couvrir Spotify, pas se melanger avec.
-    static func activerSessionAudio() {
+    /// `.playback` fait sortir le son quel que soit l'interrupteur.
+    ///
+    /// ===== CORRECTIF DU 31/08/2026 : DEUX REGIMES, PAS UN =====
+    ///
+    /// Jusqu'ici : `options: []`, sans `.mixWithOthers`, avec ce commentaire — « un
+    /// chrono de WOD doit couvrir Spotify, pas se melanger avec ». C'est vrai dans une
+    /// box, sur une sono. C'est faux partout ailleurs, et ca produisait un bug :
+    ///
+    ///   Adriana, sortie velo en zone 2, ecoute un podcast et lance un For Time. A
+    ///   chaque annonce, REPS prend la session audio et COUPE le podcast. Pas de mise
+    ///   en pause : une interruption dont l'autre app ne revient pas, il faut rouvrir
+    ///   et relancer. A chaque annonce. (Retour du 31/08/2026.)
+    ///
+    /// Deux usages opposes, donc deux regimes :
+    ///
+    ///   mixer = false  (defaut, musique REPS) : `options: []`. REPS possede le son.
+    ///                  C'est ce qu'on veut sur la sono d'une box.
+    ///   mixer = true   (mode « Ma musique ») : `.mixWithOthers` + `.duckOthers`.
+    ///                  Le podcast ou Spotify continue, et iOS le BAISSE tout seul
+    ///                  pendant l'annonce, puis le remonte. Le ducking est fait par le
+    ///                  systeme, pas par nous : c'est le seul moyen, on ne peut pas
+    ///                  toucher au volume d'une autre app.
+    ///
+    /// Le passage en mode mixe DESACTIVE d'abord la session avec
+    /// `.notifyOthersOnDeactivation` : sans ca, une app deja interrompue par REPS ne
+    /// redemarre jamais, et Adriana devrait encore relancer son podcast une fois.
+    ///
+    /// /!\ CE CODE N'A PAS ETE COMPILE. Il doit etre construit dans Xcode puis
+    ///     ESSAYE SUR IPHONE, podcast en cours, dans les deux modes.
+    static func activerSessionAudio(mixer: Bool = false) {
         let s = AVAudioSession.sharedInstance()
         do {
-            try s.setCategory(.playback, mode: .default, options: [])
+            if mixer {
+                try? s.setActive(false, options: .notifyOthersOnDeactivation)
+                try s.setCategory(.playback, mode: .default, options: [.mixWithOthers, .duckOthers])
+            } else {
+                try s.setCategory(.playback, mode: .default, options: [])
+            }
             try s.setActive(true)
         } catch {
             NSLog("REPS: AVAudioSession .playback KO — \(error.localizedDescription)")
