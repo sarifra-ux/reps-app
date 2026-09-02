@@ -11,6 +11,9 @@ La chaine, dans l'ordre :
   2. -2,5 dB a 350 Hz     : degage la boue qui masque les consonnes
   3. +5 dB a 3,2 kHz      : la bande ou se joue l'intelligibilite
   4. +3,5 dB a 6 kHz      : les fricatives (s, f, ch)
+  4b. porte de bruit      : sans elle le compresseur remonte la queue de
+                            silence des fichiers (MUTANT « un » : 0,78 s dont la
+                            moitie est du bruit de fond) et on entend du souffle
   5. compresseur 4:1      : resserre l'ecart voyelle/consonne
   6. gain vers une cible RMS commune : corrige le niveau irregulier d'une
      annonce a l'autre (aujourd'hui 3,5 dB d'ecart a l'interieur de MUTANT)
@@ -26,6 +29,7 @@ CIBLE_RMS_DB = -9.0   # RMS de la partie sonore, apres traitement.
 # au meme niveau : la dispersion de 2 a 3,9 dB a l'interieur d'un pack disparait.
 
 FILTRES = ("highpass=f=110:poles=2,"
+           "agate=threshold=0.05:ratio=3:attack=5:release=120,"
            "equalizer=f=350:t=q:w=1.2:g=-2.5,"
            "equalizer=f=3200:t=q:w=1.2:g=5,"
            "equalizer=f=6000:t=q:w=1.5:g=3.5,"

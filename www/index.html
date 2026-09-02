@@ -2170,20 +2170,26 @@ function VPid(f){ return VP(f).replace(/\//g,'_'); }
 // normalises (silences de tete coupes, d'ou des valeurs proches de zero).
 // max = table historique, ses fichiers n'ont pas ete retraites.
 const COUNT_ONSET_VOIX={
-  // Remesure le 02/09/2026 par docs/mesurer-onsets.py, EN PLEINE BANDE.
-  // Les mesures precedentes rechantillonnaient a 8 kHz, ce qui applique un filtre a
-  // 4 kHz et efface le « s » initial de « six » et « sept » : l'outil croyait ces mots
-  // en retard de 130 ms et la table compensait un decalage qui n'existait pas.
-  // Ecarts entendus entre deux chiffres, avant -> apres :
-  //   MUTANT en  amplitude 140 ms -> 0     (c'etait le pire : 920 ms puis 1060 ms)
-  //   MIKE   en  amplitude  70 ms -> 0
-  //   LEO    fr  amplitude  30 ms -> 0
-  //   SAM fr et MUTANT fr etaient deja justes.
-  max  : { fr:[0,0,0,0,0,0,0,0,0,0,50], en:[0,0,0,10,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
-  nina : { fr:[0,0,0,0,0,0,0,0,0,0,0], en:[0,0,0,0,0,30,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,10] },
-  sam  : { fr:[60,0,0,0,0,0,0,0,60,0,0], en:[0,0,0,0,0,0,20,0,0,0,0], pt:[0,0,0,0,0,0,0,0,40,0,0] },
+  // Remesure le 02/09/2026 par docs/mesurer-onsets.py, EN PLEINE BANDE, APRES le
+  // passage de docs/traiter-voix.py sur les packs actifs.
+  //
+  // Deux corrections d'un coup :
+  //  1. les mesures precedentes rechantillonnaient a 8 kHz, ce qui applique un
+  //     filtre a 4 kHz et efface le « s » initial de « six » et « sept » : l'outil
+  //     croyait ces mots en retard de 130 ms et la table compensait un decalage
+  //     qui n'existait pas ;
+  //  2. la porte de bruit du traitement a nettoye les attaques, donc les onsets
+  //     ont bouge. EVA garde ses anciennes valeurs, le pack n'est plus dans l'app
+  //     et n'a donc pas ete traite.
+  //
+  // Ecarts entendus entre deux chiffres, avant -> apres : MUTANT en 140 ms -> 0,
+  // MIKE en 70 ms -> 0, LEO fr 30 ms -> 0. SAM fr et MUTANT fr etaient deja justes.
+  // Si les mp3 changent, relancer docs/mesurer-onsets.py et recoller ce bloc.
+  max  : { fr:[0,0,0,0,0,0,0,0,0,0,50], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
+  nina : { fr:[0,0,0,0,0,0,0,0,0,0,0], en:[0,0,0,0,0,40,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
+  sam  : { fr:[60,0,0,0,0,0,0,0,70,0,0], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,40,0,0] },
   eva  : { fr:[0,0,0,0,0,0,0,0,60,0,0], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,10,0,0,0,50] },
-  leo  : { fr:[30,10,10,0,0,0,90,90,0,0,90] }
+  leo  : { fr:[40,10,20,10,10,10,100,90,10,10,100] }
 };
 // Les onsets suivent le fichier reellement joue, pas la langue de l'interface :
 // si MIKE annonce en anglais dans une app en francais, ce sont ses onsets EN

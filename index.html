@@ -2170,20 +2170,26 @@ function VPid(f){ return VP(f).replace(/\//g,'_'); }
 // normalises (silences de tete coupes, d'ou des valeurs proches de zero).
 // max = table historique, ses fichiers n'ont pas ete retraites.
 const COUNT_ONSET_VOIX={
-  // Remesure le 02/09/2026 par docs/mesurer-onsets.py, EN PLEINE BANDE.
-  // Les mesures precedentes rechantillonnaient a 8 kHz, ce qui applique un filtre a
-  // 4 kHz et efface le « s » initial de « six » et « sept » : l'outil croyait ces mots
-  // en retard de 130 ms et la table compensait un decalage qui n'existait pas.
-  // Ecarts entendus entre deux chiffres, avant -> apres :
-  //   MUTANT en  amplitude 140 ms -> 0     (c'etait le pire : 920 ms puis 1060 ms)
-  //   MIKE   en  amplitude  70 ms -> 0
-  //   LEO    fr  amplitude  30 ms -> 0
-  //   SAM fr et MUTANT fr etaient deja justes.
-  max  : { fr:[0,0,0,0,0,0,0,0,0,0,50], en:[0,0,0,10,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
-  nina : { fr:[0,0,0,0,0,0,0,0,0,0,0], en:[0,0,0,0,0,30,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,10] },
-  sam  : { fr:[60,0,0,0,0,0,0,0,60,0,0], en:[0,0,0,0,0,0,20,0,0,0,0], pt:[0,0,0,0,0,0,0,0,40,0,0] },
+  // Remesure le 02/09/2026 par docs/mesurer-onsets.py, EN PLEINE BANDE, APRES le
+  // passage de docs/traiter-voix.py sur les packs actifs.
+  //
+  // Deux corrections d'un coup :
+  //  1. les mesures precedentes rechantillonnaient a 8 kHz, ce qui applique un
+  //     filtre a 4 kHz et efface le « s » initial de « six » et « sept » : l'outil
+  //     croyait ces mots en retard de 130 ms et la table compensait un decalage
+  //     qui n'existait pas ;
+  //  2. la porte de bruit du traitement a nettoye les attaques, donc les onsets
+  //     ont bouge. EVA garde ses anciennes valeurs, le pack n'est plus dans l'app
+  //     et n'a donc pas ete traite.
+  //
+  // Ecarts entendus entre deux chiffres, avant -> apres : MUTANT en 140 ms -> 0,
+  // MIKE en 70 ms -> 0, LEO fr 30 ms -> 0. SAM fr et MUTANT fr etaient deja justes.
+  // Si les mp3 changent, relancer docs/mesurer-onsets.py et recoller ce bloc.
+  max  : { fr:[0,0,0,0,0,0,0,0,0,0,50], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
+  nina : { fr:[0,0,0,0,0,0,0,0,0,0,0], en:[0,0,0,0,0,40,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
+  sam  : { fr:[60,0,0,0,0,0,0,0,70,0,0], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,40,0,0] },
   eva  : { fr:[0,0,0,0,0,0,0,0,60,0,0], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,10,0,0,0,50] },
-  leo  : { fr:[30,10,10,0,0,0,90,90,0,0,90] }
+  leo  : { fr:[40,10,20,10,10,10,100,90,10,10,100] }
 };
 // Les onsets suivent le fichier reellement joue, pas la langue de l'interface :
 // si MIKE annonce en anglais dans une app en francais, ce sont ses onsets EN
@@ -3719,6 +3725,29 @@ function busAttachGain(gain){
 // un enregistrement, on joue donc le décompte via des AudioBuffer décodés (chemin propre,
 // déjà utilisé pour les annonces WA), branchés direct sur la sortie + le bus.
 const _recBuf={}; // cache AudioBuffer par src
+
+// ===== PRECHARGEMENT DU DECOMPTE POUR L'HORLOGE AUDIO (02/09/2026) =====
+// Pourquoi : le decompte partait par <audio>.play(), dont la latence de demarrage
+// sur iOS varie de quelques dizaines de ms et change a chaque lancement. Aucune
+// table d'onsets ne corrige ca, elle corrige un decalage FIXE. Le chemin
+// d'enregistrement etait deja passe a l'horloge Web Audio pour cette raison
+// (ecarts mesures de 737 a 1147 ms au lieu de 1000). Meme remede ici.
+// On ne bascule que si les ONZE buffers sont prets : sinon on garde le chemin
+// <audio>, qui marche.
+function decompteBuffersPrets(liste){
+  if(!liste||!liste.length) return false;
+  for(const f of liste) if(!_recBuf[f]) return false;
+  return true;
+}
+function prechargerDecompteBuffers(){
+  try{
+    if(byoMusic) return;            // Ma musique : les voix passent par le natif
+    if(!ensureAudioCtx()) return;
+    const l=listeDecompte();
+    if(!SIGNAL_DEPART_REMPLACE_VOIX) l.push(START_AUDIO);
+    l.forEach(f=>{ if(!_recBuf[f]) _loadRecBuf(f); });
+  }catch(e){ DBG('prechargement decompte: '+((e&&e.message)||e)); }
+}
 async function _loadRecBuf(src){
   if(_recBuf[src]) return _recBuf[src];
   const ctx=ensureAudioCtx(); if(!ctx) return null;
@@ -4974,6 +5003,7 @@ function launch(){
     ensureAudioCtx();
     preloadCountBuffers();
     preloadRoundBuffers();
+    prechargerDecompteBuffers();   // pour l'horloge audio du decompte
   }
   S.state='launching';
   wakeLockOn(); // demande dans le geste utilisateur (exigence iOS)
@@ -5050,7 +5080,45 @@ function launch(){
     return;
   }
 
-  // HORS enregistrement : chemin d'origine (éléments <audio>, thread libre, déjà régulier).
+  // HORS enregistrement.
+  //
+  // CHEMIN PREFERE (02/09/2026) : horloge Web Audio, comme a l'enregistrement.
+  // source.start(when) est cale a l'echantillon et ne depend ni du thread ni de
+  // la latence de <audio>.play(). On n'y va que si les onze buffers sont deja
+  // decodes ET qu'on n'est pas en mode « Ma musique » (les voix y passent par le
+  // natif, par-dessus Spotify). Sinon on retombe sur le chemin <audio> d'origine,
+  // inchange, juste en dessous.
+  const _listeAvecSignal=SIGNAL_DEPART_REMPLACE_VOIX?countAudioList:countAudioList.concat([START_AUDIO]);
+  if(!nativeVoiceOn() && ensureAudioCtx() && decompteBuffersPrets(_listeAvecSignal)){
+    const ctx=audioCtx;
+    const lead=0.12;                       // marge pour armer les sources
+    const anchor=ctx.currentTime+lead;
+    const gainVol=Math.min(vol*2.0,1.0);
+    S.cdWA=[];
+    const startBuf=(buf,when)=>{
+      if(!buf) return;
+      try{
+        const src=ctx.createBufferSource(); src.buffer=buf;
+        const g=ctx.createGain(); g.gain.value=gainVol;
+        src.connect(g); g.connect(ctx.destination); busAttachGain(g);
+        src.start(when); S.cdWA.push(src);
+      }catch(e){ DBG('cd horloge start KO '+e.name); }
+    };
+    countAudioList.forEach((file,i)=>{
+      startBuf(_recBuf[file], anchor + Math.max(0, i*1000-(_onsets[i]||0)+_onset0)/1000);
+    });
+    if(!SIGNAL_DEPART_REMPLACE_VOIX) startBuf(_recBuf[START_AUDIO], anchor+_tGo/1000);
+    const leadMs=Math.round(lead*1000);
+    S.cdT0=Date.now()+leadMs;
+    S.cdSched=runAbsSchedule([
+      {t:leadMs+10500+_onset0, fn:()=>startChrono()},
+      {t:leadMs+10800+_onset0, fn:()=>{ duckEnd(_duckDepart); }}
+    ],10);
+    DBG('launch(decompte horloge audio): mode='+S.mode+' total='+S.total+'s');
+    return;
+  }
+
+  // REPLI : chemin d'origine (éléments <audio>, thread libre, déjà régulier).
   const cdSteps=[];
   countAudioList.forEach((file,i)=>{
     const _t=Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
