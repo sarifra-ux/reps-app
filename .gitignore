@@ -33,3 +33,11 @@ notes/
 
 # Scripts de commit generes (outils jetables, pas du code de l'app)
 commit-*.sh
+
+# Sauvegardes locales datees (le depot fait deja l'historique)
+*.backup-*
+*.bak
+*.bak2
+index.backup-*.html
+sw.backup-*.js
+_to_delete/
