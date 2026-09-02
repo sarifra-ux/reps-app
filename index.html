@@ -2170,17 +2170,20 @@ function VPid(f){ return VP(f).replace(/\//g,'_'); }
 // normalises (silences de tete coupes, d'ou des valeurs proches de zero).
 // max = table historique, ses fichiers n'ont pas ete retraites.
 const COUNT_ONSET_VOIX={
-  // max : les 93 annonces de la racine ont ete retraitees le 16/08 (silences de tete
-  // coupes, niveau porte a -11 dB RMS). La table historique COUNT_ONSET ne vaut donc
-  // plus pour elles ; originaux conserves dans _annonces-origine-20260816/.
-  max : { fr:[0,0,0,0,0,0,0,0,0,0,60], en:[0,0,0,40,0,80,60,60,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
-  nina: { fr:[0,0,20,20,0,20,0,0,0,0,0],       en:[0,0,0,0,40,60,0,0,0,0,0],     pt:[0,0,0,40,0,0,0,0,0,0,20] },
-  sam : { fr:[60,0,0,0,0,0,0,0,60,0,0],        en:[0,0,0,20,0,0,60,60,0,0,0],    pt:[40,0,0,0,0,0,0,0,40,0,0] },
-  eva : { fr:[0,0,20,60,20,20,20,0,20,0,0],    en:[0,0,0,100,0,0,0,0,60,0,0],    pt:[0,0,0,0,100,40,20,0,0,0,60] },
-  // LEO : mesure le 25/08/2026 par mesurer-onsets.py sur le pack normalise.
-  // Fenetres de 20 ms, seuil a -20 dB sous le pic. Pas de table en / pt : LEO
-  // ne parle que francais et n'apparait pas dans ces langues.
-  leo : { fr:[40,20,20,20,20,20,100,100,20,0,100] }
+  // Remesure le 02/09/2026 par docs/mesurer-onsets.py, EN PLEINE BANDE.
+  // Les mesures precedentes rechantillonnaient a 8 kHz, ce qui applique un filtre a
+  // 4 kHz et efface le « s » initial de « six » et « sept » : l'outil croyait ces mots
+  // en retard de 130 ms et la table compensait un decalage qui n'existait pas.
+  // Ecarts entendus entre deux chiffres, avant -> apres :
+  //   MUTANT en  amplitude 140 ms -> 0     (c'etait le pire : 920 ms puis 1060 ms)
+  //   MIKE   en  amplitude  70 ms -> 0
+  //   LEO    fr  amplitude  30 ms -> 0
+  //   SAM fr et MUTANT fr etaient deja justes.
+  max  : { fr:[0,0,0,0,0,0,0,0,0,0,50], en:[0,0,0,10,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
+  nina : { fr:[0,0,0,0,0,0,0,0,0,0,0], en:[0,0,0,0,0,30,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,10] },
+  sam  : { fr:[60,0,0,0,0,0,0,0,60,0,0], en:[0,0,0,0,0,0,20,0,0,0,0], pt:[0,0,0,0,0,0,0,0,40,0,0] },
+  eva  : { fr:[0,0,0,0,0,0,0,0,60,0,0], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,10,0,0,0,50] },
+  leo  : { fr:[30,10,10,0,0,0,90,90,0,0,90] }
 };
 // Les onsets suivent le fichier reellement joue, pas la langue de l'interface :
 // si MIKE annonce en anglais dans une app en francais, ce sont ses onsets EN
