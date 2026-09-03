@@ -193,7 +193,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .mode-tab[onclick*="'tabata'"].active{background:linear-gradient(135deg,rgba(255,59,111,0.18),rgba(255,59,111,0.05));border-color:var(--accent-tabata);color:var(--accent-tabata);box-shadow:0 0 18px var(--glow-tabata),inset 0 0 12px rgba(255,59,111,0.1);}
   .mode-tab small{display:block;font-family:'DM Mono',monospace;font-size:0.48rem;letter-spacing:1px;margin-top:2px;opacity:0.8;}
 
-  .app{display:grid;grid-template-columns:300px 1fr;min-height:calc(100vh - 69px);}
+  .app{display:grid;grid-template-columns:300px 1fr;min-height:calc(100dvh - var(--header-h));}
   aside{border-right:1px solid var(--border);padding:22px 18px;display:flex;flex-direction:column;gap:24px;overflow-y:auto;background:linear-gradient(180deg,rgba(230,63,255,0.02),rgba(0,229,255,0.02));}
   .sec-label{font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:3px;color:#9090b0;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
   .sec-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
@@ -1021,7 +1021,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   /* REFONTE écran WOD : `main` ne prenait que la hauteur de son contenu (la grille ne
      l'étirait pas), donc le centrage n'avait aucun effet et le vide était l'espace SOUS main.
      On force main à remplir l'écran pendant le WOD, puis on centre le bloc chrono+contrôles. */
-  body.wod-live main{min-height:calc(100dvh - 69px);justify-content:center;}
+  body.wod-live main{min-height:calc(100dvh - var(--header-h));justify-content:center;}
   /* Round badge plus présent pendant l'effort */
   body.wod-live .round-badge{font-size:0.8rem;color:var(--accent2);letter-spacing:3px;}
 
@@ -1213,8 +1213,8 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.filming main{padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));}
   /* La hauteur reservee au reste de l'interface doit exclure la camera, sinon la page
      depasse l'ecran et le bas (boutons) sort du champ. */
-  body.filming .app{min-height:calc(100dvh - var(--cam-h) - 69px);}
-  body.wod-live.filming main{min-height:calc(100dvh - var(--cam-h) - 69px);}
+  body.filming .app{min-height:calc(100dvh - var(--cam-h) - var(--header-h));}
+  body.wod-live.filming main{min-height:calc(100dvh - var(--cam-h) - var(--header-h));}
   /* Moins de marges dans la moitie basse : elle doit tenir sans rogner le chrono. */
   body.filming main{padding-top:14px;gap:12px;}
   body.filming .timer-card{padding-top:16px;padding-bottom:14px;}
@@ -1273,6 +1273,115 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.filming .help-modal{
     max-height:calc(100dvh - var(--cam-h) - 36px);
     overflow-y:auto;
+  }
+
+  /* ===== ÉCRAN FIGÉ (03/09/2026) =====
+     Constat, vidéo de François du 01/09 : sur le chrono, sur SETTINGS, sur
+     MEMBERS & SCORES et sur TRAINING MODE, tout le contenu glissait de haut en bas.
+     Trois causes distinctes :
+
+     1. La hauteur du header était écrite en dur, `calc(100dvh - 69px)`. Ce 69 avait
+        été mesuré sans encoche, alors que le header porte
+        padding-top:calc(12px + env(safe-area-inset-top)). Sur un iPhone à Dynamic
+        Island le header fait ~120px : la page dépassait donc le viewport d'une
+        cinquantaine de pixels À CHAQUE WOD, mécaniquement. La hauteur est désormais
+        mesurée en JS et publiée dans --header-h (voir « HAUTEUR RÉELLE DU HEADER »).
+     2. Aucun overscroll-behavior nulle part dans le fichier. Le rebond iOS déplace
+        même les overlays en position:fixed : c'est pour ça que le titre SETTINGS
+        passait sous l'encoche alors que la modale est pourtant fixe.
+     3. .settings-modal-content n'avait ni max-height ni overflow. Avec
+        align-items:center, un contenu plus haut que l'écran déborde en haut ET en
+        bas, et le haut devient inatteignable.
+
+     Règle posée : le document ne scrolle jamais. Ce qui doit défiler défile dans son
+     propre conteneur, avec overscroll-behavior:contain pour ne pas rejouer le rebond
+     du document au bout de la course. */
+
+  :root{--header-h:69px;}
+
+  html,body{overscroll-behavior:none;}
+
+  /* Le WOD tient dans l'écran au pixel près. Le document est verrouillé ; si le
+     contenu dépasse malgré tout (petit iPhone, SE), c'est `main` qui défile, pas la
+     page, et sans rebond. */
+  html:has(body.wod-live){overflow:hidden;height:100dvh;}
+  body.wod-live{overflow:hidden;height:100dvh;}
+  body.wod-live .app{min-height:0;}
+  body.wod-live main{
+    height:calc(100dvh - var(--header-h));
+    min-height:0;
+    justify-content:center;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  /* Modales : la carte ne dépasse jamais l'écran, l'en-tête reste toujours visible,
+     seul le corps défile. Safe-area comprise, sinon le titre repasse sous l'encoche. */
+  .settings-modal{
+    padding:calc(24px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(24px + env(safe-area-inset-left,0px));
+    overscroll-behavior:contain;
+  }
+  .settings-modal-content{
+    max-height:100%;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+  body.filming .settings-modal-content{overflow:hidden;}
+  .settings-modal-header{flex:0 0 auto;}
+  .settings-modal-body{
+    flex:1 1 auto;
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+
+  /* Aide et écrans du wizard : ils portent déjà overflow-y:auto pour certains, mais
+     chaînaient leur rebond au document. Et aucun n'avait de safe-area. */
+  .help-overlay,.help-modal,
+  .mode-choice,.timing-choice,.music-choice,.lang-choice,.welcome{
+    overscroll-behavior:contain;
+  }
+  .help-overlay,.mode-choice,.timing-choice,.music-choice{
+    padding:calc(24px + env(safe-area-inset-top,0px)) calc(24px + env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) calc(24px + env(safe-area-inset-left,0px));
+  }
+
+  /* ===== ÉCRAN D'ATTENTE : COMPACTAGE + VERROU (03/09/2026) =====
+     Deuxième vidéo de François. Sur l'écran « WOD armé, pas encore lancé », la page
+     faisait encore l'aller-retour. Mesuré image par image : 110px de course exactement,
+     et ces 110px c'était la fin du panneau ENREGISTRER UN SCORE. Cet écran ne porte pas
+     body.wod-live, donc le verrou posé plus haut ne s'y appliquait pas.
+
+     Deux choses ici.
+
+     1. On récupère les 110px sur les respirations et sur le diamètre de l'anneau.
+        L'anneau gagne une borne en dvh : sur un écran court il rétrécit tout seul au
+        lieu de pousser le panneau score hors de l'écran.
+     2. Le document est verrouillé sur tout l'écran d'usage (body.epured-mode), pas
+        seulement pendant le WOD. Filet de sécurité : sur un très petit iPhone (SE),
+        le compactage ne suffit pas à tout faire rentrer ; ce qui dépasse défile alors
+        DANS main, sans rebond, au lieu de faire bouger la page entière. */
+  html:has(body.epured-mode){overflow:hidden;height:100dvh;}
+  body.epured-mode{overflow:hidden;height:100dvh;}
+  body.epured-mode .app{min-height:0;}
+  body.epured-mode main{
+    height:calc(100dvh - var(--header-h));
+    min-height:0;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;
+  }
+  @media(max-width:600px){
+    main{padding-top:8px;padding-bottom:8px;gap:10px;}
+    .timer-card{padding-top:12px;padding-bottom:10px;}
+    .dial-wrap{margin-top:2px;width:min(272px,72vw,28dvh);}
+    .controls{margin-top:10px;gap:12px;}
+    .btn-play{width:64px;height:64px;}
+    .controls>.btn-ctrl:first-child,#btnSkip{height:42px;}
+    #btnFilm,#btnFilmAudio{padding:8px;}
+    .score-capture{margin-top:8px;}
   }
 </style>
 </head>
@@ -7731,5 +7840,47 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
 
 </script>
 <!-- REPS-INSCRIPTION-FIN -->
+
+<script>
+// ===== HAUTEUR REELLE DU HEADER (03/09/2026) =====
+// La hauteur du header etait ecrite en dur dans trois calc() : 69px. Ce chiffre a ete
+// mesure sur un ecran sans encoche. Le header porte padding-top:calc(12px +
+// env(safe-area-inset-top)), donc sur un iPhone a Dynamic Island il fait ~120px : la
+// page depassait le viewport d'une cinquantaine de pixels et tout se mettait a glisser.
+// On mesure la vraie hauteur et on la publie dans --header-h. Si ce script ne tourne
+// pas, la valeur par defaut du CSS (69px) reprend la main : comportement d'avant,
+// jamais pire.
+// Le header change de hauteur pendant le WOD (body.wod-live masque .logo-sub), d'ou le
+// ResizeObserver plutot qu'une mesure unique.
+(function(){
+  function majHeaderH(){
+    try{
+      var h=document.querySelector('header');
+      if(!h) return;
+      var v=Math.round(h.getBoundingClientRect().height);
+      if(v>0) document.documentElement.style.setProperty('--header-h', v+'px');
+    }catch(e){}
+  }
+  function brancher(){
+    majHeaderH();
+    try{
+      var h=document.querySelector('header');
+      // box:'border-box' est indispensable : par defaut ResizeObserver surveille la
+      // BOITE DE CONTENU, et le padding-top du header (celui qui porte
+      // env(safe-area-inset-top)) n'en fait pas partie. Sans cette option, un
+      // changement de safe-area ou de padding ne declenche rien.
+      if(h && window.ResizeObserver) new ResizeObserver(majHeaderH).observe(h,{box:'border-box'});
+    }catch(e){}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',brancher);
+  else brancher();
+  window.addEventListener('load',majHeaderH);
+  // Les polices sont en data-URI mais restent asynchrones : le logo change de hauteur
+  // quand Bebas Neue remplace la police de repli.
+  try{ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(majHeaderH); }catch(e){}
+  window.addEventListener('resize',majHeaderH);
+  window.addEventListener('orientationchange',function(){ setTimeout(majHeaderH,300); });
+})();
+</script>
 </body>
 </html>
