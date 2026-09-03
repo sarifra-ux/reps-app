@@ -1376,12 +1376,59 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   @media(max-width:600px){
     main{padding-top:8px;padding-bottom:8px;gap:10px;}
     .timer-card{padding-top:12px;padding-bottom:10px;}
-    .dial-wrap{margin-top:2px;width:min(272px,72vw,28dvh);}
+    .dial-wrap{margin-top:2px;}
     .controls{margin-top:10px;gap:12px;}
     .btn-play{width:64px;height:64px;}
     .controls>.btn-ctrl:first-child,#btnSkip{height:42px;}
     #btnFilm,#btnFilmAudio{padding:8px;}
     .score-capture{margin-top:8px;}
+  }
+
+  /* ===== ANNEAU : PLUS D'ÉCRASEMENT, IL PREND CE QUI RESTE (03/09/2026) =====
+     Troisième vidéo de François : le cercle était coupé net en haut et en bas.
+     Cause exacte : un enfant flex a `min-height:auto`, ce qui l'empêche
+     normalement de rétrécir sous la taille de son contenu. Cette protection
+     saute dès que l'élément porte un `overflow` autre que `visible`, et
+     .timer-card porte `overflow:hidden`. Quand main manquait de place, la carte
+     se laissait donc comprimer (209px mesurés au lieu des 263 nécessaires),
+     pendant que l'anneau gardait le diamètre imposé par la constante
+     min(272px,72vw,28dvh). Le cercle dépassait de la carte, et `overflow:hidden`
+     le tranchait.
+
+     On arrête de courir après les pixels avec une constante en dvh. Plus rien ne
+     s'écrase, et c'est l'anneau qui absorbe le manque : il part de 272px, peut
+     rétrécir, sa largeur suit par aspect-ratio. Toujours rond, jamais coupé,
+     jamais de scroll, quelle que soit la taille de l'écran.
+
+     flex-basis explicite et non `auto` : `container-type:size` implique
+     `contain:size`, donc l'anneau ne contribue plus à la taille intrinsèque de
+     la carte. Sans basis, la carte se réduisait à ses paddings et l'anneau
+     tombait à zéro.
+
+     L'horloge se dimensionne sur la hauteur de l'anneau (cqh) et non sur la
+     largeur de l'écran : sinon, anneau rétréci, elle débordait du cercle. */
+  body.epured-mode main,
+  body.wod-live main{overflow:hidden;justify-content:center;}
+  body.epured-mode main > *,
+  body.wod-live main > *{flex:0 0 auto;}
+  body.epured-mode #timerCard,
+  body.wod-live #timerCard{flex:0 1 auto;min-height:0;}
+  body.epured-mode #timerCard .dial-wrap,
+  body.wod-live #timerCard .dial-wrap{
+    flex:0 1 min(272px,72vw);
+    min-height:0;
+    align-self:center;
+    width:auto;
+    height:auto;
+    max-width:min(272px,72vw);
+    max-height:min(272px,72vw);
+    aspect-ratio:1;
+    margin:2px 0 0;
+    container-type:size;
+  }
+  body.epured-mode #timerCard .dial-wrap .timer-clock,
+  body.wod-live #timerCard .dial-wrap .timer-clock{
+    font-size:clamp(2.2rem,min(30cqh,19vw),5.6rem);
   }
 </style>
 </head>
