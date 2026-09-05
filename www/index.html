@@ -1021,11 +1021,19 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   }
   /* Mise en avant du status timer (mode WOD) */
   body.epured-mode .timer-status{
-    font-size:1rem;
-    letter-spacing:3px;
+    /* La taille etait figee a 1rem, calee sur « EN PAUSE ». « MONTAGE DU CHRONO… »
+       fait quatre fois cette longueur et devenait illisible. Elle suit maintenant la
+       largeur de l'ecran, l'interlettre se resserre, et deux lignes tiennent. */
+    font-size:clamp(0.68rem,3.2vw,1rem);
+    letter-spacing:1.5px;
+    line-height:1.4;
     color:var(--accent);
     text-transform:uppercase;
+    max-width:100%;
+    text-wrap:balance;
+    display:flex;align-items:center;justify-content:center;gap:8px;
   }
+  .timer-status .ico{width:1.05em;height:1.05em;flex:0 0 auto;}
 
   /* ===== VUE WOD EN COURS : chrono + contrôles uniquement ===== */
   /* Dès que le WOD tourne (ou en pause), on masque config, score et bas de page. */
@@ -1211,7 +1219,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   main>*{min-width:0;max-width:100%;}
   .timer-card{min-width:0;}
   .timer-card>*{min-width:0;max-width:100%;}
-  .timer-status{overflow-wrap:anywhere;} /* le message peut passer a la ligne */
+  /* 05/09 (soir) : « anywhere » coupait les mots AU MILIEU (« MONTA / GE DU CHRONO »).
+     C'est ce que Francois a vu apres un export. On coupe entre les mots, et seulement
+     dans un mot s'il est a lui seul plus large que la ligne. */
+  .timer-status{overflow-wrap:break-word;}
   .sc-input,.sc-row{min-width:0;}
 
   /* 7. ECRAN PARTAGE PENDANT LE TOURNAGE
@@ -1771,6 +1782,67 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       <circle cx="12" cy="13.6" r="7.6"/>
       <path d="M12 9.6v4l2.6 1.8"/>
       <path d="M9.6 3.4h4.8"/>
+    </symbol>
+    <!-- Quatrieme vague (05/09) : l'ecran CHOISIS TON MORCEAU. C'etait le dernier
+         endroit du chemin principal ou il restait des emojis. -->
+    <symbol id="i-eclair" viewBox="0 0 24 24">
+      <path d="M13.8 2.6L5.6 13.2h5.2L10.2 21.4l8.2-10.8h-5.4z"/>
+    </symbol>
+    <symbol id="i-caisson" viewBox="0 0 24 24">
+      <path d="M6.4 2.8h11.2a1.4 1.4 0 0 1 1.4 1.4v15.6a1.4 1.4 0 0 1-1.4 1.4H6.4a1.4 1.4 0 0 1-1.4-1.4V4.2a1.4 1.4 0 0 1 1.4-1.4z"/>
+      <circle cx="12" cy="7" r="1.8"/>
+      <circle cx="12" cy="15.4" r="3.4"/>
+    </symbol>
+    <symbol id="i-couchant" viewBox="0 0 24 24">
+      <path d="M3 18.4h18"/>
+      <path d="M7.4 18.4a4.6 4.6 0 0 1 9.2 0"/>
+      <path d="M12 4.4v2.2"/>
+      <path d="M5.8 7.2l1.6 1.6"/>
+      <path d="M18.2 7.2l-1.6 1.6"/>
+      <path d="M3.4 13.6h2"/>
+      <path d="M18.6 13.6h2"/>
+    </symbol>
+    <symbol id="i-censure" viewBox="0 0 24 24">
+      <path d="M3.6 5.8h16.8"/>
+      <path d="M3.6 10.2h16.8v4H3.6z" style="fill:url(#repsIcoGrad)"/>
+      <path d="M3.6 18.4h10.2"/>
+    </symbol>
+    <symbol id="i-diamant" viewBox="0 0 24 24">
+      <path d="M7.8 3.6h8.4L20 9.4 12 20.4 4 9.4z"/>
+      <path d="M4 9.4h16"/>
+      <path d="M9.4 9.4L12 20.4l2.6-11"/>
+      <path d="M7.8 3.6L9.4 9.4"/>
+      <path d="M16.2 3.6L14.6 9.4"/>
+    </symbol>
+    <symbol id="i-empreinte" viewBox="0 0 24 24">
+      <path d="M3.6 12a8.4 8.4 0 0 1 12.6-7.3"/>
+      <path d="M20.4 12v2.4"/>
+      <path d="M6.8 17.8A7 7 0 0 0 8.2 13.6V12a3.8 3.8 0 0 1 7.6 0v4.4"/>
+      <path d="M11.2 20.6a10 10 0 0 0 .9-4.2V12"/>
+      <path d="M15.4 19.8v-1.2"/>
+    </symbol>
+    <symbol id="i-gant" viewBox="0 0 24 24">
+      <path d="M11 3.6h1.6a5.6 5.6 0 0 1 5.6 5.6v1.4a3.4 3.4 0 0 1-3.4 3.4H9.8a4 4 0 0 1-4-4V8.6A5 5 0 0 1 11 3.6z"/>
+      <path d="M5.9 9.6H5a1.9 1.9 0 1 0 0 3.8h.9"/>
+      <path d="M8.6 14.2h7.4v3.6a2 2 0 0 1-2 2h-3.4a2 2 0 0 1-2-2z"/>
+      <path d="M8.6 16.8h7.4"/>
+    </symbol>
+    <symbol id="i-vague" viewBox="0 0 24 24">
+      <path d="M2.6 6.6c1.9-2.4 3.9-2.4 5.8 0s3.9 2.4 5.8 0 3.9-2.4 5.8 0"/>
+      <path d="M2.6 12c1.9-2.4 3.9-2.4 5.8 0s3.9 2.4 5.8 0 3.9-2.4 5.8 0"/>
+      <path d="M2.6 17.4c1.9-2.4 3.9-2.4 5.8 0s3.9 2.4 5.8 0 3.9-2.4 5.8 0"/>
+    </symbol>
+    <symbol id="i-de" viewBox="0 0 24 24">
+      <path d="M5.4 4.2h13.2a1.2 1.2 0 0 1 1.2 1.2v13.2a1.2 1.2 0 0 1-1.2 1.2H5.4a1.2 1.2 0 0 1-1.2-1.2V5.4a1.2 1.2 0 0 1 1.2-1.2z"/>
+      <circle cx="8.6" cy="8.6" r="0.7"/>
+      <circle cx="15.4" cy="8.6" r="0.7"/>
+      <circle cx="12" cy="12" r="0.7"/>
+      <circle cx="8.6" cy="15.4" r="0.7"/>
+      <circle cx="15.4" cy="15.4" r="0.7"/>
+    </symbol>
+    <symbol id="i-retour" viewBox="0 0 24 24">
+      <path d="M9.6 5.4L4.8 10.2l4.8 4.8"/>
+      <path d="M4.8 10.2h9.6a4.8 4.8 0 0 1 4.8 4.8v3.6"/>
     </symbol>
   </defs>
 </svg>
@@ -2879,17 +2951,17 @@ const TXT={
 };
 
 const TRACK_INFO={
-  pogo:{name:'Pogo dans la Nuit',emoji:'🔥',sub:'RAP · Dark · Trap'},
-  pleinfeu:{name:'Plein Feu Dans La Boîte',emoji:'⚡',sub:'RAP · Hype · Energy'},
-  techno:{name:'Berghain Box',emoji:'🖤',sub:'TECHNO · Hard · Berlin'},
-  house:{name:'Sunset Drop',emoji:'🌅',sub:'HOUSE · Club · 128 BPM'},
-  hymne:{name:'Arena Entrance',emoji:'🏆',sub:'HYMNE · NBA · Sport'},
-  censured:{name:'Censured',emoji:'🗡️',sub:'HIP-HOP · Drill · Arabic'},
-  cartier:{name:'Cartier',emoji:'💎',sub:'HIP-HOP · Drill · Street'},
-  crime:{name:'Crime',emoji:'🔫',sub:'HIP-HOP · Dark · Heavy'},
-  ringside:{name:'Cyril Gane',emoji:'🥊',sub:'HIP-HOP · Fight · Hymne'},
-  introduction:{name:'Introduction',emoji:'🎬',sub:'HIP-HOP · Intro · Atmospheric'},
-  vibes:{name:'Vibes',emoji:'🌊',sub:'HIP-HOP · Chill · Smooth'}
+  pogo:{name:'Pogo dans la Nuit',emoji:'🔥',ico:'i-flamme',sub:'RAP · Dark · Trap'},
+  pleinfeu:{name:'Plein Feu Dans La Boîte',emoji:'⚡',ico:'i-eclair',sub:'RAP · Hype · Energy'},
+  techno:{name:'Berghain Box',emoji:'🖤',ico:'i-caisson',sub:'TECHNO · Hard · Berlin'},
+  house:{name:'Sunset Drop',emoji:'🌅',ico:'i-couchant',sub:'HOUSE · Club · 128 BPM'},
+  hymne:{name:'Arena Entrance',emoji:'🏆',ico:'i-trophee',sub:'HYMNE · NBA · Sport'},
+  censured:{name:'Censured',emoji:'🗡️',ico:'i-censure',sub:'HIP-HOP · Drill · Arabic'},
+  cartier:{name:'Cartier',emoji:'💎',ico:'i-diamant',sub:'HIP-HOP · Drill · Street'},
+  crime:{name:'Crime',emoji:'🔫',ico:'i-empreinte',sub:'HIP-HOP · Dark · Heavy'},
+  ringside:{name:'Cyril Gane',emoji:'🥊',ico:'i-gant',sub:'HIP-HOP · Fight · Hymne'},
+  introduction:{name:'Introduction',emoji:'🎬',ico:'i-clap',sub:'HIP-HOP · Intro · Atmospheric'},
+  vibes:{name:'Vibes',emoji:'🌊',ico:'i-vague',sub:'HIP-HOP · Chill · Smooth'}
 };
 
 const S={
@@ -6017,33 +6089,50 @@ async function toggleFilm(){
   }
 }
 // Fin du WOD : couper l'enregistrement puis incruster le chrono et sauver dans Photos.
-function setFilmStatus(t){ const el=document.getElementById('timerStatus'); if(el) el.textContent=t; }
+// Le statut du tournage : une icone au trait plus un texte COURT. Les messages
+// portaient un emoji et une phrase entiere ; en mode epure, en capitales, ca ne tenait
+// pas sur la ligne. Construit en DOM, comme le reste des icones.
+function setFilmStatus(t, ico){
+  const el=document.getElementById('timerStatus');
+  if(!el) return;
+  el.textContent='';
+  if(ico){
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','ico'); svg.setAttribute('aria-hidden','true');
+    const use=document.createElementNS('http://www.w3.org/2000/svg','use');
+    use.setAttribute('href','#'+ico);
+    svg.appendChild(use); el.appendChild(svg);
+  }
+  const sp=document.createElement('span');
+  sp.textContent=t;
+  el.appendChild(sp);
+}
 async function finishFilmAndExport(){
   const VO=_videoOverlayPlugin();
   if(!VO){ S.filming=false; setFilmBtn(false); return; }
-  setFilmStatus(L3('🎬 Finalisation de la vidéo…','🎬 Finalizing video…','🎬 Finalizando o vídeo…'));
+  setFilmStatus(L3('Finalisation…','Finalizing…','Finalizando…'),'clap');
   let rec;
   try{ rec=await VO.stopRecording(); }
   catch(e){ DBG('❌ stop film KO: '+((e&&e.message)||e)); S.filming=false; setFilmBtn(false);
-    setFilmStatus(L3('❌ Vidéo : erreur d\'enregistrement','❌ Video: recording error','❌ Vídeo: erro de gravação')); return; }
+    setFilmStatus(L3('Vidéo : erreur','Video: error','Vídeo: erro'),'croix'); return; }
   S.filming=false; setFilmBtn(false);
   if(!rec||!rec.path){ DBG('film: pas de fichier');
-    setFilmStatus(L3('❌ Vidéo : aucun fichier','❌ Video: no file','❌ Vídeo: sem arquivo')); return; }
+    setFilmStatus(L3('Vidéo : aucun fichier','Video: no file','Vídeo: sem arquivo'),'croix'); return; }
   const off=Math.max(0,((S.goWallClock||0)-(S.recStartMs||0))/1000);
   const frames=(S.wodFrames&&S.wodFrames.length)?S.wodFrames:_sampleWodFrames();
   DBG('film: export (offset '+off.toFixed(1)+'s, '+frames.length+' frames)…');
   // Le montage peut prendre quelques secondes : statut persistant pendant l'attente.
   // Message court volontairement : « Montage du chrono… patiente » se coupait en
   // deux lignes bancales (« MONTAGE DU / CHRONO… PATIENTE ») dans la carte.
-  setFilmStatus(L3('🎬 Montage du chrono…','🎬 Rendering timer…','🎬 Montando o cronômetro…'));
+  setFilmStatus(L3('Montage…','Rendering…','Montando…'),'clap');
   showAnnounce(L3('Montage en cours…','Rendering…','Montando…'),'clap');
   try{
     await VO.exportOverlay({ path:rec.path, frames, goOffsetSec:off });
     DBG('✅ vidéo prête (chrono incrusté → Photos)');
-    setFilmStatus(L3('✅ Vidéo prête dans Photos','✅ Video saved to Photos','✅ Vídeo salvo em Fotos'));
+    setFilmStatus(L3('Vidéo prête · Photos','Video ready · Photos','Vídeo pronto · Fotos'),'clap');
     showAnnounce(L3('Vidéo prête ! Ouvre Photos','Video ready! Open Photos','Vídeo pronto! Abre Fotos'),'clap');
   }catch(e){ DBG('❌ export KO: '+((e&&e.message)||e));
-    setFilmStatus(L3('❌ Montage échoué','❌ Render failed','❌ Falha na montagem'));
+    setFilmStatus(L3('Montage échoué','Render failed','Falha na montagem'),'croix');
     showAnnounce(L3('Vidéo : erreur','Video: error','Vídeo: erro'),'croix'); }
 }
 // Bouton Filmer visible seulement si le plugin natif répond (donc app iOS, pas web).
@@ -7607,26 +7696,35 @@ function renderTrackPicker(category,tracks){
   const title=document.getElementById('musicChoiceTitle');
   if(!box||!cats) return;
   box.innerHTML='';
-  // Bouton retour
-  const back=document.createElement('button');
-  back.className='music-tile';
-  back.onclick=backToMusicCats;
-  back.innerHTML='<span class="music-tile-icon">↩︎</span><span class="music-tile-name">'+L3('Retour','Back','Voltar')+'</span>';
-  box.appendChild(back);
-  // Surprise (garde l'aléatoire)
-  const surprise=document.createElement('button');
-  surprise.className='music-tile';
-  surprise.onclick=()=>{ const r=tracks[Math.floor(Math.random()*tracks.length)]; applyTrack(r,category); };
-  surprise.innerHTML='<span class="music-tile-icon">🎲</span><span class="music-tile-name">'+L3('Surprise','Surprise','Surpresa')+'</span>';
-  box.appendChild(surprise);
-  // Un bouton par morceau
-  tracks.forEach(key=>{
-    const info=TRACK_INFO[key]||{name:key,emoji:'🎵'};
+  // Une tuile = une icone au trait + un nom. Construite en DOM, jamais en innerHTML :
+  // les noms des morceaux importes sont saisis par l'utilisateur, et un nom qui contient
+  // un chevron ne doit pas devenir du balisage. Meme raison que showAnnounce.
+  const tuile=(idIco,texte,action)=>{
     const b=document.createElement('button');
     b.className='music-tile';
-    b.onclick=()=>applyTrack(key,category);
-    b.innerHTML='<span class="music-tile-icon">'+info.emoji+'</span><span class="music-tile-name">'+info.name.toUpperCase()+'</span>';
+    b.onclick=action;
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('class','ico music-tile-icon');
+    svg.setAttribute('aria-hidden','true');
+    const use=document.createElementNS('http://www.w3.org/2000/svg','use');
+    use.setAttribute('href','#'+idIco);
+    svg.appendChild(use);
+    const n=document.createElement('span');
+    n.className='music-tile-name';
+    n.textContent=texte;
+    b.appendChild(svg); b.appendChild(n);
     box.appendChild(b);
+    return b;
+  };
+  // Bouton retour
+  tuile('i-retour', L3('Retour','Back','Voltar'), backToMusicCats);
+  // Surprise (garde l'aléatoire)
+  tuile('i-de', L3('Surprise','Surprise','Surpresa'),
+        ()=>{ const r=tracks[Math.floor(Math.random()*tracks.length)]; applyTrack(r,category); });
+  // Un bouton par morceau. Un import de l'utilisateur n'a pas d'icone : il prend la note.
+  tracks.forEach(key=>{
+    const info=TRACK_INFO[key]||{name:key};
+    tuile(info.ico||'i-note', String(info.name||key).toUpperCase(), ()=>applyTrack(key,category));
   });
   cats.style.display='none';
   box.style.display='';
