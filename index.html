@@ -2823,22 +2823,6 @@ const ROUND_AUDIO={
   }
 };
 
-// ===== L'AVANCE DU DECOMPTE (05/09/2026 au soir) =====
-// Francois : « le dix est quasi muet ». Ce n'est pas le fichier : les onze count-fr-*.mp3
-// sont au meme niveau, mesure (-10 a -11 dB de moyenne, -1 dB de crete).
-// C'est le PREMIER son qui n'a pas le temps de sortir. Trois causes, une par chemin :
-//   - <audio> : preparerDecompte debloque sur un WAV silencieux et ne pose le vrai src
-//     que dans le .then(). Le pas t=0 part avant. Un filet avait ete pose le 01/09, mais
-//     poser un src et appeler load() ne rend pas l'element pret pour autant : le
-//     chargement est asynchrone lui aussi.
-//   - Web Audio : le premier buffer etait arme a currentTime+0,12 s. Sur un AudioContext
-//     qui vient d'etre repris, 120 ms ne suffisent pas toujours.
-// La correction est la meme pour les trois chemins : donner de l'avance. 350 ms au lieu
-// de 120, et l'AFFICHAGE est decale d'autant, donc l'image reste calee sur le son. Le WOD
-// part 230 ms plus tard qu'avant, ce qui ne se voit pas.
-// A VERIFIER A L'OREILLE : je ne peux pas ecouter, je ne peux que donner du temps.
-const CD_LEAD_MS = 350;
-
 const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
   en:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
@@ -2853,25 +2837,10 @@ const CD_TIMINGS={
 // onset0 (celui du "10") sert d'ancre, on ne peut pas jouer avant t=0. En FR onset0=0, donc
 // l'audio est calé sur l'affichage. ⚠️ Si les count-*.mp3 changent, re-mesurer.
 // Ordre = [10,9,8,7,6,5,4,3,2,1,GO]. (Méthode fiable ; l'ancienne mesure silencedetect était fausse.)
-// RE-MESURE DU 05/09/2026 AU SOIR, et la table d'avant etait fausse.
-// Mesure : fenetres de 5 ms, seuil a -20 dB sous le pic, sur les fichiers reellement
-// livres. Resultat : AUCUN fichier n'avait de silence de tete. La table declarait
-// jusqu'a 160 ms la ou il n'y en avait pas, et les ecarts reels entre deux mots
-// allaient de 860 a 1150 ms au lieu de 1000. Les valeurs ci-dessous sont mesurees,
-// pas estimees, et les ecarts tombent maintenant a 1000 ms exactement.
-//
-// Les trois count-*-10 ont recu 150 ms de silence en tete, d'ou leur onset de ~155 ms.
-// Pourquoi eux et pas les autres : le « dix » francais avait son PIC a 30 ms, sans
-// aucune marge. C'est le seul mot joue a l'instant zero, quand la sortie audio vient
-// a peine de s'ouvrir : la moindre latence de demarrage mangeait son attaque, et il
-// ne restait que le « x ». C'est ce que Francois entendait depuis des jours.
-// Les autres chiffres ont une seconde ou plus d'avance, leur lecture est deja chaude.
-// Originaux gardes dans CLAUDE.md/audio-originaux/.
-// ⚠️ Si les count-*.mp3 changent, re-mesurer. La methode est dans le journal du 05/09.
 const COUNT_ONSET={
-  fr:[155,5,10,5,10,10,10,10,10,10,70],
-  en:[165,10,10,15,10,10,10,10,10,10,10],
-  pt:[160,5,10,10,10,10,10,5,10,5,10]
+  fr:[120,0,120,0,0,0,60,100,0,140,100],
+  en:[40,120,0,160,0,80,60,80,80,0,0],
+  pt:[0,120,0,0,0,0,60,40,0,160,0]
 };
 
 // ===== SELECTEUR DE VOIX (16/08/2026) =====
@@ -2920,23 +2889,6 @@ const VOIX_PACKS={
 };
 let S_voix='max';
 try{ const _v=localStorage.getItem('reps_voix'); if(_v&&VOIX_PACKS[_v]) S_voix=_v; }catch(e){}
-// « MUTANT FR il parle en anglais » (Francois, 05/09 au soir). Ce n'etait pas un bug :
-// max n'a que des fichiers EN et PT, et se replie sur l'anglais. Mais une app en
-// francais dont la voix PAR DEFAUT compte en anglais, c'est un defaut, pas un choix.
-// Au PREMIER lancement en francais, on prend donc LEO, la seule voix francaise.
-// Un choix deja enregistre n'est jamais touche : celui qui aime MUTANT le garde.
-function _voixParDefautSelonLangue(){
-  try{
-    if(localStorage.getItem('reps_voix')) return;          // choix explicite : on ne touche pas
-    const lang=localStorage.getItem('reps_lang');
-    if(lang!=='fr') return;
-    const p=VOIX_PACKS[S_voix]||{};
-    const parleFr = !p.langues || p.langues.indexOf('fr')>=0;
-    if(parleFr) return;
-    if(VOIX_PACKS.leo){ S_voix='leo'; }                     // pas d'ecriture en memoire :
-  }catch(e){}                                              // ca reste un defaut, pas un choix
-}
-_voixParDefautSelonLangue();
 
 // ===== PLUS AUCUNE VOIX DE TELEPHONE (24/08/2026, build 4) =====
 // Jusqu'au build 3, toute phrase sans fichier mp3 partait dans speechSynthesis,
@@ -3024,22 +2976,11 @@ const COUNT_ONSET_VOIX={
   // Ecarts entendus entre deux chiffres, avant -> apres : MUTANT en 140 ms -> 0,
   // MIKE en 70 ms -> 0, LEO fr 30 ms -> 0. SAM fr et MUTANT fr etaient deja justes.
   // Si les mp3 changent, relancer docs/mesurer-onsets.py et recoller ce bloc.
-  // RE-MESURE DU 05/09/2026 AU SOIR, sur les fichiers reellement livres, PACK PAR PACK.
-  // Fenetres de 5 ms, seuil a -20 dB sous le pic. Les valeurs d'avant etaient a zero
-  // presque partout, ce qui n'a jamais correspondu aux fichiers.
-  //
-  // Le « 10 » de chaque pack porte desormais 150 ms de silence en tete, d'ou son onset
-  // de ~160 ms. C'est le seul mot joue a l'instant zero, quand la sortie audio de
-  // l'iPhone vient a peine de s'ouvrir : sans marge, la latence de demarrage mangeait
-  // son attaque. Voir le journal du 05/09 pour la mesure complete.
-  //
-  // Le « dix » de LEO a aussi ete remonte de 3,1 dB : il etait a -9,5 dB quand le reste
-  // du pack est a -6,5 dB. Il n'etait pas « mange », il etait REELLEMENT plus faible.
-  max  : { fr:[155,5,10,5,10,10,10,10,10,10,70], en:[165,10,10,15,10,10,10,10,10,10,10], pt:[160,5,10,10,10,10,10,5,10,5,10] },
-  nina : { fr:[160,10,10,10,10,10,10,10,10,5,5], en:[160,10,10,10,10,55,10,10,10,10,10], pt:[160,10,10,10,10,10,10,5,10,5,15] },
-  sam  : { fr:[170,55,40,45,45,35,45,35,10,45,50], en:[160,15,10,10,10,10,20,10,10,15,10], pt:[165,10,10,10,5,10,10,10,55,10,10] },
+  max  : { fr:[0,0,0,0,0,0,0,0,0,0,50], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
+  nina : { fr:[0,0,0,0,0,0,0,0,0,0,0], en:[0,0,0,0,0,40,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
+  sam  : { fr:[10,40,30,30,30,20,30,20,40,30,40], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,40,0,0] },
   eva  : { fr:[0,0,0,0,0,0,0,0,60,0,0], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,10,0,0,0,50] },
-  leo  : { fr:[195,50,40,80,50,40,35,40,35,50,40] }
+  leo  : { fr:[30,40,30,40,40,20,20,30,20,40,30] }
 };
 // Les onsets suivent le fichier reellement joue, pas la langue de l'interface :
 // si MIKE annonce en anglais dans une app en francais, ce sont ses onsets EN
@@ -3087,9 +3028,6 @@ function choisirVoix(cle){
   // Filet : si une annonce a ete coupee en plein ducking, la musique doit remonter.
   try{ duckResetAll(); }catch(e){}
   try{ for(const k in _recBuf) delete _recBuf[k]; }catch(e){}
-  // Le cache vient d'etre vide pour cette voix : on le remplit MAINTENANT, sinon le
-  // prochain lancement retombe sur le chemin <audio> et son premier chiffre fragile.
-  setTimeout(function(){ try{ prechargerDecompteEnAvance('changement de voix'); }catch(e){} }, 0);
   try{ for(const k in _naLoaded) delete _naLoaded[k]; }catch(e){}
   try{ for(const k in countBuffers) delete countBuffers[k]; }catch(e){}
   try{ for(const k in roundBuffers) delete roundBuffers[k]; }catch(e){}
@@ -4594,35 +4532,6 @@ function decompteBuffersPrets(liste){
   for(const f of liste) if(!_recBuf[f]) return false;
   return true;
 }
-
-// ===== LE DECOMPTE EST PRECHARGE AVANT LE PLAY, PAS PENDANT (05/09/2026 au soir) =====
-//
-// LA CAUSE DU « 10 » MANQUANT, apres trois fausses pistes.
-//
-// launch() appelait prechargerDecompteBuffers() puis, VINGT LIGNES PLUS BAS, testait
-// decompteBuffersPrets(). Or ce prechargement est un fetch + decodeAudioData : il est
-// asynchrone et ne peut pas avoir fini en vingt lignes. Le test echouait donc au
-// PREMIER lancement, on tombait sur le chemin <audio> de repli, et c'est ce chemin-la
-// qui a la course sur le premier chiffre. Aux lancements suivants les buffers etaient
-// en cache, le chemin Web Audio passait, et tout marchait.
-//
-// C'est exactement ce que Francois decrit : « je fais reset et je remets start, on
-// n'entend plus rien, puis je reprends et ca marche ». Le decompte etait fiable une
-// fois sur deux, selon l'etat du cache.
-//
-// On precharge donc des que la voix ET la langue sont connues : fin du wizard, fin du
-// chargement, changement de voix, changement de langue. Aucun geste utilisateur n'est
-// requis pour un fetch et un decodeAudioData ; seul ctx.resume() en demande un, et il
-// reste dans launch().
-function prechargerDecompteEnAvance(raison){
-  try{
-    if(typeof byoMusic!=='undefined' && byoMusic) return;   // Ma musique : voix natives
-    if(!ensureAudioCtx()) return;
-    prechargerDecompteBuffers();
-    DBG('decompte preche a l\'avance ('+(raison||'')+')');
-  }catch(e){ DBG('prechargement en avance: '+((e&&e.message)||e)); }
-}
-
 function prechargerDecompteBuffers(){
   try{
     if(byoMusic) return;            // Ma musique : les voix passent par le natif
@@ -4796,15 +4705,6 @@ function preparerDecompte(fichiers){
     // charge tout de suite. L'ordre compte : poser le vrai src avant le deblocage
     // ferait jouer le chiffre a plein volume au moment du deblocage.
     const poserVrai=()=>{
-      // GARDE-FOU (05/09 au soir). Cette fonction arrive dans le .then() du play() de
-      // deblocage, donc a un instant qu'on ne maitrise pas. Si le decompte a deja
-      // demarre ce fichier, le a.pause() ci-dessous COUPAIT le mot qu'on est en train
-      // d'entendre. Le premier chiffre est le seul expose : les autres ont une seconde
-      // d'avance. On ne touche a rien si la vraie source est deja en place.
-      try{
-        const vrai=VP(f);
-        if(a.src && a.src.indexOf(vrai)>=0){ a.muted=false; a.volume=1; return; }
-      }catch(e){}
       try{ a.pause(); a.currentTime=0; }catch(e){}
       a.muted=false; a.volume=1;
       try{ a.src=VP(f); if(a.load) a.load(); }catch(e){}
@@ -5485,13 +5385,12 @@ function showAnnounce(txt,ico){
 
 function startVisualCountdown(){
   const timings=CD_TIMINGS[S.lang];
-  const avance=CD_LEAD_MS;   // meme avance que l'audio : l'image reste calee sur le son
   const overlay=document.getElementById('cdOverlay');
   const numEl=document.getElementById('cdNum');
   const subEl=document.getElementById('cdSub');
   overlay.classList.add('show');
   S.cdTimers=[];
-  const visSteps=timings.map(step=>({t:step.t+avance,fn:()=>{
+  const visSteps=timings.map(step=>({t:step.t,fn:()=>{
       const isGo=step.n==='GO';
       numEl.textContent=isGo?'GO !':step.n;
       numEl.className='cd-num'+(isGo?' go':'');
@@ -5499,7 +5398,7 @@ function startVisualCountdown(){
       numEl.style.animation='pop 0.15s ease-out';
       subEl.textContent=isGo?L3("C'EST PARTI !","LET'S GO!",'VAMOS!'):'';
   }}));
-  const lastT=timings[timings.length-1].t+avance;
+  const lastT=timings[timings.length-1].t;
   visSteps.push({t:lastT+500,fn:()=>overlay.classList.remove('show')});
   S.cdVisSched=runAbsSchedule(visSteps,10);
 }
@@ -6564,7 +6463,7 @@ function launch(){
     // Web Audio (`source.start(when)`), précise à l'échantillon et indépendante du thread.
     // Buffers déjà préchargés par preloadRecCountdown() à l'armement de la caméra.
     const ctx=ensureAudioCtx();
-    const lead=CD_LEAD_MS/1000;                   // avance : le premier son doit avoir le temps de sortir
+    const lead=0.12;                              // petite marge pour armer les sources
     const anchor=ctx?ctx.currentTime+lead:0;
     const gainVol=Math.min(vol*2.0,1.0);
     S.cdWA=[];
@@ -6612,7 +6511,7 @@ function launch(){
   const _listeAvecSignal=SIGNAL_DEPART_REMPLACE_VOIX?countAudioList:countAudioList.concat([START_AUDIO]);
   if(!nativeVoiceOn() && ensureAudioCtx() && decompteBuffersPrets(_listeAvecSignal)){
     const ctx=audioCtx;
-    const lead=CD_LEAD_MS/1000;            // avance : le premier son doit avoir le temps de sortir
+    const lead=0.12;                       // marge pour armer les sources
     const anchor=ctx.currentTime+lead;
     const gainVol=Math.min(vol*2.0,1.0);
     S.cdWA=[];
@@ -6642,7 +6541,7 @@ function launch(){
   // REPLI : chemin d'origine (éléments <audio>, thread libre, déjà régulier).
   const cdSteps=[];
   countAudioList.forEach((file,i)=>{
-    const _t=CD_LEAD_MS + Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
+    const _t=Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
     cdSteps.push({t:_t,fn:()=>{
       if(nativeVoiceOn()){ nativeVoicePlay(file); return; } // Ma musique : voix native par-dessus Spotify
       const a=_cdElFor(file);
@@ -6669,7 +6568,7 @@ function launch(){
   });
   // Signal de depart EN PLUS de la voix : meme instant que le GO.
   if(!SIGNAL_DEPART_REMPLACE_VOIX){
-    cdSteps.push({t:CD_LEAD_MS+_tGo,fn:()=>{
+    cdSteps.push({t:_tGo,fn:()=>{
       if(nativeVoiceOn()){ nativeVoicePlay(START_AUDIO); return; }
       const a=_cdElFor(START_AUDIO);
       try{a.muted=false;}catch(e){}
@@ -6678,11 +6577,11 @@ function launch(){
       const pr=a.play(); if(pr&&pr.catch) pr.catch(err=>DBG('signal depart REJETE '+err.name));
     }});
   }
-  cdSteps.push({t:CD_LEAD_MS+10500+_onset0,fn:()=>startChrono()});
-  cdSteps.push({t:CD_LEAD_MS+10800+_onset0,fn:()=>{ duckEnd(_duckDepart); }});
+  cdSteps.push({t:10500+_onset0,fn:()=>startChrono()});
+  cdSteps.push({t:10800+_onset0,fn:()=>{ duckEnd(_duckDepart); }});
   cdSteps.sort((a,b)=>a.t-b.t);
   DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
-  S.cdT0=Date.now()+CD_LEAD_MS; // top réel du décompte, pour caler l'overlay vidéo dessus
+  S.cdT0=Date.now(); // top réel du décompte, pour caler l'overlay vidéo dessus
   S.cdSched=runAbsSchedule(cdSteps,10);
 }
 
@@ -7427,9 +7326,6 @@ function closeWelcome(){
 function finishWizard(){
   document.body.classList.remove('wizard-active');
   document.body.classList.add('epured-mode');
-  // Le coach va appuyer sur play dans les secondes qui viennent : c'est le moment de
-  // decoder les onze sons du decompte, pendant qu'il ne se passe rien.
-  try{ prechargerDecompteEnAvance('fin du wizard'); }catch(e){}
 }
 
 // ===== OUVRIR / FERMER LE PANNEAU DE RÉGLAGES COMPLET =====
@@ -7535,11 +7431,6 @@ function updateSettingsVolVoice(v){
 function chooseLanguage(lang){
   try{localStorage.setItem('reps_lang',lang);}catch(e){}
   setLang(lang);
-  // La langue vient d'etre choisie : c'est seulement maintenant qu'on peut savoir si la
-  // voix par defaut la parle. Au tout premier lancement, reps_lang etait encore vide
-  // quand le script a tourne.
-  try{ _voixParDefautSelonLangue(); }catch(e){}
-  try{ prechargerDecompteEnAvance('choix de la langue'); }catch(e){}
   // Cacher l'écran de choix de langue
   const c=document.getElementById('langChoiceScreen');
   if(c){
@@ -8361,8 +8252,6 @@ window.addEventListener('DOMContentLoaded',()=>{
   } else {
     // Tous les choix sont faits, on est en mode épuré dès le départ
     document.body.classList.add('epured-mode');
-    // Le coach rouvre l'app pour lancer un WOD : on decode le decompte tout de suite.
-    setTimeout(function(){ try{ prechargerDecompteEnAvance('ouverture de l\'app'); }catch(e){} }, 800);
   }
   
   if(savedLang==='fr'||savedLang==='en'||savedLang==='pt'){
