@@ -1300,6 +1300,13 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     background:var(--card);border:2px solid var(--border);border-radius:16px;
     color:var(--text);cursor:pointer;}
   .sq-pas:active{border-color:var(--accent);}
+  .sq-lancer{
+    display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:3px;
+    color:var(--text);background:linear-gradient(120deg,rgba(230,63,255,.18),rgba(0,229,255,.12));
+    border:1px solid var(--accent);border-radius:13px;padding:14px 16px;margin-bottom:16px;
+    cursor:pointer;}
+  .sq-lancer .ico{width:1.25rem;height:1.25rem;}
   .sq-etape{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:3px;
     margin:0 0 12px;color:var(--text);}
   .sq-tuiles{display:flex;flex-direction:column;gap:8px;}
@@ -1966,6 +1973,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
         <div class="sq-total"><b id="sqTotal">0:00</b><span id="sqNb">0 blocs</span></div>
         <p class="sq-aide" id="sqAide"></p>
       </div>
+      <button type="button" class="sq-lancer" id="sqLancer" onclick="lancerLaSeance()" style="display:none">
+        <svg class="ico" aria-hidden="true"><use href="#i-nouveau"/></svg>
+        <span id="sqLancerTexte">LANCER CETTE SÉANCE</span>
+      </button>
       <div id="sqAssistant"></div>
       <div class="sq-sep"></div>
       <div id="sqListe"></div>
@@ -5645,7 +5656,31 @@ function sqEnTete(){
     ? "Un par un : tu lances chaque bloc quand la classe est prête. Rien ne décale si une explication déborde."
     : "Enchaîné : les blocs se suivent sans intervention, pauses comprises.";
 }
-function sqTout(){ sqEnTete(); sqRendreAssistant(); sqRendreListe(); }
+function sqTout(){ sqEnTete(); sqRendreAssistant(); sqRendreListe(); sqMajLancer(); }
+function sqMajLancer(){
+  var b=document.getElementById('sqLancer');
+  if(!b) return;
+  var pret=(SQ && SQ.blocs && SQ.blocs.length>0);
+  b.style.display = pret ? 'flex' : 'none';
+  var t=document.getElementById('sqLancerTexte');
+  if(t && pret) t.textContent=L3('LANCER CETTE SÉANCE · '+sqMmss(sqTotal()),
+                                 'START THIS SESSION · '+sqMmss(sqTotal()),
+                                 'INICIAR ESTA SESSÃO · '+sqMmss(sqTotal()));
+}
+// Armer la seance preparee et rendre la main au chrono. Le coach retrouve sa seance de
+// la veille sans retraverser le wizard : c'etait tout l'interet de la preparer.
+function lancerLaSeance(){
+  sqCharger();
+  if(!SQ.blocs.length) return;
+  if(S.state && S.state!=='idle'){ try{ resetTimer(); }catch(e){} }
+  seanceArmer();
+  fermerSeances();
+  // On sort du wizard s'il etait ouvert, et on rend l'app visible.
+  ['nbWodScreen','pauseWodScreen','modeChoiceScreen','timingChoiceScreen','musicChoiceScreen','customScreen']
+    .forEach(function(id){ var e=document.getElementById(id); if(e) e.style.display='none'; });
+  document.body.classList.remove('wizard-active');
+  try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){}
+}
 
 // ===== SEANCE A PLUSIEURS WOD : LE FIL DU WIZARD (05/09/2026) =====
 // Dessine par Francois. Un seul chemin, pas deux : la question « un WOD ou plusieurs ? »
