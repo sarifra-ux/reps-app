@@ -5641,15 +5641,33 @@ function startChrono(){
     if(myGen!==(S.gen||0)){ clearInterval(myIv); return; } // intervalle orphelin d'un WOD périmé
     const target=S.startRemain-Math.floor((Date.now()-S.t0)/1000);
     if(target>=S.remain) return;
+    // RATTRAPAGE COURT vs LONG (05/09/2026, retour d'une coach : « why if i'm out of
+    // app to record with my cam it just doesn't keep counting ? »)
+    //
+    // Le chrono est cale sur l'horloge reelle, il rattrape donc tout seul au retour :
+    // ca, ca marchait deja. Le probleme etait ailleurs. iOS suspend la WebView en
+    // arriere-plan, et au reveil cette boucle rejouait checkAnnounce() pour CHACUNE des
+    // secondes manquees : deux minutes dehors = 120 annonces en rafale, voix comprise.
+    //
+    // Au-dela de 3 s de retard, ce n'est plus un timer ralenti, c'est un reveil. On
+    // avance le chrono sans rejouer le passe. L'etat se recale tout seul au tick
+    // suivant : emomPhaseCheck compare la phase courante a la derniere annoncee et
+    // annonce le round une fois, une seule.
+    const retard=S.remain-target;
+    const reveil=(retard>3);
     let guard=0;
     while(S.remain>target && guard++<3600){
       S.remain--;
       updateClock();
-      checkAnnounce();
-      recordWodFrame();
+      if(!reveil) checkAnnounce();   // sinon : on ne rejoue pas les annonces du passe
+      recordWodFrame();              // les frames, si : la video a besoin de chaque seconde
       if(S.remain<=0) break;
     }
-    if(guard>1) DBG('rattrapage de '+guard+' s (timer iOS ralenti)');
+    if(reveil){
+      DBG('reveil : '+guard+' s rattrapees, annonces du passe non rejouees');
+      showAnnounce(L3('REPRISE','BACK','RETOMADA'),'cycle');
+    }
+    else if(guard>1) DBG('rattrapage de '+guard+' s (timer iOS ralenti)');
     _updateDiag();
     if(S.remain<=0){
       if(S.mode==='tabata'){ tabataPhaseEnd(); S.t0=Date.now(); S.startRemain=S.remain; }
