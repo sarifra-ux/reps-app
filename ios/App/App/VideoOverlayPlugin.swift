@@ -21,7 +21,8 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "stopRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancelRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAudioMixing", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "openExternalApp", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "openExternalApp", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "cameraState", returnType: CAPPluginReturnPromise)
     ]
 
     private var pickCall: CAPPluginCall?
@@ -35,6 +36,8 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
     private var recURL: URL?
     private var audioSessionTouched = false
     private let sessionQueue = DispatchQueue(label: "reps.camera.session")
+    // Observateurs de reprise apres arriere-plan (cf. reprendreCamera, 05/09/2026).
+    private var camObservers: [NSObjectProtocol] = []
 
     @objc func ping(_ call: CAPPluginCall) {
         call.resolve(["value": "pong from native", "echo": call.getString("msg") ?? ""])
@@ -158,6 +161,7 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
             session.startRunning()
             self.captureSession = session
             self.movieOutput = output
+            DispatchQueue.main.async { self.observerCamera() }
 
             DispatchQueue.main.async {
                 // Apercu de cadrage : ECRAN PARTAGE.
@@ -231,7 +235,63 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    // ===== REPRISE APRES ARRIERE-PLAN (05/09/2026) =====
+    // iOS interrompt AVCaptureSession des que l'app passe en arriere-plan, et pendant un
+    // appel telephonique. Rien ne la relancait : au retour, le calque d'apercu etait
+    // toujours en place mais VIDE, donc transparent. On voyait le fond de la page web a
+    // travers, et le web, lui, croyait toujours filmer : sa classe `filming` gardait les
+    // 55dvh reserves a l'apercu et poussait toute l'interface hors de l'ecran, bouton
+    // play compris. Constate en video le 05/09.
+    //
+    // Ce qui est possible et ce qui ne l'est pas : on sait relancer la SESSION (l'apercu
+    // redevient vivant). On ne sait pas reprendre l'ENREGISTREMENT en cours : iOS coupe
+    // AVCaptureMovieFileOutput et le fichier est finalise. Le web est prevenu et decide.
+    private func observerCamera() {
+        retirerObservateursCamera()
+        let nc = NotificationCenter.default
+        camObservers.append(nc.addObserver(forName: UIApplication.didBecomeActiveNotification,
+                                           object: nil, queue: .main) { [weak self] _ in
+            self?.reprendreCamera()
+        })
+        camObservers.append(nc.addObserver(forName: .AVCaptureSessionInterruptionEnded,
+                                           object: nil, queue: .main) { [weak self] _ in
+            self?.reprendreCamera()
+        })
+    }
+
+    private func retirerObservateursCamera() {
+        for o in camObservers { NotificationCenter.default.removeObserver(o) }
+        camObservers.removeAll()
+    }
+
+    private func reprendreCamera() {
+        guard let session = self.captureSession else { return }
+        sessionQueue.async {
+            if !session.isRunning { session.startRunning() }
+            let running = session.isRunning
+            let recording = self.movieOutput?.isRecording ?? false
+            DispatchQueue.main.async {
+                // Le calque est pose sur la vue hote : si l'ecran a change de taille
+                // pendant l'absence, sa largeur n'est plus la bonne.
+                if let pv = self.previewLayer, let host = self.bridge?.viewController?.view {
+                    pv.frame = CGRect(x: 0, y: 0, width: host.bounds.width, height: pv.frame.height)
+                }
+                self.notifyListeners("cameraState", data: ["running": running, "recording": recording])
+            }
+        }
+    }
+
+    // Etat reel de la camera, demande par le web au retour au premier plan.
+    @objc func cameraState(_ call: CAPPluginCall) {
+        call.resolve([
+            "running": self.captureSession?.isRunning ?? false,
+            "recording": self.movieOutput?.isRecording ?? false,
+            "hasPreview": self.previewLayer != nil
+        ])
+    }
+
     private func teardownCamera() {
+        retirerObservateursCamera()
         self.previewLayer?.removeFromSuperlayer()
         self.previewLayer = nil
         let s = self.captureSession

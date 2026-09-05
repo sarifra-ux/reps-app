@@ -1201,6 +1201,11 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
         --cam-h DOIT rester egal a camFraction dans VideoOverlayPlugin.swift (0.40). */
   :root{--cam-h:55dvh;}   /* 17/08 : 40 -> 55 %. La hauteur reelle est envoyee au plugin
                              par toggleFilm (camHeightPx), le Swift ne calcule plus rien. */
+  /* Ecrans courts (iPhone SE et compagnie) : 55% pour l'apercu ne laissait pas la place
+     aux commandes, le bouton play depassait de 5px sous le bord et `overflow:hidden`
+     le rognait. Mesure au banc du 05/09. Le natif suit tout seul : toggleFilm() lui
+     envoie la hauteur MESUREE du slot (camHeightPx), le web reste la seule source. */
+  @media (max-height:700px){ :root{--cam-h:45dvh;} }
   #camSlot{height:0;overflow:hidden;transition:height .18s ease;}
   body.filming #camSlot{height:var(--cam-h);}
   /* Le header est normalement `position:sticky; top:0`. Pendant le tournage il se
@@ -1228,7 +1233,12 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
      que le chrono, RESET, PLAY et FINI. Tout le reste est masque, pas repousse — c'est
      ce qui faisait sortir le chrono et le header de l'ecran a chaque essai. */
   body.filming{overflow:hidden;}
-  body.filming .app{height:calc(100dvh - var(--cam-h) - 56px);overflow:hidden;}
+  /* 05/09/2026 : ce 56 etait un chiffre magique de plus, le meme defaut que le 69 du
+     header corrige le 03/09. Le header mesure fait 81px sur un iPhone a encoche, pas 56 :
+     l'interface depassait de 68px sous l'ecran pendant le tournage (mesure au banc), et
+     `body.filming{overflow:hidden}` interdisait d'aller la chercher. Le bouton play
+     tombait hors de l'ecran. On mesure, on ne devine pas : --header-h. */
+  body.filming .app{height:calc(100dvh - var(--cam-h) - var(--header-h));overflow:hidden;}
   body.filming main{height:100%;overflow:hidden;justify-content:center;gap:10px;padding-top:8px;}
   body.filming .bottom-row,
   body.filming .schedule,
@@ -1408,12 +1418,16 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
      L'horloge se dimensionne sur la hauteur de l'anneau (cqh) et non sur la
      largeur de l'écran : sinon, anneau rétréci, elle débordait du cercle. */
   body.epured-mode main,
+  body.filming main,
   body.wod-live main{overflow:hidden;justify-content:center;}
   body.epured-mode main > *,
+  body.filming main > *,
   body.wod-live main > *{flex:0 0 auto;}
   body.epured-mode #timerCard,
+  body.filming #timerCard,
   body.wod-live #timerCard{flex:0 1 auto;min-height:0;}
   body.epured-mode #timerCard .dial-wrap,
+  body.filming #timerCard .dial-wrap,
   body.wod-live #timerCard .dial-wrap{
     flex:0 1 min(272px,72vw);
     min-height:0;
@@ -1427,6 +1441,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     container-type:size;
   }
   body.epured-mode #timerCard .dial-wrap .timer-clock,
+  body.filming #timerCard .dial-wrap .timer-clock,
   body.wod-live #timerCard .dial-wrap .timer-clock{
     font-size:clamp(2.2rem,min(30cqh,19vw),5.6rem);
   }
@@ -4948,6 +4963,73 @@ function toggleFilmCam(){
   setFilmCamBtn();
   DBG('caméra: '+S.filmCam);
 }
+// ===== FILET DU MODE FILM (05/09/2026) =====
+// Deux pannes constatees le meme jour, memes consequences :
+//  1. startRecording ne repond jamais -> la classe `filming` reste posee, 55dvh de trou
+//     en haut de l'ecran et rien dedans.
+//  2. Retour d'arriere-plan : iOS interrompt la session AVCapture, le calque d'apercu
+//     devient transparent (on voit le fond de la page a travers), mais la classe est
+//     toujours la. Meme trou.
+// Dans les deux cas toute l'interface descend sous l'ecran, et `body.filming{overflow:hidden}`
+// interdit de defiler pour aller la chercher : le bouton play devient inatteignable.
+// C'est ce que montre la video du 05/09, mesure a 54% de la hauteur d'ecran, soit --cam-h.
+//
+// REGLE POSEE : la classe `filming` ne survit jamais a la perte de l'apercu.
+function _avecDelai(promesse, ms, code){
+  let fini=false;
+  return new Promise((ok,ko)=>{
+    const t=setTimeout(()=>{ if(fini) return; fini=true;
+                             const e=new Error('delai depasse'); e.code=code; ko(e); }, ms);
+    promesse.then(v=>{
+      if(fini){
+        // Reponse tardive : le natif a peut-etre demarre pour de bon. On coupe,
+        // sinon la camera tourne sans que le web le sache (et le fichier grossit).
+        try{ const VO=_videoOverlayPlugin(); if(VO) VO.cancelRecording(); }catch(_){}
+        return;
+      }
+      fini=true; clearTimeout(t); ok(v);
+    }, e=>{ if(fini) return; fini=true; clearTimeout(t); ko(e); });
+  });
+}
+// Sortie propre : l'interface redevient utilisable, quoi qu'il arrive cote natif.
+function sortirDuModeFilm(raison){
+  S.filming=false; S.recStartMs=0;
+  try{ setFilmBtn(false); }catch(e){}
+  document.body.classList.remove('filming');   // setFilmBtn le fait deja, filet si le bouton manque
+  try{ const VO=_videoOverlayPlugin(); if(VO) VO.cancelRecording(); }catch(e){}
+  DBG('film: sortie du mode film ('+raison+')');
+}
+// Chien de garde : la place reservee a l'apercu ne doit JAMAIS rester ouverte alors
+// qu'on ne filme pas. Deux secondes, cout nul, et l'app ne peut plus se retrouver
+// bloquee dans un etat ou plus aucun bouton n'est atteignable.
+setInterval(()=>{
+  if(!S.filming && document.body.classList.contains('filming')){
+    document.body.classList.remove('filming');
+    DBG('film: place reservee refermee (chien de garde)');
+  }
+}, 2000);
+// Retour au premier plan. iOS a coupe la camera pendant l'absence : l'apercu est mort et
+// l'enregistrement en cours est termine. Si le natif sait reprendre (cameraState), on ne
+// touche a rien. Sinon on sort du mode film, en sauvant la video quand un WOD tournait.
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState!=='visible') return;
+  if(!S.filming && !document.body.classList.contains('filming')) return;
+  const VO=_videoOverlayPlugin();
+  const conclure=(vivante)=>{
+    if(vivante) return;                       // la session tourne toujours : rien a faire
+    if(S.filming && (S.state==='playing'||S.state==='paused')){
+      showAnnounce(L3('Film interrompu','Recording interrupted','Filmagem interrompida'));
+      try{ finishFilmAndExport(); }catch(e){ sortirDuModeFilm('export impossible'); }
+      return;                                 // le chien de garde refermera la place
+    }
+    sortirDuModeFilm('retour au premier plan');
+  };
+  if(VO && typeof VO.cameraState==='function'){
+    VO.cameraState().then(r=>conclure(!!(r && r.running && r.recording))).catch(()=>conclure(false));
+  } else {
+    conclure(false);                          // build natif anterieur au 05/09
+  }
+});
 async function toggleFilm(){
   const VO=_videoOverlayPlugin();
   if(!VO){ DBG('film: plugin natif absent (web ?)'); return; }
@@ -4982,7 +5064,9 @@ async function toggleFilm(){
       _slot.style.transition=_tr;
     }
     DBG('cam: bas du slot a '+_camPx+' px');
-    const r=await VO.startRecording({camera:(S.filmCam==='front'?'front':'back'), withAudio:!!S.filmAudio, camHeightPx:_camPx});
+    // Sous delai : sans ca, une promesse qui ne revient jamais laissait la classe
+    // `filming` posee pour de bon (cf. FILET DU MODE FILM ci-dessus).
+    const r=await _avecDelai(VO.startRecording({camera:(S.filmCam==='front'?'front':'back'), withAudio:!!S.filmAudio, camHeightPx:_camPx}), 6000, 'CAM_TIMEOUT');
     S.filming=true;
     S.recStartMs=(r&&r.startWallClockMs)||Date.now();
     setFilmBtn(true);
@@ -5002,6 +5086,7 @@ async function toggleFilm(){
     document.body.classList.remove('filming');   // on rend la place reservee plus haut
     DBG('❌ film KO: '+((e&&e.message)||e));
     if((e&&e.code)==='PERM_DENIED') showAnnounce(L3('Autorise la caméra','Allow camera','Autoriza a câmera'));
+    else if((e&&e.code)==='CAM_TIMEOUT') showAnnounce(L3('Caméra : pas de réponse','Camera: no response','Câmera: sem resposta'));
   }
 }
 // Fin du WOD : couper l'enregistrement puis incruster le chrono et sauver dans Photos.
@@ -5349,7 +5434,13 @@ function startChrono(){
   const mName={wod:'WOD',amrap:'AMRAP',emom:'EMOM',tabata:'TABATA'}[S.mode];
   document.getElementById('timerStatus').textContent='▶ '+mName+' — '+(byoMusic?L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA'):(TRACK_INFO[S.track]||{name:'—'}).name);
   try{const w=document.getElementById('scoreWod'); if(w) w.value=currentWodLabel();}catch(e){}
-  if(S.mode!=='tabata') document.getElementById('btnSkip').style.display='';
+  // Le skip existe dans tous les modes depuis le 05/09 : en EMOM et en Tabata il passe
+  // a l'intervalle suivant, ailleurs il saute a 3 minutes restantes. Le libelle le dit.
+  { const _s=document.getElementById('btnSkip');
+    if(_s){ _s.style.display='';
+            _s.textContent=(S.mode==='emom'||S.mode==='tabata')
+              ? '⏭ '+L3('SUIVANT','NEXT','PRÓXIMO')
+              : '⏭ –3MIN'; } }
   // « FINI » dans tous les modes : il sert aussi a couper l'enregistrement video
   // quand on a termine, sans attendre la fin du temps imparti.
   { const _d=document.getElementById('btnDone'); if(_d) _d.style.display=''; }
@@ -5753,8 +5844,37 @@ function finishNow(){
   end(); // end() coupe deja l'enregistrement et enchaine l'export video
 }
 
+// SKIP — retour d'une coach, 05/09/2026. Le bouton sautait a « il reste 3 minutes »,
+// ce qui n'a rien a voir avec passer a l'intervalle suivant : sur un EMOM, ce dont on a
+// besoin en salle c'est de couper court a un tour, pas de tronquer la seance.
+// Il fait maintenant les deux, selon le mode :
+//   EMOM   : va au bout de la phase en cours (work -> rest, ou tour suivant)
+//   TABATA : meme chose, la bascule de phase existait deja
+//   autres : inchange (for time, AMRAP), on saute a 3 minutes restantes
 function skipAhead(){
-  if(S.remain>180&&S.state==='playing'&&S.mode!=='tabata'){
+  if(S.state!=='playing') return;
+
+  if(S.mode==='tabata'){ tabataPhaseEnd(); return; }
+
+  if(S.mode==='emom'){
+    const elapsed=S.total-S.remain;
+    const P=emomPos(elapsed);
+    if(!P) return;
+    // Ce qu'il reste a courir dans la phase en cours. Au moins 1 s : a cheval sur une
+    // bascule, un reste de 0 laisserait le bouton sans effet.
+    const reste=Math.max(1, Math.round(P.phaseLen-P.inPhase));
+    const nouveau=S.remain-reste;
+    if(nouveau<=1){ end(); return; }   // sauter la derniere phase, c'est finir le WOD
+    // Meme recalage que ci-dessous : sans lui, la boucle de startChrono
+    // (target>=S.remain -> return) fige le chrono jusqu'a ce que le temps reel rattrape.
+    S.remain=nouveau; S.startRemain=nouveau; S.t0=Date.now();
+    updateClock();
+    // L'annonce (REST, ROUND n) est emise par emomPhaseCheck au tick suivant.
+    // On ne la double pas ici : ce serait deux voix sur le meme evenement.
+    return;
+  }
+
+  if(S.remain>180){
     S.remain=180;
     // On recale l'horloge de référence, sinon la boucle de startChrono
     // (target>=S.remain -> return) fige le chrono jusqu'a ce que le temps
