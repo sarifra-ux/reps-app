@@ -1205,7 +1205,11 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
      aux commandes, le bouton play depassait de 5px sous le bord et `overflow:hidden`
      le rognait. Mesure au banc du 05/09. Le natif suit tout seul : toggleFilm() lui
      envoie la hauteur MESUREE du slot (camHeightPx), le web reste la seule source. */
-  @media (max-height:700px){ :root{--cam-h:45dvh;} }
+  /* 05/09, apres essai sur iPhone : a 55% l'apercu ne laissait pas assez de place a la
+     carte ET aux commandes. 50%, l'athlete reste cadre et le chrono redevient pilotable.
+     Une seule ligne a changer si on veut revenir en arriere. */
+  :root{--cam-h:45dvh;}
+  @media (max-height:700px){ :root{--cam-h:40dvh;} }
   /* ===== ICONES NEON (05/09/2026) =====
      Retour d'une coach : « i'm not against emojis but the app has toooo many, at some
      point the fun takes seriousness ». Elle a raison : les couleurs neon portent deja
@@ -1255,6 +1259,21 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
      `body.filming{overflow:hidden}` interdisait d'aller la chercher. Le bouton play
      tombait hors de l'ecran. On mesure, on ne devine pas : --header-h. */
   body.filming .app{height:calc(100dvh - var(--cam-h) - var(--header-h));overflow:hidden;}
+
+  /* ===== LES COMMANDES SONT ANCREES PENDANT LE TOURNAGE (05/09/2026) =====
+     Essai sur iPhone : meme avec la hauteur du header mesuree, la carte du chrono
+     prenait toute la place restante et la rangee de commandes tombait sous le bord de
+     l'ecran. Et comme `body.filming{overflow:hidden}` interdit de defiler, il n'y avait
+     plus aucun moyen d'arreter le chrono pendant qu'on filme. Inutilisable en salle.
+     On arrete de calculer l'endroit ou elles tombent : on les FIXE en bas, et main se
+     reserve leur hauteur (mesuree, pas devinee, comme --header-h). Quoi qu'il arrive au
+     dessus, le bouton play reste sous le pouce. */
+  body.filming .controls{
+    position:fixed;left:0;right:0;bottom:calc(4px + env(safe-area-inset-bottom,0px));
+    z-index:120;margin:0;padding:10px 12px;justify-content:center;
+    background:linear-gradient(to top,rgba(8,8,16,.97),rgba(8,8,16,.8) 65%,rgba(8,8,16,0));
+  }
+  body.filming main{padding-bottom:calc(var(--ctrl-h,86px) + 6px);}
   body.filming main{height:100%;overflow:hidden;justify-content:center;gap:10px;padding-top:8px;}
   body.filming .bottom-row,
   body.filming .schedule,
@@ -1262,8 +1281,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.filming .now-playing-bar,
   body.filming .timer-status,
   body.filming #btnFilm,
-  body.filming #btnFilmAudio,
-  body.filming #btnSkip{display:none !important;}
+  body.filming #btnFilmAudio{display:none !important;}
   body.filming .timer-card{padding:14px 16px 12px;margin:0;}
   /* Le decompte est cale sur 10rem en plein ecran : dans la bande de tournage il
      debordait de la carte et se superposait au chrono. On l'aligne sur la taille du
@@ -1399,6 +1417,19 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     overscroll-behavior:contain;
     -webkit-overflow-scrolling:touch;
   }
+
+  /* ===== LA HAUTEUR DE MAIN PENDANT QU'ON FILME (05/09/2026) =====
+     Essai sur iPhone : pendant un WOD filme, le chrono etait pousse tout en bas et les
+     commandes tombaient sous le bord de l'ecran, sans moyen de defiler. Mesure au banc,
+     iPhone 15 : main faisait 726px la ou il n'y a que 300px de place.
+     Cause : les deux regles ci-dessus posent height:calc(100dvh - var(--header-h)) sans
+     soustraire l'apercu camera. Elles datent d'avant l'ecran partage. Avec
+     justify-content:center, le contenu se centre dans une boite deux fois trop grande et
+     la moitie basse sort de l'ecran.
+     La regle .app avait ete corrigee le matin meme, ces deux-la non : meme faute, meme
+     remede, on soustrait aussi --cam-h. */
+  body.wod-live.filming main,
+  body.epured-mode.filming main{height:calc(100dvh - var(--cam-h) - var(--header-h));}
   @media(max-width:600px){
     main{padding-top:8px;padding-bottom:8px;gap:10px;}
     .timer-card{padding-top:12px;padding-bottom:10px;}
@@ -1460,6 +1491,12 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.filming #timerCard .dial-wrap .timer-clock,
   body.wod-live #timerCard .dial-wrap .timer-clock{
     font-size:clamp(2.2rem,min(30cqh,19vw),5.6rem);
+  }
+  /* En filmant, l'anneau n'a plus que la moitie de l'ecran : le plancher de 2.2rem du
+     clamp ci-dessus rendait l'horloge plus large que le cercle, elle debordait des deux
+     cotes (vu au banc le 05/09). On baisse le plancher pour ce seul cas. */
+  body.filming #timerCard .dial-wrap .timer-clock{
+    font-size:clamp(1rem,min(30cqh,19vw),3.4rem);
   }
 </style>
 </head>
@@ -8201,7 +8238,24 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
   // Les polices sont en data-URI mais restent asynchrones : le logo change de hauteur
   // quand Bebas Neue remplace la police de repli.
   try{ if(document.fonts&&document.fonts.ready) document.fonts.ready.then(majHeaderH); }catch(e){}
+  // Meme principe pour la rangee de commandes : en mode film elle est en position fixe,
+  // et main doit se reserver exactement sa hauteur. Un chiffre en dur ici serait le
+  // troisieme de la serie (69px, 56px), on ne recommence pas.
+  function majCtrlH(){
+    try{
+      var c=document.querySelector('.controls');
+      if(!c) return;
+      var v=Math.round(c.getBoundingClientRect().height);
+      if(v>0) document.documentElement.style.setProperty('--ctrl-h', v+'px');
+    }catch(e){}
+  }
+  try{
+    var _c=document.querySelector('.controls');
+    if(_c && window.ResizeObserver) new ResizeObserver(majCtrlH).observe(_c,{box:'border-box'});
+  }catch(e){}
+  window.addEventListener('load',majCtrlH);
   window.addEventListener('resize',majHeaderH);
+  window.addEventListener('resize',majCtrlH);
   window.addEventListener('orientationchange',function(){ setTimeout(majHeaderH,300); });
 })();
 </script>
