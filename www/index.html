@@ -1982,6 +1982,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 
 <div id="modeChoiceScreen" class="mode-choice" style="display:none">
   <div class="mode-choice-content">
+    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" style="display:none">←</button>
     <h2 class="wizard-title" id="modeChoiceTitle" data-i18n="cfg.mode">Mode d'entraînement</h2>
     <div class="mode-choice-tiles">
       <button class="mode-tile mode-tile-fortime" onclick="chooseMode('wod')">
@@ -5804,6 +5805,7 @@ function montrerNbWod(){
   if(h) h.textContent=L3('Plusieurs WOD : tu les prépares les uns après les autres',
                          'Several WODs: you set them up one after another',
                          'Vários WODs: preparas um depois do outro');
+  _WIZ_PILE.length=0; _wizDernier='nbWodScreen'; _wizMajFleches();  // depart du parcours
   _wizMontrer('nbWodScreen');
 }
 function choisirNbWod(multi){
@@ -7366,7 +7368,12 @@ function wizRetour(){
   if(!id){ _wizMajFleches(); return; }
   _wizDernier=null;                 // pour que le show ci-dessous ne re-empile rien
   try{
-    if(id==='modeChoiceScreen') showModeChoice();
+    if(id==='nbWodScreen'){
+      ['modeChoiceScreen','timingChoiceScreen','musicChoiceScreen','customScreen']
+        .forEach(function(x){ var e=document.getElementById(x); if(e) e.style.display='none'; });
+      montrerNbWod();
+    }
+    else if(id==='modeChoiceScreen') showModeChoice();
     else if(id==='timingChoiceScreen') showTimingChoice(S.mode);
     else if(id==='customScreen') showCustomChoice(S.mode);
     else if(id==='musicChoiceScreen') showMusicChoice();
@@ -7375,7 +7382,15 @@ function wizRetour(){
   _wizMajFleches();
 }
 function showModeChoice(){
-  _WIZ_PILE.length=0; _wizDernier='modeChoiceScreen'; _wizMajFleches();   // depart : rien derriere
+  // Ce n'est plus le premier ecran : « un seul WOD / plusieurs » vient avant, et la
+  // fleche doit y ramener. On n'empile que si on arrive VRAIMENT de la (_wizDernier
+  // vaut nbWodScreen), pas quand wizRetour redescend sur cet ecran.
+  if(_wizDernier==='nbWodScreen'){
+    _WIZ_PILE.length=0; _WIZ_PILE.push('nbWodScreen');
+  } else if(_wizDernier===null || _wizDernier==='modeChoiceScreen'){
+    _WIZ_PILE.length=0;
+  }
+  _wizDernier='modeChoiceScreen'; _wizMajFleches();
   const screen=document.getElementById('modeChoiceScreen');
   if(!screen) return;
   // Nettoyage capture vidéo : au retour dans le wizard juste après une capture, un écran
@@ -7914,7 +7929,10 @@ function showWelcomeThenWizard(){
       savedMusic=localStorage.getItem('reps_music_category');
     }catch(e){}
     if(!savedMode){
-      showModeChoice();
+      // Le premier ecran du parcours est « un seul WOD / plusieurs WOD », depuis le
+      // 05/09. Il etait branche partout SAUF ici, donc une installation neuve tombait
+      // directement sur le choix du mode et la question n'etait jamais posee.
+      montrerNbWod();
     } else if(!savedTiming){
       showTimingChoice(savedMode);
     } else if(!savedMusic){
