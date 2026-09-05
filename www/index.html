@@ -2823,6 +2823,22 @@ const ROUND_AUDIO={
   }
 };
 
+// ===== L'AVANCE DU DECOMPTE (05/09/2026 au soir) =====
+// Francois : « le dix est quasi muet ». Ce n'est pas le fichier : les onze count-fr-*.mp3
+// sont au meme niveau, mesure (-10 a -11 dB de moyenne, -1 dB de crete).
+// C'est le PREMIER son qui n'a pas le temps de sortir. Trois causes, une par chemin :
+//   - <audio> : preparerDecompte debloque sur un WAV silencieux et ne pose le vrai src
+//     que dans le .then(). Le pas t=0 part avant. Un filet avait ete pose le 01/09, mais
+//     poser un src et appeler load() ne rend pas l'element pret pour autant : le
+//     chargement est asynchrone lui aussi.
+//   - Web Audio : le premier buffer etait arme a currentTime+0,12 s. Sur un AudioContext
+//     qui vient d'etre repris, 120 ms ne suffisent pas toujours.
+// La correction est la meme pour les trois chemins : donner de l'avance. 350 ms au lieu
+// de 120, et l'AFFICHAGE est decale d'autant, donc l'image reste calee sur le son. Le WOD
+// part 230 ms plus tard qu'avant, ce qui ne se voit pas.
+// A VERIFIER A L'OREILLE : je ne peux pas ecouter, je ne peux que donner du temps.
+const CD_LEAD_MS = 350;
+
 const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
   en:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
@@ -5385,12 +5401,13 @@ function showAnnounce(txt,ico){
 
 function startVisualCountdown(){
   const timings=CD_TIMINGS[S.lang];
+  const avance=CD_LEAD_MS;   // meme avance que l'audio : l'image reste calee sur le son
   const overlay=document.getElementById('cdOverlay');
   const numEl=document.getElementById('cdNum');
   const subEl=document.getElementById('cdSub');
   overlay.classList.add('show');
   S.cdTimers=[];
-  const visSteps=timings.map(step=>({t:step.t,fn:()=>{
+  const visSteps=timings.map(step=>({t:step.t+avance,fn:()=>{
       const isGo=step.n==='GO';
       numEl.textContent=isGo?'GO !':step.n;
       numEl.className='cd-num'+(isGo?' go':'');
@@ -5398,7 +5415,7 @@ function startVisualCountdown(){
       numEl.style.animation='pop 0.15s ease-out';
       subEl.textContent=isGo?L3("C'EST PARTI !","LET'S GO!",'VAMOS!'):'';
   }}));
-  const lastT=timings[timings.length-1].t;
+  const lastT=timings[timings.length-1].t+avance;
   visSteps.push({t:lastT+500,fn:()=>overlay.classList.remove('show')});
   S.cdVisSched=runAbsSchedule(visSteps,10);
 }
@@ -6463,7 +6480,7 @@ function launch(){
     // Web Audio (`source.start(when)`), précise à l'échantillon et indépendante du thread.
     // Buffers déjà préchargés par preloadRecCountdown() à l'armement de la caméra.
     const ctx=ensureAudioCtx();
-    const lead=0.12;                              // petite marge pour armer les sources
+    const lead=CD_LEAD_MS/1000;                   // avance : le premier son doit avoir le temps de sortir
     const anchor=ctx?ctx.currentTime+lead:0;
     const gainVol=Math.min(vol*2.0,1.0);
     S.cdWA=[];
@@ -6511,7 +6528,7 @@ function launch(){
   const _listeAvecSignal=SIGNAL_DEPART_REMPLACE_VOIX?countAudioList:countAudioList.concat([START_AUDIO]);
   if(!nativeVoiceOn() && ensureAudioCtx() && decompteBuffersPrets(_listeAvecSignal)){
     const ctx=audioCtx;
-    const lead=0.12;                       // marge pour armer les sources
+    const lead=CD_LEAD_MS/1000;            // avance : le premier son doit avoir le temps de sortir
     const anchor=ctx.currentTime+lead;
     const gainVol=Math.min(vol*2.0,1.0);
     S.cdWA=[];
@@ -6541,7 +6558,7 @@ function launch(){
   // REPLI : chemin d'origine (éléments <audio>, thread libre, déjà régulier).
   const cdSteps=[];
   countAudioList.forEach((file,i)=>{
-    const _t=Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
+    const _t=CD_LEAD_MS + Math.max(0, i*1000 - (_onsets[i]||0) + _onset0);
     cdSteps.push({t:_t,fn:()=>{
       if(nativeVoiceOn()){ nativeVoicePlay(file); return; } // Ma musique : voix native par-dessus Spotify
       const a=_cdElFor(file);
@@ -6568,7 +6585,7 @@ function launch(){
   });
   // Signal de depart EN PLUS de la voix : meme instant que le GO.
   if(!SIGNAL_DEPART_REMPLACE_VOIX){
-    cdSteps.push({t:_tGo,fn:()=>{
+    cdSteps.push({t:CD_LEAD_MS+_tGo,fn:()=>{
       if(nativeVoiceOn()){ nativeVoicePlay(START_AUDIO); return; }
       const a=_cdElFor(START_AUDIO);
       try{a.muted=false;}catch(e){}
@@ -6577,11 +6594,11 @@ function launch(){
       const pr=a.play(); if(pr&&pr.catch) pr.catch(err=>DBG('signal depart REJETE '+err.name));
     }});
   }
-  cdSteps.push({t:10500+_onset0,fn:()=>startChrono()});
-  cdSteps.push({t:10800+_onset0,fn:()=>{ duckEnd(_duckDepart); }});
+  cdSteps.push({t:CD_LEAD_MS+10500+_onset0,fn:()=>startChrono()});
+  cdSteps.push({t:CD_LEAD_MS+10800+_onset0,fn:()=>{ duckEnd(_duckDepart); }});
   cdSteps.sort((a,b)=>a.t-b.t);
   DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
-  S.cdT0=Date.now(); // top réel du décompte, pour caler l'overlay vidéo dessus
+  S.cdT0=Date.now()+CD_LEAD_MS; // top réel du décompte, pour caler l'overlay vidéo dessus
   S.cdSched=runAbsSchedule(cdSteps,10);
 }
 
