@@ -2853,10 +2853,25 @@ const CD_TIMINGS={
 // onset0 (celui du "10") sert d'ancre, on ne peut pas jouer avant t=0. En FR onset0=0, donc
 // l'audio est calé sur l'affichage. ⚠️ Si les count-*.mp3 changent, re-mesurer.
 // Ordre = [10,9,8,7,6,5,4,3,2,1,GO]. (Méthode fiable ; l'ancienne mesure silencedetect était fausse.)
+// RE-MESURE DU 05/09/2026 AU SOIR, et la table d'avant etait fausse.
+// Mesure : fenetres de 5 ms, seuil a -20 dB sous le pic, sur les fichiers reellement
+// livres. Resultat : AUCUN fichier n'avait de silence de tete. La table declarait
+// jusqu'a 160 ms la ou il n'y en avait pas, et les ecarts reels entre deux mots
+// allaient de 860 a 1150 ms au lieu de 1000. Les valeurs ci-dessous sont mesurees,
+// pas estimees, et les ecarts tombent maintenant a 1000 ms exactement.
+//
+// Les trois count-*-10 ont recu 150 ms de silence en tete, d'ou leur onset de ~155 ms.
+// Pourquoi eux et pas les autres : le « dix » francais avait son PIC a 30 ms, sans
+// aucune marge. C'est le seul mot joue a l'instant zero, quand la sortie audio vient
+// a peine de s'ouvrir : la moindre latence de demarrage mangeait son attaque, et il
+// ne restait que le « x ». C'est ce que Francois entendait depuis des jours.
+// Les autres chiffres ont une seconde ou plus d'avance, leur lecture est deja chaude.
+// Originaux gardes dans CLAUDE.md/audio-originaux/.
+// ⚠️ Si les count-*.mp3 changent, re-mesurer. La methode est dans le journal du 05/09.
 const COUNT_ONSET={
-  fr:[120,0,120,0,0,0,60,100,0,140,100],
-  en:[40,120,0,160,0,80,60,80,80,0,0],
-  pt:[0,120,0,0,0,0,60,40,0,160,0]
+  fr:[155,5,10,5,10,10,10,10,10,10,70],
+  en:[165,10,10,15,10,10,10,10,10,10,10],
+  pt:[160,5,10,10,10,10,10,5,10,5,10]
 };
 
 // ===== SELECTEUR DE VOIX (16/08/2026) =====
@@ -4721,6 +4736,15 @@ function preparerDecompte(fichiers){
     // charge tout de suite. L'ordre compte : poser le vrai src avant le deblocage
     // ferait jouer le chiffre a plein volume au moment du deblocage.
     const poserVrai=()=>{
+      // GARDE-FOU (05/09 au soir). Cette fonction arrive dans le .then() du play() de
+      // deblocage, donc a un instant qu'on ne maitrise pas. Si le decompte a deja
+      // demarre ce fichier, le a.pause() ci-dessous COUPAIT le mot qu'on est en train
+      // d'entendre. Le premier chiffre est le seul expose : les autres ont une seconde
+      // d'avance. On ne touche a rien si la vraie source est deja en place.
+      try{
+        const vrai=VP(f);
+        if(a.src && a.src.indexOf(vrai)>=0){ a.muted=false; a.volume=1; return; }
+      }catch(e){}
       try{ a.pause(); a.currentTime=0; }catch(e){}
       a.muted=false; a.volume=1;
       try{ a.src=VP(f); if(a.load) a.load(); }catch(e){}
