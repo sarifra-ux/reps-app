@@ -762,6 +762,9 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     font-size:2.4rem;
     line-height:1;
   }
+  /* Les tuiles portent maintenant des icones au trait et non plus des emojis : un SVG se
+     dimensionne en largeur/hauteur, pas en font-size (05/09/2026). */
+  svg.ico.mode-tile-icon{width:2.2rem;height:2.2rem;flex:0 0 auto;}
   .mode-tile-name{
     font-size:1.8rem;letter-spacing:3px;
   }
@@ -1678,6 +1681,11 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       <path d="M6.6 6.6l10.8 10.8"/>
       <path d="M17.4 6.6L6.6 17.4"/>
     </symbol>
+    <symbol id="i-infini" viewBox="0 0 24 24">
+      <!-- Trace plus grand que le premier jet : au banc l'infini faisait deux tiers de la
+           hauteur des autres icones et la ligne des tuiles ne s'alignait plus. -->
+      <path d="M10.6 12c0 2.6-2.1 4.7-4.7 4.7S1.2 14.6 1.2 12s2.1-4.7 4.7-4.7c4.7 0 6.6 9.4 11.3 9.4 2.6 0 4.7-2.1 4.7-4.7s-2.1-4.7-4.7-4.7c-4.7 0-6.6 9.4-11.3 9.4"/>
+    </symbol>
     <symbol id="i-liste" viewBox="0 0 24 24">
       <path d="M9 6.5h11.5"/><path d="M9 12h11.5"/><path d="M9 17.5h11.5"/>
       <path d="M4 6.5h.01"/><path d="M4 12h.01"/><path d="M4 17.5h.01"/>
@@ -1776,19 +1784,19 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     <h2 class="wizard-title" id="modeChoiceTitle" data-i18n="cfg.mode">Mode d'entraînement</h2>
     <div class="mode-choice-tiles">
       <button class="mode-tile mode-tile-fortime" onclick="chooseMode('wod')">
-        <span class="mode-tile-icon">🏁</span>
+        <svg class="ico mode-tile-icon" aria-hidden="true"><use href="#i-drapeau"/></svg>
         <span class="mode-tile-name">FOR TIME</span>
       </button>
       <button class="mode-tile mode-tile-amrap" onclick="chooseMode('amrap')">
-        <span class="mode-tile-icon">♾️</span>
+        <svg class="ico mode-tile-icon" aria-hidden="true"><use href="#i-infini"/></svg>
         <span class="mode-tile-name">AMRAP</span>
       </button>
       <button class="mode-tile mode-tile-emom" onclick="chooseMode('emom')">
-        <span class="mode-tile-icon">🔔</span>
+        <svg class="ico mode-tile-icon" aria-hidden="true"><use href="#i-cloche"/></svg>
         <span class="mode-tile-name">EMOM</span>
       </button>
       <button class="mode-tile mode-tile-tabata" onclick="chooseMode('tabata')">
-        <span class="mode-tile-icon">🔥</span>
+        <svg class="ico mode-tile-icon" aria-hidden="true"><use href="#i-flamme"/></svg>
         <span class="mode-tile-name">TABATA</span>
       </button>
     </div>
