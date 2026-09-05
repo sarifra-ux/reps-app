@@ -1334,6 +1334,14 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .sq-ligne[data-type="intervalle"]{border-left-color:var(--accent);}
   .sq-ligne[data-type="repos"]{border-left-color:#6f7ba8;}
   .sq-ligne[data-type="libre"]{border-left-color:#ffb300;}
+  .sq-score{font-family:'DM Mono',monospace;font-size:.7rem;width:76px;flex:0 0 auto;
+    background:var(--bg);border:1px solid var(--border);border-radius:7px;
+    color:var(--text);padding:5px 7px;text-align:center;}
+  .sq-score:focus{outline:none;border-color:var(--accent);}
+  .sq-score::placeholder{opacity:.35;}
+  .sq-score-vide{width:76px;flex:0 0 auto;}
+  .sq-ligne-total{border-color:var(--accent2);background:rgba(0,229,255,.05);margin-top:10px;}
+  .sq-ligne-total .sq-nom-bloc{letter-spacing:1px;font-size:.66rem;}
   .sq-h{font-family:'DM Mono',monospace;font-size:.55rem;opacity:.45;
     font-variant-numeric:tabular-nums;white-space:nowrap;}
   .sq-nom-bloc{flex:1;font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -1972,27 +1980,23 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       <button class="settings-modal-close" onclick="fermerSeances()">✕</button>
     </div>
     <div class="settings-modal-body">
+      <div class="sq-biblio" id="sqBiblio"></div>
+      <button type="button" class="sq-action sq-neuve" onclick="sqNouvelleSeance()">+ Nouvelle séance</button>
+      <div class="sq-sep"></div>
       <div class="sq-barre">
         <input class="sq-nom" id="sqNom" value="" aria-label="Nom de la séance">
         <div class="sq-bascule" role="group" aria-label="Enchaînement">
           <button type="button" id="sqManuel" aria-pressed="true">Un par un</button>
           <button type="button" id="sqAuto" aria-pressed="false">Enchaîné</button>
         </div>
-        <div class="sq-total"><b id="sqTotal">0:00</b><span id="sqNb">0 blocs</span></div>
-        <p class="sq-aide" id="sqAide"></p>
       </div>
-      <div class="sq-biblio" id="sqBiblio"></div>
-      <button type="button" class="sq-action sq-neuve" onclick="sqNouvelleSeance()">+ Nouvelle séance</button>
-      <div class="sq-sep"></div>
+      <p class="sq-aide" id="sqAide"></p>
       <button type="button" class="sq-lancer" id="sqLancer" onclick="lancerLaSeance()" style="display:none">
         <svg class="ico" aria-hidden="true"><use href="#i-nouveau"/></svg>
         <span id="sqLancerTexte">LANCER CETTE SÉANCE</span>
       </button>
-      <div id="sqAssistant"></div>
-      <div class="sq-sep"></div>
       <div id="sqListe"></div>
-      <p class="sq-pied">Cet écran prépare et calcule. Il ne lance pas encore le chrono :
-        le branchement attend la réponse d'Apple sur le build 8.</p>
+      <p class="sq-pied" id="sqPied"></p>
     </div>
   </div>
 </div>
@@ -5425,24 +5429,6 @@ var SQ_CLE='reps_seances';        // ancien format, lu une fois pour la reprise
 var SQ_CLE_LIB='reps_seances_lib';
 var SQ_LIB=null;
 var SQ=null;                 // {nom, enchainement, blocs:[]} : la seance courante
-var SQ_ETAPE='type';         // type | config | apres | pause
-var SQ_BROUILLON=null;       // le bloc en cours de reglage
-var SQ_EDITE=-1;             // index du bloc en cours de correction, -1 si nouveau
-
-var SQ_MODES=[
-  {id:'emom',    nom:'EMOM',     classe:'mode-tile-emom',    ico:'i-cloche'},
-  {id:'tabata',  nom:'TABATA',   classe:'mode-tile-tabata',  ico:'i-flamme'},
-  {id:'fortime', nom:'FOR TIME', classe:'mode-tile-fortime', ico:'i-chrono'},
-  {id:'amrap',   nom:'AMRAP',    classe:'mode-tile-amrap',   ico:'i-cycle'}
-];
-
-function sqBlocPourMode(mode){
-  if(mode==='emom')    return {mode:'emom',   type:'intervalle',titre:'EMOM',   work:60,rest:0, tours:10,notes:''};
-  if(mode==='tabata')  return {mode:'tabata', type:'intervalle',titre:'TABATA', work:20,rest:10,tours:8, notes:''};
-  if(mode==='fortime') return {mode:'fortime',type:'libre',     titre:'FOR TIME',cap:600,notes:''};
-  if(mode==='amrap')   return {mode:'amrap',  type:'libre',     titre:'AMRAP',  cap:600,notes:''};
-  return {mode:'repos',type:'repos',titre:'PAUSE',duree:180,notes:''};
-}
 function sqDureeBloc(b){
   if(b.type==='intervalle') return b.tours*(b.work+b.rest);
   if(b.type==='repos') return b.duree;
@@ -5491,15 +5477,16 @@ function sqOuvrirSeance(i){
   sqCharger();
   if(i<0||i>=SQ_LIB.seances.length) return;
   SQ_LIB.courante=i; SQ=SQ_LIB.seances[i];
-  SQ_ETAPE = SQ.blocs.length ? 'fin' : 'type';
-  SQ_BROUILLON=null; SQ_EDITE=-1;
   var nom=document.getElementById('sqNom'); if(nom) nom.value=SQ.nom||'';
   sqSauver(); sqTout();
 }
+// « Nouvelle seance » ouvre le WIZARD, la ou on cree. Cet ecran ne cree plus rien : il
+// montre une seance, garde ses scores et la lance. Deux endroits pour creer, c'etait un
+// endroit de trop, et c'est le meme raisonnement que ce matin.
 function sqNouvelleSeance(){
-  sqCharger();
-  SQ_LIB.seances.push(sqSeanceNeuve());
-  sqOuvrirSeance(SQ_LIB.seances.length-1);
+  fermerSeances();
+  try{ resetWizard(); }catch(e){}
+  setTimeout(function(){ try{ choisirNbWod(true); }catch(e){} }, 60);
 }
 function sqSupprimerSeance(i){
   sqCharger();
@@ -5509,182 +5496,24 @@ function sqSupprimerSeance(i){
   sqSauver(); sqTout();
 }
 
-function sqIco(nom){
-  var NS='http://www.w3.org/2000/svg';
-  var svg=document.createElementNS(NS,'svg');
-  svg.setAttribute('class','ico'); svg.setAttribute('aria-hidden','true');
-  var u=document.createElementNS(NS,'use'); u.setAttribute('href','#'+nom);
-  svg.appendChild(u); return svg;
-}
-function sqBouton(texte,classe,onclick){
-  var b=document.createElement('button');
-  b.type='button'; b.className=classe||'sq-action'; b.textContent=texte;
-  b.addEventListener('click',onclick);
-  return b;
-}
-function sqChamp(parent,label,valeur,min,max,onchange){
-  var d=document.createElement('div'); d.className='sq-champ';
-  var l=document.createElement('label'); l.textContent=label;
-  var i=document.createElement('input');
-  i.type='number'; i.value=valeur; i.min=min; i.max=max; i.step=1; i.inputMode='numeric';
-  i.setAttribute('aria-label',label);
-  i.addEventListener('input',function(){
-    onchange(Math.max(min,Math.min(max,parseInt(i.value,10)||min)));
-  });
-  d.appendChild(l); d.appendChild(i); parent.appendChild(d);
-  return i;
-}
-function sqTexte(parent,valeur,placeholder,onchange){
-  var i=document.createElement('input');
-  i.className='sq-texte'; i.value=valeur||''; i.placeholder=placeholder;
-  i.setAttribute('aria-label',placeholder);
-  i.addEventListener('input',function(){ onchange(i.value); });
-  parent.appendChild(i);
-  return i;
-}
 
-// ---------- l'assistant ----------
-function sqRendreAssistant(){
-  var z=document.getElementById('sqAssistant');
-  if(!z) return;
-  z.textContent='';
-  // On numerote les WOD, pas les blocs : une pause ne porte pas de numero, sinon le
-  // deuxieme WOD s'annonce comme le troisieme des qu'une pause s'est glissee avant.
-  var n=SQ.blocs.filter(function(b){ return b.type!=='repos'; }).length+1;
-
-  if(SQ_ETAPE==='type'){
-    var t=document.createElement('p'); t.className='sq-etape';
-    t.textContent = SQ_EDITE>=0 ? 'Changer le type de ce WOD' : ('WOD '+n+' · quel type ?');
-    z.appendChild(t);
-    var g=document.createElement('div'); g.className='sq-tuiles';
-    SQ_MODES.forEach(function(m){
-      var b=document.createElement('button');
-      b.type='button'; b.className='mode-tile '+m.classe+' sq-tuile';
-      b.appendChild(sqIco(m.ico));
-      var s=document.createElement('span'); s.className='mode-tile-name'; s.textContent=m.nom;
-      b.appendChild(s);
-      b.addEventListener('click',function(){
-        var garde=(SQ_EDITE>=0)?SQ.blocs[SQ_EDITE]:null;
-        SQ_BROUILLON=sqBlocPourMode(m.id);
-        if(garde && garde.notes) SQ_BROUILLON.notes=garde.notes;
-        SQ_ETAPE='config'; sqRendreAssistant();
-      });
-      g.appendChild(b);
-    });
-    z.appendChild(g);
-    if(SQ.blocs.length && SQ_EDITE<0){
-      var f=document.createElement('div'); f.className='sq-actions';
-      f.appendChild(sqBouton('Terminer la séance','sq-action',function(){
-        SQ_ETAPE='apres'; sqRendreAssistant();
-      }));
-      z.appendChild(f);
-    }
-    return;
-  }
-
-  if(SQ_ETAPE==='config' && SQ_BROUILLON){
-    var b=SQ_BROUILLON;
-    var ti=document.createElement('p'); ti.className='sq-etape';
-    ti.textContent=(SQ_EDITE>=0?'Réglages · ':('WOD '+n+' · '))+b.titre;
-    z.appendChild(ti);
-
-    var ch=document.createElement('div'); ch.className='sq-champs';
-    if(b.type==='intervalle'){
-      sqChamp(ch,'Travail (s)',b.work,1,3600,function(v){ b.work=v; sqDureeBrouillon(); });
-      sqChamp(ch,'Repos (s)',b.rest,0,3600,function(v){ b.rest=v; sqDureeBrouillon(); });
-      sqChamp(ch,'Tours',b.tours,1,99,function(v){ b.tours=v; sqDureeBrouillon(); });
-    } else {
-      sqChamp(ch,b.mode==='amrap'?'Durée (s)':'Time cap (s)',b.cap,1,7200,function(v){ b.cap=v; sqDureeBrouillon(); });
-    }
-    var du=document.createElement('div');
-    du.className='sq-duree'; du.id='sqDureeBrouillon'; du.textContent=sqMmss(sqDureeBloc(b));
-    ch.appendChild(du);
-    z.appendChild(ch);
-
-    sqTexte(z,b.titre,'Nom du bloc',function(v){ b.titre=v; });
-    sqTexte(z,b.notes,'Mouvements, charges…',function(v){ b.notes=v; });
-
-    var a=document.createElement('div'); a.className='sq-actions';
-    a.appendChild(sqBouton(SQ_EDITE>=0?'Enregistrer':'Valider ce WOD','sq-action sq-fort',function(){
-      if(SQ_EDITE>=0){ SQ.blocs[SQ_EDITE]=b; SQ_EDITE=-1; SQ_ETAPE='apres'; }
-      else { SQ.blocs.push(b); SQ_ETAPE='apres'; }
-      SQ_BROUILLON=null; sqSauver(); sqTout();
-    }));
-    a.appendChild(sqBouton('Annuler','sq-action',function(){
-      SQ_BROUILLON=null; SQ_EDITE=-1;
-      SQ_ETAPE = SQ.blocs.length ? 'apres' : 'type';
-      sqRendreAssistant();
-    }));
-    z.appendChild(a);
-    return;
-  }
-
-  if(SQ_ETAPE==='pause'){
-    var pb=SQ_BROUILLON;
-    var tp=document.createElement('p'); tp.className='sq-etape';
-    tp.textContent='Pause avant le WOD '+n;
-    z.appendChild(tp);
-    var cp=document.createElement('div'); cp.className='sq-champs';
-    sqChamp(cp,'Durée (s)',pb.duree,1,3600,function(v){ pb.duree=v; sqDureeBrouillon(); });
-    var dp=document.createElement('div');
-    dp.className='sq-duree'; dp.id='sqDureeBrouillon'; dp.textContent=sqMmss(pb.duree);
-    cp.appendChild(dp);
-    z.appendChild(cp);
-    var ap=document.createElement('div'); ap.className='sq-actions';
-    ap.appendChild(sqBouton('Valider la pause','sq-action sq-fort',function(){
-      SQ.blocs.push(pb); SQ_BROUILLON=null; SQ_ETAPE='type'; sqSauver(); sqTout();
-    }));
-    ap.appendChild(sqBouton('Annuler','sq-action',function(){
-      SQ_BROUILLON=null; SQ_ETAPE='apres'; sqRendreAssistant();
-    }));
-    z.appendChild(ap);
-    return;
-  }
-
-  // 'apres' : les trois sorties. Trois et pas deux : sans « WOD suivant » on ne peut
-  // pas enchainer deux blocs colles, et ca arrive (un EMOM puis un metcon d'affilee).
-  var ta=document.createElement('p'); ta.className='sq-etape';
-  ta.textContent='Et ensuite ?';
-  z.appendChild(ta);
-  var aa=document.createElement('div'); aa.className='sq-actions sq-actions-colonne';
-  aa.appendChild(sqBouton('Pause avant le suivant','sq-action',function(){
-    SQ_BROUILLON=sqBlocPourMode('repos'); SQ_ETAPE='pause'; sqRendreAssistant();
-  }));
-  aa.appendChild(sqBouton('WOD suivant, sans pause','sq-action',function(){
-    SQ_ETAPE='type'; sqRendreAssistant();
-  }));
-  aa.appendChild(sqBouton('Terminer la séance','sq-action sq-fort',function(){
-    SQ_ETAPE='fin'; sqRendreAssistant();
-  }));
-  z.appendChild(aa);
-
-  if(SQ_ETAPE==='fin'){
-    z.textContent='';
-    var tf=document.createElement('p'); tf.className='sq-etape';
-    tf.textContent='Séance prête · '+SQ.blocs.length+' blocs · '+sqMmss(sqTotal());
-    z.appendChild(tf);
-    var af=document.createElement('div'); af.className='sq-actions';
-    af.appendChild(sqBouton('Ajouter un WOD','sq-action',function(){
-      SQ_ETAPE='type'; sqRendreAssistant();
-    }));
-    z.appendChild(af);
-  }
-}
-function sqDureeBrouillon(){
-  var d=document.getElementById('sqDureeBrouillon');
-  if(d && SQ_BROUILLON) d.textContent=sqMmss(sqDureeBloc(SQ_BROUILLON));
-}
-
-// ---------- la liste posee ----------
+// ---------- le resume de la seance, et son tableau de scores ----------
+// Francois : « pas besoin de mettre autant d'infos, a la limite un resume du choix de la
+// seance avec START, un tableau vide ou il retrouvera son score a la fin ». Il a raison :
+// la seance se CREE dans le wizard, cet ecran n'a qu'a la montrer et garder les scores.
 function sqRendreListe(){
   var liste=document.getElementById('sqListe');
   if(!liste) return;
   liste.textContent='';
   if(!SQ.blocs.length){
     var v=document.createElement('p'); v.className='sq-vide';
-    v.textContent='Aucun bloc pour l’instant.';
+    v.textContent=L3('Séance vide. « Nouvelle séance » ouvre le wizard.',
+                     'Empty session. "New session" opens the wizard.',
+                     'Sessão vazia. « Nova sessão » abre o assistente.');
     liste.appendChild(v); return;
   }
+  if(!SQ.scores) SQ.scores=[];
+
   var t=0;
   SQ.blocs.forEach(function(b,i){
     var d=sqDureeBloc(b), debut=t; t+=d;
@@ -5694,31 +5523,55 @@ function sqRendreListe(){
     var h=document.createElement('span'); h.className='sq-h';
     h.textContent=sqMmss(debut)+'–'+sqMmss(debut+d);
     var nom=document.createElement('span'); nom.className='sq-nom-bloc';
-    nom.textContent=b.titre||b.mode||b.type;
+    nom.textContent=String(b.titre||b.mode||b.type).toUpperCase();
     var det=document.createElement('span'); det.className='sq-det';
-    det.textContent = b.type==='intervalle' ? (b.tours+'×'+sqMmss(b.work)+(b.rest?' / '+b.rest+'s':''))
-                    : (b.type==='repos' ? 'pause' : 'cap '+sqMmss(b.cap));
+    det.textContent = b.type==='intervalle' ? (b.tours+'×'+sqMmss(b.work))
+                    : (b.type==='repos' ? '' : 'cap '+sqMmss(b.cap));
     l.appendChild(h); l.appendChild(nom); l.appendChild(det);
 
-    [['✎',false,function(){
-        if(b.type==='repos'){ SQ_BROUILLON=JSON.parse(JSON.stringify(b)); SQ_EDITE=i; SQ_ETAPE='pause'; }
-        else { SQ_BROUILLON=JSON.parse(JSON.stringify(b)); SQ_EDITE=i; SQ_ETAPE='config'; }
-        sqRendreAssistant();
-      }],
-     ['↑',i===0,function(){ var x=SQ.blocs.splice(i,1)[0]; SQ.blocs.splice(i-1,0,x); sqSauver(); sqTout(); }],
-     ['↓',i===SQ.blocs.length-1,function(){ var x=SQ.blocs.splice(i,1)[0]; SQ.blocs.splice(i+1,0,x); sqSauver(); sqTout(); }],
-     ['✕',false,function(){ SQ.blocs.splice(i,1); sqSauver(); sqTout(); }]
-    ].forEach(function(o){
-      var bt=document.createElement('button');
-      bt.type='button'; bt.className='sq-outil'; bt.textContent=o[0]; bt.disabled=o[1];
-      bt.addEventListener('click',o[2]);
-      l.appendChild(bt);
-    });
+    // Un repos ne se score pas. Les autres blocs ont leur case, vide tant que le WOD
+    // n'est pas fait : c'est le tableau que le coach remplit en sortant.
+    if(b.type!=='repos'){
+      var sc=document.createElement('input');
+      sc.className='sq-score'; sc.type='text'; sc.inputMode='text';
+      sc.value=SQ.scores[i]||'';
+      sc.placeholder=L3('score','score','score');
+      sc.setAttribute('aria-label',L3('Score du bloc ','Score for block ','Pontuação do bloco ')+(b.titre||''));
+      sc.addEventListener('input',function(){ SQ.scores[i]=sc.value; sqSauver(); });
+      l.appendChild(sc);
+    } else {
+      var vide=document.createElement('span'); vide.className='sq-score-vide';
+      l.appendChild(vide);
+    }
     liste.appendChild(l);
   });
+
+  // Le score de la seance entiere, en plus du detail par bloc : les deux, comme demande.
+  var g=document.createElement('div');
+  g.className='sq-ligne sq-ligne-total';
+  var gh=document.createElement('span'); gh.className='sq-h'; gh.textContent=sqMmss(t);
+  var gn=document.createElement('span'); gn.className='sq-nom-bloc';
+  gn.textContent=L3('SÉANCE ENTIÈRE','WHOLE SESSION','SESSÃO INTEIRA');
+  var gd=document.createElement('span'); gd.className='sq-det'; gd.textContent='';
+  var gs=document.createElement('input');
+  gs.className='sq-score'; gs.type='text';
+  gs.value=SQ.scoreTotal||'';
+  gs.placeholder=L3('score','score','score');
+  gs.setAttribute('aria-label',L3('Score de la séance','Session score','Pontuação da sessão'));
+  gs.addEventListener('input',function(){ SQ.scoreTotal=gs.value; sqSauver(); });
+  g.appendChild(gh); g.appendChild(gn); g.appendChild(gd); g.appendChild(gs);
+  liste.appendChild(g);
 }
 
 function sqEnTete(){
+  var pied=document.getElementById('sqPied');
+  if(pied){
+    pied.textContent = SQ.faitLe
+      ? L3('Dernière fois : ','Last done: ','Última vez: ')+new Date(SQ.faitLe).toLocaleDateString()
+      : L3('Jamais faite. Les scores se remplissent en sortant de la salle.',
+           'Never done yet. Fill the scores on your way out.',
+           'Nunca feita. Preenche as pontuações ao sair.');
+  }
   var t=document.getElementById('sqTotal'), nb=document.getElementById('sqNb');
   if(t) t.textContent=sqMmss(sqTotal());
   if(nb) nb.textContent=SQ.blocs.length+(SQ.blocs.length>1?' blocs':' bloc');
@@ -5728,8 +5581,8 @@ function sqEnTete(){
   if(ba) ba.setAttribute('aria-pressed',String(!manuel));
   var a=document.getElementById('sqAide');
   if(a) a.textContent = manuel
-    ? "Un par un : tu lances chaque bloc quand la classe est prête. Rien ne décale si une explication déborde."
-    : "Enchaîné : les blocs se suivent sans intervention, pauses comprises.";
+    ? "Tu lances chaque bloc toi-même."
+    : "Tout s'enchaîne, pauses comprises.";
 }
 function sqRendreBiblio(){
   var z=document.getElementById('sqBiblio');
@@ -5756,7 +5609,7 @@ function sqRendreBiblio(){
     z.appendChild(f);
   });
 }
-function sqTout(){ sqEnTete(); sqRendreBiblio(); sqRendreAssistant(); sqRendreListe(); sqMajLancer(); }
+function sqTout(){ sqEnTete(); sqRendreBiblio(); sqRendreListe(); sqMajLancer(); }
 function sqMajLancer(){
   var b=document.getElementById('sqLancer');
   if(!b) return;
@@ -5772,6 +5625,7 @@ function sqMajLancer(){
 function lancerLaSeance(){
   sqCharger();
   if(!SQ.blocs.length) return;
+  SQ.faitLe=Date.now(); sqSauver();
   if(S.state && S.state!=='idle'){ try{ resetTimer(); }catch(e){} }
   seanceArmer();
   fermerSeances();
@@ -6021,8 +5875,6 @@ function pauseWodTerminer(){
 
 function ouvrirSeances(){
   sqCharger();
-  SQ_BROUILLON=null; SQ_EDITE=-1;
-  SQ_ETAPE = SQ.blocs.length ? 'fin' : 'type';
   var nom=document.getElementById('sqNom');
   if(nom){ nom.value=SQ.nom||''; nom.oninput=function(){ SQ.nom=nom.value; sqSauver(); }; }
   var bm=document.getElementById('sqManuel'), ba=document.getElementById('sqAuto');
