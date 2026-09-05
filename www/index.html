@@ -1206,6 +1206,22 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
      le rognait. Mesure au banc du 05/09. Le natif suit tout seul : toggleFilm() lui
      envoie la hauteur MESUREE du slot (camHeightPx), le web reste la seule source. */
   @media (max-height:700px){ :root{--cam-h:45dvh;} }
+  /* ===== ICONES NEON (05/09/2026) =====
+     Retour d'une coach : « i'm not against emojis but the app has toooo many, at some
+     point the fun takes seriousness ». Elle a raison : les couleurs neon portent deja
+     tout le visuel, les emojis par-dessus font bruyant. On passe au trait, dans le
+     degrade de l'app, sur le modele de l'image de reference (un pin neon, ligne seule).
+     UN SEUL degrade pour tout le jeu : ca se lit comme un systeme, pas comme une
+     collection ramassee. Le halo est un drop-shadow CSS et non un filtre SVG : sur un
+     fil de 1,6px le rendu est le meme, et ca evite une passe de flou par icone pendant
+     qu'un WOD tourne. */
+  .ico{width:1.15em;height:1.15em;flex:0 0 auto;vertical-align:-0.2em;fill:none;
+       stroke:url(#repsIcoGrad);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+       filter:drop-shadow(0 0 3px rgba(230,63,255,.45)) drop-shadow(0 0 6px rgba(0,229,255,.22));}
+  .btn-ctrl .ico{width:1.25em;height:1.25em;}
+  /* Etat actif : le halo se renforce, la couleur ne change pas. */
+  .btn-ctrl.on .ico,.btn-ctrl.filming .ico{
+       filter:drop-shadow(0 0 4px rgba(230,63,255,.85)) drop-shadow(0 0 9px rgba(0,229,255,.5));}
   #camSlot{height:0;overflow:hidden;transition:height .18s ease;}
   body.filming #camSlot{height:var(--cam-h);}
   /* Le header est normalement `position:sticky; top:0`. Pendant le tournage il se
@@ -1449,6 +1465,77 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 </head>
 <body>
 
+<!-- Jeu d'icones au trait (05/09/2026). Le degrade est defini une fois et reference
+     par toutes les icones via stroke:url(#repsIcoGrad). Ce SVG ne s'affiche pas. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <!-- userSpaceOnUse, et ce n'est pas un detail : en unites de boite englobante
+         (le defaut), un trait DROIT a une boite de largeur ou de hauteur nulle, le
+         degrade y est degenere et le trait n'est tout simplement PAS peint. La hampe
+         du drapeau et la couronne du chrono avaient disparu au banc. Coordonnees en
+         unites du viewBox : le degrade est aussi cale pareil sur toutes les icones. -->
+    <linearGradient id="repsIcoGrad" gradientUnits="userSpaceOnUse" x1="2" y1="2" x2="22" y2="22">
+      <stop offset="0%" stop-color="#e63fff"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <symbol id="i-perso" viewBox="0 0 24 24">
+      <path d="M4 20l4-1 11-11a2 2 0 0 0-2.8-2.8L5 16.2 4 20z"/>
+      <path d="M15.2 6.2l2.6 2.6"/>
+    </symbol>
+    <symbol id="i-membres" viewBox="0 0 24 24">
+      <circle cx="9" cy="8" r="3.4"/>
+      <path d="M2.8 19.2c0-3.4 2.7-5.4 6.2-5.4s6.2 2 6.2 5.4"/>
+      <path d="M16.4 5.1a3.4 3.4 0 0 1 0 5.8"/>
+      <path d="M18 14.2c2.2.7 3.3 2.4 3.3 5"/>
+    </symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24">
+      <path d="M3 8h11a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2z"/>
+      <path d="M16 12.2l5.6-3.3v7.8L16 13.4z"/>
+    </symbol>
+    <symbol id="i-son" viewBox="0 0 24 24">
+      <path d="M3.5 9.8h3.2L11 6.3v11.4L6.7 14.2H3.5z"/>
+      <path d="M14.4 9.6a3.6 3.6 0 0 1 0 4.8"/>
+      <path d="M16.8 7.4a7 7 0 0 1 0 9.2"/>
+    </symbol>
+    <symbol id="i-son-off" viewBox="0 0 24 24">
+      <path d="M3.5 9.8h3.2L11 6.3v11.4L6.7 14.2H3.5z"/>
+      <path d="M14.8 9.8l5 4.4"/>
+      <path d="M19.8 9.8l-5 4.4"/>
+    </symbol>
+    <symbol id="i-photo" viewBox="0 0 24 24">
+      <path d="M4.2 8h2.9l1.5-2.2h6.8L16.9 8h2.9a1.8 1.8 0 0 1 1.8 1.8v7.4a1.8 1.8 0 0 1-1.8 1.8H4.2a1.8 1.8 0 0 1-1.8-1.8V9.8A1.8 1.8 0 0 1 4.2 8z"/>
+      <circle cx="12" cy="13.5" r="3.3"/>
+    </symbol>
+    <symbol id="i-clap" viewBox="0 0 24 24">
+      <path d="M2.6 9.6h18.8v8.6a1.8 1.8 0 0 1-1.8 1.8H4.4a1.8 1.8 0 0 1-1.8-1.8z"/>
+      <path d="M2.6 9.6L3.7 4.8l17.3 1.6-.6 3.2z"/>
+      <path d="M8.4 5.3l-1 4.3"/>
+      <path d="M14 5.9l-1 3.7"/>
+    </symbol>
+    <symbol id="i-flamme" viewBox="0 0 24 24">
+      <path d="M12.4 2.6c.5 2.5 2 3.6 3.2 5.2 1 1.4 1.6 2.8 1.6 4.4a5.2 5.2 0 1 1-10.4 0c0-2.4 1.4-4 2.5-5.7.4 1 .9 1.6 1.5 1.9.6-1.8.7-3.9.8-5.8z"/>
+      <path d="M12 13.2c1.1 1 1.7 1.9 1.7 2.8a1.7 1.7 0 1 1-3.4 0c0-.9.6-1.8 1.7-2.8z"/>
+    </symbol>
+    <symbol id="i-note" viewBox="0 0 24 24">
+      <path d="M9.3 17.6V6.4l9.4-2v9.2"/>
+      <circle cx="6.8" cy="17.6" r="2.5"/>
+      <circle cx="16.2" cy="15.6" r="2.5"/>
+    </symbol>
+    <symbol id="i-goutte" viewBox="0 0 24 24">
+      <path d="M12 3.4c3.1 3.7 5 6.3 5 8.9a5 5 0 1 1-10 0c0-2.6 1.9-5.2 5-8.9z"/>
+    </symbol>
+    <symbol id="i-drapeau" viewBox="0 0 24 24">
+      <path d="M6.4 21.2V3.2"/>
+      <path d="M6.4 4.4h11.8l-2.7 4 2.7 4H6.4z"/>
+    </symbol>
+    <symbol id="i-chrono" viewBox="0 0 24 24">
+      <circle cx="12" cy="13.6" r="7.6"/>
+      <path d="M12 9.6v4l2.6 1.8"/>
+      <path d="M9.6 3.4h4.8"/>
+    </symbol>
+  </defs>
+</svg>
+
 <!-- ===== ÉCRAN CHOIX DE LANGUE (1ère visite uniquement) ===== -->
 <div id="langChoiceScreen" class="lang-choice" style="display:none">
   <div class="lang-choice-content">
@@ -1584,8 +1671,8 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   </div>
   <div class="header-right">
     <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD">↻ <span class="new-wod-label" data-i18n="nav.new">NOUVEAU</span></button>
-    <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)">✏️ <span class="new-wod-label" data-i18n="nav.custom">PERSO</span></button>
-    <button class="new-wod-btn" id="membersBtn" onclick="openMembers()" title="Adhérents & scores">👥 <span class="new-wod-label" data-i18n="nav.scores">SCORES</span></button>
+    <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)"><svg class="ico" aria-hidden="true"><use href="#i-perso"/></svg> <span class="new-wod-label" data-i18n="nav.custom">PERSO</span></button>
+    <button class="new-wod-btn" id="membersBtn" onclick="openMembers()" title="Adhérents & scores"><svg class="ico" aria-hidden="true"><use href="#i-membres"/></svg> <span class="new-wod-label" data-i18n="nav.scores">SCORES</span></button>
     <button class="settings-btn" onclick="openSettings()" title="Réglages">⚙</button>
     <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText" data-i18n="status.ready">READY</span></div>
   </div>
@@ -2074,9 +2161,9 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       <button class="btn-play" id="btnPlay" onclick="togglePlay()">▶</button>
       <button class="btn-ctrl" id="btnSkip" onclick="skipAhead()" style="display:none">⏭ –3MIN</button>
       <button class="btn-ctrl btn-done" id="btnDone" onclick="finishNow()" style="display:none" data-i18n="ctrl.done">✓ FINI</button>
-      <button class="btn-ctrl" id="btnFilm" onclick="toggleFilm()" style="display:none" data-i18n="film.rec">🎥 Filmer</button>
-      <button class="btn-ctrl on" id="btnFilmAudio" onclick="toggleFilmAudio()" style="display:none" data-i18n="film.audio">🔊 Son ambiant</button>
-      <button class="btn-ctrl" id="btnFilmCam" onclick="toggleFilmCam()" style="display:none">📷 Arrière</button>
+      <button class="btn-ctrl" id="btnFilm" onclick="toggleFilm()" style="display:none"><svg class="ico" aria-hidden="true"><use href="#i-camera"/></svg> <span data-i18n="film.rec">Filmer</span></button>
+      <button class="btn-ctrl on" id="btnFilmAudio" onclick="toggleFilmAudio()" style="display:none"><svg class="ico" aria-hidden="true"><use href="#i-son"/></svg> <span data-i18n="film.audio">Son ambiant</span></button>
+      <button class="btn-ctrl" id="btnFilmCam" onclick="toggleFilmCam()" style="display:none"><svg class="ico" aria-hidden="true"><use href="#i-photo"/></svg> <span>Arrière</span></button>
     </div>
 
     <button id="addVideoBtn" onclick="startVideoOverlayFlow()" style="display:none;width:100%;margin-top:10px;padding:14px;font:800 15px/1 -apple-system,system-ui,sans-serif;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,#7c3aed,#a855f7);border:0;border-radius:12px;box-shadow:0 6px 18px rgba(124,58,237,.35);"></button>
@@ -2633,9 +2720,9 @@ const I18N={
   'mix.autoSub':['Musique choisie + suite aléatoire','Chosen track + random after','Faixa escolhida + aleatório depois'],
   'vol.music':['MUSIQUE','MUSIC','MÚSICA'],
   'vol.voice':['VOIX','VOICE','VOZ'],
-  'film.rec':['🎥 Filmer','🎥 Film','🎥 Filmar'],
+  'film.rec':['Filmer','Film','Filmar'],
   'ctrl.done':['✓ FINI','✓ DONE','✓ FIM'],
-  'film.audio':['🔊 Son ambiant','🔊 Ambient sound','🔊 Som ambiente'],
+  'film.audio':['Son ambiant','Ambient sound','Som ambiente'],
   'cfg.continueBtn':['Continuer','Continue','Continuar'],
   'common.cancel':['Annuler','Cancel','Cancelar'],
   'sync.instrA':['Place le curseur sur le ','Move the cursor to the ','Coloque o cursor no '],
@@ -4926,7 +5013,10 @@ function hideVideoOverlayCta(){
 function setFilmBtn(on){
   const b=document.getElementById('btnFilm');
   if(!b) return;
-  b.textContent=on?L3('🎥 Filme…','🎥 Filming…','🎥 Filmando…'):L3('🎥 Filmer','🎥 Film','🎥 Filmar');
+  // On n'ecrit QUE dans le libelle : l'icone est un noeud frere, et un textContent sur
+  // le bouton entier l'effacerait (05/09/2026, passage aux icones au trait).
+  const lab=b.querySelector('span');
+  if(lab) lab.textContent=on?L3('Filme…','Filming…','Filmando…'):L3('Filmer','Film','Filmar');
   b.classList.toggle('filming',on);
   // Ecran partage : pendant le tournage, l'apercu natif occupe le haut de l'ecran
   // (hauteur --cam-h, cf. CSS) et toute l'interface descend en dessous. Rien n'est
@@ -4939,7 +5029,11 @@ function toggleFilmAudio(){
   if(S.filming){ DBG('son: pas pendant l\'enregistrement'); return; }
   S.filmAudio=!S.filmAudio;
   const b=document.getElementById('btnFilmAudio');
-  if(b){ b.textContent=(S.filmAudio?'🔊':'🔇')+' '+L3('Son ambiant','Ambient sound','Som ambiente'); b.classList.toggle('on',S.filmAudio); }
+  if(b){
+    const u=b.querySelector('use'); if(u) u.setAttribute('href',S.filmAudio?'#i-son':'#i-son-off');
+    const lab=b.querySelector('span'); if(lab) lab.textContent=L3('Son ambiant','Ambient sound','Som ambiente');
+    b.classList.toggle('on',S.filmAudio);
+  }
   DBG('son ambiant: '+(S.filmAudio?'ON':'OFF'));
 }
 // ===== CAMERA AVANT / ARRIERE (25/08/2026) =====
@@ -4952,8 +5046,8 @@ function toggleFilmAudio(){
 function setFilmCamBtn(){
   const b=document.getElementById('btnFilmCam'); if(!b) return;
   const av=(S.filmCam==='front');
-  b.textContent=av ? '\u{1F933} '+L3('Avant','Front','Frontal')
-                   : '\u{1F4F7} '+L3('Arrière','Back','Traseira');
+  const lab=b.querySelector('span');
+  if(lab) lab.textContent=av ? L3('Avant','Front','Frontal') : L3('Arrière','Back','Traseira');
   b.classList.toggle('on',av);
 }
 function toggleFilmCam(){
@@ -6433,7 +6527,7 @@ function openConfigFromWizard(){
   }
   // Le bouton du bandeau reflète que le panneau est ouvert
   const btn=document.getElementById('customizeBtn');
-  if(btn) btn.innerHTML='✏️ <span class="new-wod-label" data-i18n="nav.custom">'+I18Nget('nav.custom')+'</span>';
+  if(btn) btn.innerHTML='<svg class="ico" aria-hidden="true"><use href="#i-perso"/></svg> <span class="new-wod-label" data-i18n="nav.custom">'+I18Nget('nav.custom')+'</span>';
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
