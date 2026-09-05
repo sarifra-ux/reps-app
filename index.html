@@ -406,7 +406,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .prog-fill.rest{background:var(--accent2);}
   .prog-fill.rest::after{background:var(--accent2);}
 
-  .announce{position:absolute;left:50%;top:62%;z-index:40;pointer-events:none;white-space:nowrap;background:var(--surface);border:1px solid rgba(230,63,255,0.2);border-radius:10px;padding:12px 20px;font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:4px;color:var(--accent);text-align:center;display:flex;align-items:center;justify-content:center;opacity:0;transform:translate(-50%,4px) scale(0.96);transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);text-shadow:0 0 16px var(--glow-a);}
+  .announce{position:absolute;left:50%;top:62%;z-index:40;pointer-events:none;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid rgba(230,63,255,0.2);border-radius:10px;padding:12px 20px;font-family:'Bebas Neue',sans-serif;font-size:clamp(1.15rem,5.5vw,1.8rem);letter-spacing:3px;line-height:1.2;color:var(--accent);text-align:center;display:flex;align-items:center;justify-content:center;opacity:0;transform:translate(-50%,4px) scale(0.96);transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1);text-shadow:0 0 16px var(--glow-a);}
   .announce.show{opacity:1;transform:translate(-50%,0) scale(1);}
 
   .waveform{display:flex;align-items:center;justify-content:center;gap:3px;height:34px;}
@@ -6124,13 +6124,19 @@ async function finishFilmAndExport(){
   // Le montage peut prendre quelques secondes : statut persistant pendant l'attente.
   // Message court volontairement : « Montage du chrono… patiente » se coupait en
   // deux lignes bancales (« MONTAGE DU / CHRONO… PATIENTE ») dans la carte.
+  // Francois : « j'aime bien le montage en cours en dessous du chrono, mais en bas de
+  // l'ecran en gros c'est inutile ». Les deux disaient la meme chose au meme moment.
+  // Le statut sous le chrono reste affiche pendant TOUT le montage, l'annonce ne durait
+  // que deux secondes : c'est le statut qui porte l'information, l'annonce faisait
+  // double emploi. Elle est retiree ici, et seulement ici : la fin du montage garde la
+  // sienne, parce qu'elle signale un evenement qu'on peut rater en ayant pose le
+  // telephone.
   setFilmStatus(L3('Montage…','Rendering…','Montando…'),'clap');
-  showAnnounce(L3('Montage en cours…','Rendering…','Montando…'),'clap');
   try{
     await VO.exportOverlay({ path:rec.path, frames, goOffsetSec:off });
     DBG('✅ vidéo prête (chrono incrusté → Photos)');
     setFilmStatus(L3('Vidéo prête · Photos','Video ready · Photos','Vídeo pronto · Fotos'),'clap');
-    showAnnounce(L3('Vidéo prête ! Ouvre Photos','Video ready! Open Photos','Vídeo pronto! Abre Fotos'),'clap');
+    showAnnounce(L3('Vidéo prête','Video ready','Vídeo pronto'),'clap');
   }catch(e){ DBG('❌ export KO: '+((e&&e.message)||e));
     setFilmStatus(L3('Montage échoué','Render failed','Falha na montagem'),'croix');
     showAnnounce(L3('Vidéo : erreur','Video: error','Vídeo: erro'),'croix'); }
