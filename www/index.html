@@ -4698,6 +4698,7 @@ function preparerDecompte(fichiers){
   fichiers.forEach(f=>{
     if(!f || _cdEls[f]) return;
     const a=new Audio();
+    a._repsPris=false;
     a.preload='auto';
     try{ a.playsInline=true; a.setAttribute('playsinline',''); }catch(e){}
     _cdEls[f]=a;
@@ -4705,6 +4706,15 @@ function preparerDecompte(fichiers){
     // charge tout de suite. L'ordre compte : poser le vrai src avant le deblocage
     // ferait jouer le chiffre a plein volume au moment du deblocage.
     const poserVrai=()=>{
+      // MESURE DU 06/09 A 01H15, log de l'iPhone :
+      //     [REPS] countdown count-fr-10.mp3 REJETE AbortError
+      // AbortError sur un <audio>.play(), c'est une lecture interrompue par un pause()
+      // ou un changement de src PENDANT son demarrage. C'est cette fonction qui le
+      // faisait : elle arrive dans le .then() du play() de deblocage, donc a un instant
+      // qu'on ne maitrise pas, et le pas t=0 du decompte est deja parti. Elle coupait le
+      // « dix » qu'elle etait censee preparer. Les autres chiffres ont une seconde
+      // d'avance : la course ne les concerne jamais.
+      if(a._repsPris) return;
       try{ a.pause(); a.currentTime=0; }catch(e){}
       a.muted=false; a.volume=1;
       try{ a.src=VP(f); if(a.load) a.load(); }catch(e){}
@@ -6545,6 +6555,7 @@ function launch(){
     cdSteps.push({t:_t,fn:()=>{
       if(nativeVoiceOn()){ nativeVoicePlay(file); return; } // Ma musique : voix native par-dessus Spotify
       const a=_cdElFor(file);
+      a._repsPris=true;             // a partir d'ici, poserVrai() n'y touche plus
       try{a.muted=false;}catch(e){} // sinon le déverrouillage async laisse le "10" muet au 1er WOD
       // COURSE DU « 10 », CORRIGEE LE 01/09/2026.
       // preparerDecompte() debloque chaque element sur un WAV silencieux et ne pose le
