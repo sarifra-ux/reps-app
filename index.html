@@ -1300,6 +1300,14 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     background:var(--card);border:2px solid var(--border);border-radius:16px;
     color:var(--text);cursor:pointer;}
   .sq-pas:active{border-color:var(--accent);}
+  .sq-biblio{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+  .sq-fiche{display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:10px;
+    border:1px solid var(--border);background:rgba(255,255,255,.02);cursor:pointer;
+    text-align:left;color:var(--text);font-family:'DM Mono',monospace;width:100%;}
+  .sq-fiche[aria-current="true"]{border-color:var(--accent);background:rgba(230,63,255,.08);}
+  .sq-fiche-nom{flex:1;font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sq-fiche-info{font-size:.55rem;opacity:.5;white-space:nowrap;font-variant-numeric:tabular-nums;}
+  .sq-neuve{width:100%;}
   .sq-lancer{
     display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
     font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:3px;
@@ -1973,6 +1981,9 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
         <div class="sq-total"><b id="sqTotal">0:00</b><span id="sqNb">0 blocs</span></div>
         <p class="sq-aide" id="sqAide"></p>
       </div>
+      <div class="sq-biblio" id="sqBiblio"></div>
+      <button type="button" class="sq-action sq-neuve" onclick="sqNouvelleSeance()">+ Nouvelle séance</button>
+      <div class="sq-sep"></div>
       <button type="button" class="sq-lancer" id="sqLancer" onclick="lancerLaSeance()" style="display:none">
         <svg class="ico" aria-hidden="true"><use href="#i-nouveau"/></svg>
         <span id="sqLancerTexte">LANCER CETTE SÉANCE</span>
@@ -5401,8 +5412,19 @@ function toggleFilmCam(){
 //   FOR TIME, AMRAP     -> libre (un temps plafond)
 //   la pause            -> repos
 // Le bloc garde le nom du mode : c'est le mot du coach, pas le mien.
-var SQ_CLE='reps_seances';
-var SQ=null;                 // {nom, enchainement, blocs:[]}
+// BIBLIOTHEQUE DE SEANCES (05/09/2026). Avant, il n'y en avait qu'une en memoire et en
+// preparer une nouvelle ecrasait la precedente. Un coach a un programme different chaque
+// jour : il lui faut les garder.
+//
+//   SQ_LIB = { seances:[ {id, nom, enchainement, blocs, creeLe}, ... ], courante:0 }
+//   SQ     = SQ_LIB.seances[courante], une REFERENCE, pas une copie.
+//
+// SQ garde exactement la forme d'avant, donc tout le code ecrit aujourd'hui (l'assistant,
+// l'enchainement, le bandeau) continue de fonctionner sans une ligne de changement.
+var SQ_CLE='reps_seances';        // ancien format, lu une fois pour la reprise
+var SQ_CLE_LIB='reps_seances_lib';
+var SQ_LIB=null;
+var SQ=null;                 // {nom, enchainement, blocs:[]} : la seance courante
 var SQ_ETAPE='type';         // type | config | apres | pause
 var SQ_BROUILLON=null;       // le bloc en cours de reglage
 var SQ_EDITE=-1;             // index du bloc en cours de correction, -1 si nouveau
@@ -5428,11 +5450,64 @@ function sqDureeBloc(b){
 }
 function sqTotal(){ return SQ.blocs.reduce(function(t,b){ return t+sqDureeBloc(b); },0); }
 function sqMmss(x){ x=Math.max(0,Math.round(x)); return Math.floor(x/60)+':'+String(x%60).padStart(2,'0'); }
-function sqCharger(){
-  try{ var v=localStorage.getItem(SQ_CLE); if(v) SQ=JSON.parse(v); }catch(e){}
-  if(!SQ||!SQ.blocs) SQ={nom:'MA SÉANCE',enchainement:'manuel',blocs:[]};
+function sqIdNeuf(){ return 's'+Date.now().toString(36)+Math.floor(Math.random()*1000).toString(36); }
+function sqNomDuJour(){
+  var d=new Date();
+  var mois=['JAN','FÉV','MARS','AVR','MAI','JUIN','JUIL','AOÛT','SEPT','OCT','NOV','DÉC'];
+  return 'SÉANCE DU '+d.getDate()+' '+mois[d.getMonth()];
 }
-function sqSauver(){ try{ localStorage.setItem(SQ_CLE,JSON.stringify(SQ)); }catch(e){} }
+function sqSeanceNeuve(){
+  return {id:sqIdNeuf(), nom:sqNomDuJour(), enchainement:'manuel', blocs:[], creeLe:Date.now()};
+}
+function sqCharger(){
+  if(SQ_LIB && SQ){ return; }                 // deja en memoire
+  try{ var v=localStorage.getItem(SQ_CLE_LIB); if(v) SQ_LIB=JSON.parse(v); }catch(e){}
+  if(!SQ_LIB || !SQ_LIB.seances){
+    SQ_LIB={seances:[],courante:0};
+    // Reprise de l'ancien format : la seance unique devient la premiere de la
+    // bibliotheque. On ne perd pas le travail de celui qui a deja prepare quelque chose.
+    try{
+      var a=localStorage.getItem(SQ_CLE);
+      if(a){
+        var vieille=JSON.parse(a);
+        if(vieille && vieille.blocs && vieille.blocs.length){
+          vieille.id=sqIdNeuf(); vieille.creeLe=Date.now();
+          if(!vieille.nom) vieille.nom=sqNomDuJour();
+          SQ_LIB.seances.push(vieille);
+        }
+      }
+    }catch(e){}
+  }
+  if(!SQ_LIB.seances.length) SQ_LIB.seances.push(sqSeanceNeuve());
+  if(SQ_LIB.courante>=SQ_LIB.seances.length) SQ_LIB.courante=SQ_LIB.seances.length-1;
+  SQ=SQ_LIB.seances[SQ_LIB.courante];
+  if(!SQ.blocs) SQ.blocs=[];
+}
+function sqSauver(){
+  try{ localStorage.setItem(SQ_CLE_LIB,JSON.stringify(SQ_LIB)); }catch(e){}
+}
+// Ouvrir une seance de la bibliotheque : elle devient la courante.
+function sqOuvrirSeance(i){
+  sqCharger();
+  if(i<0||i>=SQ_LIB.seances.length) return;
+  SQ_LIB.courante=i; SQ=SQ_LIB.seances[i];
+  SQ_ETAPE = SQ.blocs.length ? 'fin' : 'type';
+  SQ_BROUILLON=null; SQ_EDITE=-1;
+  var nom=document.getElementById('sqNom'); if(nom) nom.value=SQ.nom||'';
+  sqSauver(); sqTout();
+}
+function sqNouvelleSeance(){
+  sqCharger();
+  SQ_LIB.seances.push(sqSeanceNeuve());
+  sqOuvrirSeance(SQ_LIB.seances.length-1);
+}
+function sqSupprimerSeance(i){
+  sqCharger();
+  if(SQ_LIB.seances.length<=1){ SQ_LIB.seances[0]=sqSeanceNeuve(); SQ_LIB.courante=0; }
+  else { SQ_LIB.seances.splice(i,1); if(SQ_LIB.courante>=SQ_LIB.seances.length) SQ_LIB.courante=SQ_LIB.seances.length-1; }
+  SQ=SQ_LIB.seances[SQ_LIB.courante];
+  sqSauver(); sqTout();
+}
 
 function sqIco(nom){
   var NS='http://www.w3.org/2000/svg';
@@ -5656,7 +5731,32 @@ function sqEnTete(){
     ? "Un par un : tu lances chaque bloc quand la classe est prête. Rien ne décale si une explication déborde."
     : "Enchaîné : les blocs se suivent sans intervention, pauses comprises.";
 }
-function sqTout(){ sqEnTete(); sqRendreAssistant(); sqRendreListe(); sqMajLancer(); }
+function sqRendreBiblio(){
+  var z=document.getElementById('sqBiblio');
+  if(!z) return;
+  z.textContent='';
+  SQ_LIB.seances.forEach(function(se,i){
+    var d=se.blocs.reduce(function(t,b){ return t+sqDureeBloc(b); },0);
+    var f=document.createElement('button');
+    f.type='button'; f.className='sq-fiche';
+    f.setAttribute('aria-current', String(i===SQ_LIB.courante));
+    var n=document.createElement('span'); n.className='sq-fiche-nom';
+    n.textContent=se.nom||'Sans nom';
+    var inf=document.createElement('span'); inf.className='sq-fiche-info';
+    inf.textContent = se.blocs.length
+      ? (se.blocs.length+(se.blocs.length>1?' blocs · ':' bloc · ')+sqMmss(d))
+      : 'vide';
+    f.appendChild(n); f.appendChild(inf);
+    f.addEventListener('click',function(){ sqOuvrirSeance(i); });
+    var sup=document.createElement('button');
+    sup.type='button'; sup.className='sq-outil'; sup.textContent='✕';
+    sup.setAttribute('aria-label','Supprimer la séance');
+    sup.addEventListener('click',function(ev){ ev.stopPropagation(); sqSupprimerSeance(i); });
+    f.appendChild(sup);
+    z.appendChild(f);
+  });
+}
+function sqTout(){ sqEnTete(); sqRendreBiblio(); sqRendreAssistant(); sqRendreListe(); sqMajLancer(); }
 function sqMajLancer(){
   var b=document.getElementById('sqLancer');
   if(!b) return;
@@ -5710,7 +5810,7 @@ function _wizMontrer(id){
 function montrerNbWod(){
   S.multi=false;
   try{ seanceArreter(); }catch(e){}   // on repart de zero : plus de seance en cours
-  SQ=null; sqCharger(); SQ.blocs=[]; sqSauver();
+  sqCharger();
   var t=document.getElementById('nbWodTitle');
   if(t) t.textContent=L3('Ta séance','Your session','Tua sessão');
   var u=document.getElementById('nbWod1'), n=document.getElementById('nbWodN');
@@ -5724,6 +5824,17 @@ function montrerNbWod(){
 }
 function choisirNbWod(multi){
   S.multi=!!multi;
+  if(multi){
+    // On ouvre une seance NEUVE : preparer aujourd'hui n'efface pas celle d'hier.
+    // Si la derniere de la bibliotheque est restee vide (wizard abandonne), on la
+    // reutilise plutot que d'en empiler une deuxieme.
+    sqCharger();
+    var derniere=SQ_LIB.seances[SQ_LIB.seances.length-1];
+    if(derniere && !derniere.blocs.length){ SQ_LIB.courante=SQ_LIB.seances.length-1; SQ=derniere; }
+    else { SQ_LIB.seances.push(sqSeanceNeuve()); SQ_LIB.courante=SQ_LIB.seances.length-1; SQ=SQ_LIB.seances[SQ_LIB.courante]; }
+    SQ.nom=sqNomDuJour(); SQ.blocs=[];
+    sqSauver();
+  }
   _wizCacher('nbWodScreen', function(){ showModeChoice(); });
 }
 
