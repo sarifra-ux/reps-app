@@ -18,6 +18,7 @@ DerivedData/
 .env.*
 
 # Documents de travail — NE JAMAIS publier : le repo est public
+CLAUDE.md/
 REPS-*.md
 *-etat-des-lieux.md
 *-specs.md
