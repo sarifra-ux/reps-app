@@ -1268,6 +1268,13 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     border:1px solid var(--border);border-radius:7px;color:var(--text);
     padding:6px 9px;margin-top:7px;}
   .sq-texte:focus{outline:none;border-color:var(--accent);}
+  .seance-bandeau{
+    display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
+    font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;
+    color:var(--text);opacity:.75;padding:7px 12px;margin:0 0 2px;
+    border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.03);}
+  .seance-bandeau b{color:var(--accent2);font-weight:400;}
+  .seance-bandeau i{font-style:normal;opacity:.6;}
   .sq-pause-reglage{display:flex;align-items:center;justify-content:center;gap:22px;
     margin:0 0 26px;}
   .sq-pause-valeur{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:3px;
@@ -2355,6 +2362,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   </aside>
 
   <main>
+    <!-- Bandeau de seance : ou on en est dans l'enchainement. Masque hors seance, donc
+         invisible pour qui fait un WOD seul. Il prend sa hauteur dans main, et l'anneau
+         l'absorbe : c'est exactement ce que permet la mecanique posee le 03/09. -->
+    <div class="seance-bandeau" id="seanceBandeau" style="display:none"></div>
     <div class="timer-card" id="timerCard">
       <div class="phase-indicator" id="phaseIndicator">WORK</div>
       <div class="round-badge" id="roundBadge"></div>
@@ -5600,6 +5611,7 @@ function _wizMontrer(id){
 
 function montrerNbWod(){
   S.multi=false;
+  try{ seanceArreter(); }catch(e){}   // on repart de zero : plus de seance en cours
   SQ=null; sqCharger(); SQ.blocs=[]; sqSauver();
   var t=document.getElementById('nbWodTitle');
   if(t) t.textContent=L3('Ta séance','Your session','Tua sessão');
@@ -5703,9 +5715,98 @@ function chargerBlocDansEtat(b){
   if(tab){ try{ setMode(tab,S.mode); }catch(e){} }
   try{ updateTotalFromMode(); updateClock(); }catch(e){}
 }
-function pauseWodTerminer(){
+// ===== ENCHAINEMENT DES BLOCS D'UNE SEANCE (05/09/2026) =====
+// La derniere piece. Le wizard sait preparer plusieurs WOD ; voici comment on passe de
+// l'un a l'autre.
+//
+// L'etat tient en un objet : S.seance = {index}. Absent, tout se comporte comme avant :
+// c'est la garantie que le WOD seul n'est touche par rien de tout ceci.
+//
+// Deux regimes, celui choisi a la preparation :
+//   manuel (defaut)  le bloc suivant est ARME et attend le play. Le coach explique,
+//                    corrige une position, et lance quand la classe est prete.
+//   auto             le bloc suivant part tout seul, apres un delai le temps que
+//                    l'annonce TIME finisse de sonner.
+//
+// On ne touche pas a launch(), a startChrono() ni a la boucle : on charge un bloc dans
+// l'etat de l'app, exactement comme le wizard le fait, et on laisse le chrono faire son
+// travail habituel.
+function seanceArmer(){
   sqCharger();
+  if(!SQ.blocs.length) return false;
+  S.seance={index:0};
   chargerBlocDansEtat(SQ.blocs[0]);
+  majSeanceBandeau();
+  return true;
+}
+function seanceArreter(){
+  S.seance=null;
+  majSeanceBandeau();
+}
+function seanceApresBloc(){
+  if(!S.seance) return;
+  sqCharger();
+  var i=S.seance.index+1;
+  if(i>=SQ.blocs.length){
+    // Derniere ligne du tableau.
+    S.seance=null;
+    majSeanceBandeau();
+    var st=document.getElementById('timerStatus');
+    if(st) st.textContent=L3('Séance terminée','Session complete','Sessão concluída');
+    return;
+  }
+  S.seance.index=i;
+  chargerBlocDansEtat(SQ.blocs[i]);
+  majSeanceBandeau();
+  var auto=(SQ.enchainement==='auto');
+  if(auto){
+    // On laisse l'annonce TIME finir de sonner avant d'enchainer : elle dure 1,67 s et
+    // le decompte du bloc suivant lui passerait dessus.
+    setTimeout(function(){
+      if(S.seance && S.state==='idle'){ try{ togglePlay(); }catch(e){} }
+    }, 2600);
+  }
+}
+// Le bandeau : ou on en est, et ce qui vient. En manuel il porte aussi la consigne, parce
+// que c'est le moment ou le coach cherche quoi faire : appuyer.
+function majSeanceBandeau(){
+  var el=document.getElementById('seanceBandeau');
+  if(!el) return;
+  if(!S.seance){ el.style.display='none'; el.textContent=''; return; }
+  sqCharger();
+  var i=S.seance.index, b=SQ.blocs[i], suivant=SQ.blocs[i+1];
+  var wods=SQ.blocs.filter(function(x){ return x.type!=='repos'; }).length;
+  var rang=SQ.blocs.slice(0,i+1).filter(function(x){ return x.type!=='repos'; }).length;
+
+  el.textContent='';
+  var t1=document.createElement('b');
+  t1.textContent = (b.type==='repos')
+    ? L3('REPOS','REST','DESCANSO')
+    : (b.titre||b.mode||'WOD')+' '+rang+'/'+wods;
+  el.appendChild(t1);
+
+  if(suivant){
+    var t2=document.createElement('i');
+    var nomSuivant = (suivant.type==='repos')
+      ? L3('repos','rest','descanso')+' '+sqMmss(sqDureeBloc(suivant))
+      : (suivant.titre||suivant.mode||'WOD');
+    t2.textContent='· '+L3('ensuite','next','depois')+' '+nomSuivant;
+    el.appendChild(t2);
+  } else {
+    var t3=document.createElement('i');
+    t3.textContent='· '+L3('dernier bloc','last block','último bloco');
+    el.appendChild(t3);
+  }
+  if(S.state==='idle' && SQ.enchainement!=='auto'){
+    var t4=document.createElement('i');
+    t4.textContent='· '+L3('appuie sur play','press play','carrega em play');
+    el.appendChild(t4);
+  }
+  el.style.display='flex';
+}
+
+function pauseWodTerminer(){
+  seanceArmer();   // charge le bloc 1 dans l'etat de l'app ET arme l'enchainement
   _wizCacher('pauseWodScreen', function(){ showMusicChoice(); });
 }
 
@@ -6210,6 +6311,7 @@ function startChrono(){
   // quand on a termine, sans attendre la fin du temps imparti.
   { const _d=document.getElementById('btnDone'); if(_d) _d.style.display=''; }
   setStatus('playing',L3('EN COURS','RUNNING','EM CURSO'));
+  try{ majSeanceBandeau(); }catch(e){}   // seance : retirer la consigne « appuie sur play »
 
   // Overlay vidéo : on enregistre une frame du chrono par seconde, à partir du GO,
   // et l'heure absolue du GO (pour le calage automatique de la vidéo, anti-triche).
@@ -6605,6 +6707,10 @@ function end(){
     // Pas de tournage en cours : on propose l'import d'une vidéo (ex. filmée sur un 2e appareil).
     offerVideoOverlay();
   }
+  // SEANCE A PLUSIEURS WOD : passer au bloc suivant. Ne fait rien hors seance, donc le
+  // WOD seul se termine exactement comme avant. Ajoute a la FIN de end() a dessein :
+  // rien de ce qui precede n'est touche.
+  try{ seanceApresBloc(); }catch(e){ DBG('seance: '+((e&&e.message)||e)); }
 }
 
 // Terminer le WOD avant la fin du temps imparti.
