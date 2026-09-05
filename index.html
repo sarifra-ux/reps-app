@@ -418,6 +418,9 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.fullscreen-mode .controls,
   body.fullscreen-mode .score-capture,
   body.fullscreen-mode .waveform,
+  /* Icone d'annonce : elle vit dans un bandeau en Bebas 1.8rem, il lui faut sa place
+     et un peu d'air. Meme jeu, meme degrade que les icones d'interface. */
+  .announce .ico{width:1.5rem;height:1.5rem;margin-right:12px;}
   body.fullscreen-mode .announce{display:none !important;}
   body.fullscreen-mode .app{grid-template-columns:1fr;}
   body.fullscreen-mode main{padding:0;height:100vh;display:flex;align-items:center;justify-content:center;}
@@ -1564,6 +1567,20 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     <symbol id="i-drapeau" viewBox="0 0 24 24">
       <path d="M6.4 21.2V3.2"/>
       <path d="M6.4 4.4h11.8l-2.7 4 2.7 4H6.4z"/>
+    </symbol>
+    <symbol id="i-cloche" viewBox="0 0 24 24">
+      <path d="M12 3.4a5.4 5.4 0 0 1 5.4 5.4c0 5 1.8 6.2 1.8 6.2H4.8s1.8-1.2 1.8-6.2A5.4 5.4 0 0 1 12 3.4z"/>
+      <path d="M10.1 18.3a1.95 1.95 0 0 0 3.8 0"/>
+    </symbol>
+    <symbol id="i-cycle" viewBox="0 0 24 24">
+      <path d="M4.6 12.2A7.4 7.4 0 0 1 17.2 6.9"/>
+      <path d="M17.6 3.3v3.7h-3.7"/>
+      <path d="M19.4 11.8A7.4 7.4 0 0 1 6.8 17.1"/>
+      <path d="M6.4 20.7V17h3.7"/>
+    </symbol>
+    <symbol id="i-croix" viewBox="0 0 24 24">
+      <path d="M6.6 6.6l10.8 10.8"/>
+      <path d="M17.4 6.6L6.6 17.4"/>
     </symbol>
     <symbol id="i-chrono" viewBox="0 0 24 24">
       <circle cx="12" cy="13.6" r="7.6"/>
@@ -4861,9 +4878,26 @@ function speak(text, opts){
   window.speechSynthesis.speak(u);
 }
 
-function showAnnounce(txt){
+// Deuxieme vague des icones (05/09/2026) : les annonces plein ecran.
+// On NE passe PAS par innerHTML : ces annonces affichent parfois un nom saisi par
+// l'utilisateur. On construit le SVG en DOM, le texte reste un noeud texte.
+function showAnnounce(txt,ico){
   const el=document.getElementById('announce');
-  el.textContent=txt;el.classList.add('show');
+  el.textContent='';
+  if(ico){
+    try{
+      const NS='http://www.w3.org/2000/svg';
+      const svg=document.createElementNS(NS,'svg');
+      svg.setAttribute('class','ico');
+      svg.setAttribute('aria-hidden','true');
+      const use=document.createElementNS(NS,'use');
+      use.setAttribute('href','#i-'+ico);
+      svg.appendChild(use);
+      el.appendChild(svg);
+    }catch(e){}
+  }
+  el.appendChild(document.createTextNode(txt));
+  el.classList.add('show');
   clearTimeout(S.annTO);
   S.annTO=setTimeout(()=>el.classList.remove('show'),3500);
 }
@@ -5240,15 +5274,15 @@ async function finishFilmAndExport(){
   // Message court volontairement : « Montage du chrono… patiente » se coupait en
   // deux lignes bancales (« MONTAGE DU / CHRONO… PATIENTE ») dans la carte.
   setFilmStatus(L3('🎬 Montage du chrono…','🎬 Rendering timer…','🎬 Montando o cronômetro…'));
-  showAnnounce(L3('🎬 Montage en cours…','🎬 Rendering…','🎬 Montando…'));
+  showAnnounce(L3('Montage en cours…','Rendering…','Montando…'),'clap');
   try{
     await VO.exportOverlay({ path:rec.path, frames, goOffsetSec:off });
     DBG('✅ vidéo prête (chrono incrusté → Photos)');
     setFilmStatus(L3('✅ Vidéo prête dans Photos','✅ Video saved to Photos','✅ Vídeo salvo em Fotos'));
-    showAnnounce(L3('🎬 Vidéo prête ! Ouvre Photos','🎬 Video ready! Open Photos','🎬 Vídeo pronto! Abre Fotos'));
+    showAnnounce(L3('Vidéo prête ! Ouvre Photos','Video ready! Open Photos','Vídeo pronto! Abre Fotos'),'clap');
   }catch(e){ DBG('❌ export KO: '+((e&&e.message)||e));
     setFilmStatus(L3('❌ Montage échoué','❌ Render failed','❌ Falha na montagem'));
-    showAnnounce(L3('❌ Vidéo : erreur','❌ Video: error','❌ Vídeo: erro')); }
+    showAnnounce(L3('Vidéo : erreur','Video: error','Vídeo: erro'),'croix'); }
 }
 // Bouton Filmer visible seulement si le plugin natif répond (donc app iOS, pas web).
 document.addEventListener('DOMContentLoaded',()=>{
@@ -5637,7 +5671,7 @@ function tabataPhaseEnd(){
     S.total=S.tabRestSec;
     S.remain=S.tabRestSec;
     speak(TXT[S.lang].rest);
-    showAnnounce(L3('💧 REPOS','💧 REST','💧 DESCANSO'));
+    showAnnounce(L3('REPOS','REST','DESCANSO'),'goutte');
     updateClock();
   } else {
     // Passage à work du round suivant
@@ -5646,7 +5680,7 @@ function tabataPhaseEnd(){
     S.total=S.tabWorkSec;
     S.remain=S.tabWorkSec;
     speak(TXT[S.lang].roundX(S.tabRound));
-    showAnnounce(`🔥 ROUND ${S.tabRound}`);
+    showAnnounce('ROUND '+S.tabRound,'cloche');
     updateClock();
   }
 }
@@ -5673,7 +5707,7 @@ function emomPhaseCheck(){
   // Repos entre deux cycles. Pas de fichier voix « cycle » dans le projet :
   // on réutilise l'annonce REST, et l'écran porte l'information du cycle.
   if(phase==='cyclerest'){
-    showAnnounce(L3('😮‍💨 REPOS DE CYCLE','😮‍💨 CYCLE REST','😮‍💨 DESCANSO DE CICLO'));
+    showAnnounce(L3('REPOS DE CYCLE','CYCLE REST','DESCANSO DE CICLO'),'cycle');
     DBG('EMOM -> REPOS DE CYCLE '+P.cycle+'/'+P.cycles+' (elapsed='+elapsed+'s)');
     playRest();
     return true;
@@ -5681,7 +5715,7 @@ function emomPhaseCheck(){
   // Premier round d'un nouveau cycle : il n'existe pas de fichier « round 1 »,
   // donc un bip, plus l'annonce à l'écran. Voir la note dans l'état des lieux.
   if(cycleChange && P.cycle>1 && phase==='work'){
-    showAnnounce('🔁 CYCLE '+P.cycle+'/'+P.cycles);
+    showAnnounce('CYCLE '+P.cycle+'/'+P.cycles,'cycle');
     DBG('EMOM -> CYCLE '+P.cycle+' (elapsed='+elapsed+'s)');
     try{ playTick(); }catch(e){}
     return true;
@@ -5694,13 +5728,13 @@ function emomPhaseCheck(){
     return false;
   }
   if(phase==='rest'){
-    showAnnounce(L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'));
+    showAnnounce(L3('REPOS','REST','DESCANSO'),'goutte');
     DBG('EMOM -> REST (elapsed='+elapsed+'s)');
     playRest();
     return true;
   }
   if(currentRound>1){
-    showAnnounce('🔔 ROUND '+currentRound);
+    showAnnounce('ROUND '+currentRound,'cloche');
     DBG('EMOM -> ROUND '+currentRound+' (elapsed='+elapsed+'s)');
     if(ROUND_AUDIO[S.lang]&&ROUND_AUDIO[S.lang][currentRound]) playRound(currentRound);
     else { playTick(); speak('Round '+currentRound+' !',{emomCrunch:true}); }
@@ -5786,13 +5820,13 @@ function checkAnnounce(){
       S.emomPhase=phase;
       if(phase==='rest'){
         // Début du REST : voix "Rest!"
-        showAnnounce(L3('😮‍💨 REPOS','😮‍💨 REST','😮‍💨 DESCANSO'));
+        showAnnounce(L3('REPOS','REST','DESCANSO'),'goutte');
         playRest();
         return;
       } else {
         // Début d'un nouveau WORK (= nouveau round, sauf le tout 1er)
         if(currentRound>1){
-          showAnnounce(`🔔 ROUND ${currentRound}`);
+          showAnnounce('ROUND '+currentRound,'cloche');
           if(ROUND_AUDIO[S.lang]&&ROUND_AUDIO[S.lang][currentRound]){
             playRound(currentRound);
           } else {
@@ -5808,7 +5842,7 @@ function checkAnnounce(){
     // Top exact début de round (cas où il n'y a pas de rest, sinon géré par changement de phase au-dessus)
     if(rest===0 && r>10 && elapsed>0 && inCycle===0){
       const roundN=currentRound;
-      showAnnounce(`🔔 ROUND ${roundN}`);
+      showAnnounce('ROUND '+roundN,'cloche');
       if(ROUND_AUDIO[S.lang]&&ROUND_AUDIO[S.lang][roundN]){
         playRound(roundN);
       } else {
@@ -5827,7 +5861,7 @@ function checkAnnounce(){
       // car le décompte de fin de chrono s'en charge déjà (évite le doublon).
       if(!isLastPhase){
         const num=secsToNext;
-        showAnnounce('⏰ '+num);
+        showAnnounce(String(num),'chrono');
         playBipDecompte();
         playCount(num);
         return;
@@ -5934,7 +5968,7 @@ function end(){
   document.getElementById('btnSkip').style.display='none';
   { const _d=document.getElementById('btnDone'); if(_d) _d.style.display='none'; }
   document.getElementById('phaseIndicator').className='phase-indicator';
-  showAnnounce('🏁 TIME !');
+  showAnnounce('TIME !','drapeau');
   speak(TXT[S.lang].time);
   document.getElementById('timerStatus').textContent=L3('Entraînement terminé 💪','Workout complete 💪','Treino concluído 💪');
   // Ne pas laisser figé le dernier "REST — ROUND 3/3" du WOD
