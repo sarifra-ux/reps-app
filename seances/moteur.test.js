@@ -77,5 +77,34 @@ console.log('  séance    : annoncée ' + mmss(4620) + ', calculée ' + mmss(s.d
             '  -> écart de ' + mmss(Math.abs(s.duree - 4620)));
 ok('l\'écart est bien détecté, il n\'est pas nul', bloc1 !== 1500);
 
+console.log('\n=== enchaînement : les deux modes ===');
+ok('par défaut, la séance est en liste', s.enchainement === 'manuel', s.enchainement);
+const auto = M.creerSeance('test', [{type:'repos',duree:60},{type:'repos',duree:30}], {enchainement:'auto'});
+ok('on peut demander l\'enchaînement automatique', auto.enchainement === 'auto');
+
+// Mode 'auto' : le temps court d'un bout à l'autre.
+ok('auto : à 70 s on est dans le deuxième bloc', M.positionDansSeance(auto, 70).index === 1);
+
+// Mode 'manuel' : chaque bloc repart de zéro, c'est le coach qui fait avancer.
+const etat = M.demarrerEnListe(s);
+ok('liste : on démarre sur le premier bloc', etat.index === 0 && etat.dansBloc === 0);
+etat.dansBloc = 100;
+const pl = M.positionEnListe(etat);
+ok('liste : à 100 s du premier bloc, tour 2', pl.tour === 2, 'tour ' + pl.tour);
+ok('liste : le bloc ne connaît pas le temps de la séance', pl.resteSeance === undefined);
+etat.dansBloc = M.dureeBloc(s.blocs[0]);
+ok('liste : en fin de bloc, on attend le coach', M.positionEnListe(etat).attendLeCoach === true);
+ok('liste : le play fait avancer d\'un bloc', M.blocSuivant(etat) === true && etat.index === 1 && etat.dansBloc === 0);
+let fin = M.demarrerEnListe(s); fin.index = s.blocs.length - 1;
+ok('liste : pas de bloc après le dernier', M.blocSuivant(fin) === false);
+
+// Le calcul interne est le MÊME dans les deux modes : c'est ce qui garantit qu'un
+// changement d'avis sur l'enchaînement ne touche pas le cœur du chrono.
+const parSeance = M.positionDansSeance(s, 100);
+const parBloc = M.positionDansBloc(s.blocs[0], 100);
+ok('les deux chemins donnent la même phase et le même tour',
+   parSeance.tour === parBloc.tour && parSeance.phase === parBloc.phase &&
+   parSeance.restePhase === parBloc.restePhase);
+
 console.log(ko ? '\n' + ko + ' ECHEC(S)' : '\nTout est vert');
 process.exit(ko ? 1 : 0);

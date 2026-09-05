@@ -43,9 +43,26 @@ function dureeBloc(b) {
   return 0;
 }
 
-function creerSeance(nom, defs) {
+// ENCHAÎNEMENT (tranché avec François le 05/09) : les deux, avec un interrupteur.
+//
+//   'manuel' (défaut)  le coach prépare 4 ou 5 WOD la veille, ils sont en liste. En cours
+//                      il lance le premier, explique le mouvement, lance le suivant quand
+//                      la classe est prête. Rien ne décale si une explication déborde.
+//   'auto'             les 78 minutes se déroulent sans intervention, repos compris.
+//                      Fidèle au tableau du coach, et c'est le mode d'un test chronométré.
+//
+// Le moteur porte les deux : en 'auto' le temps est continu sur toute la séance, en
+// 'manuel' chaque bloc repart de zéro. Le calcul de position à l'intérieur d'un bloc,
+// lui, est le même dans les deux cas — c'est tout l'intérêt d'avoir séparé les deux.
+function creerSeance(nom, defs, options) {
+  const o = options || {};
   const blocs = defs.map(bloc);
-  return { nom: nom, blocs: blocs, duree: blocs.reduce((t, b) => t + dureeBloc(b), 0) };
+  return {
+    nom: nom,
+    blocs: blocs,
+    enchainement: (o.enchainement === 'auto') ? 'auto' : 'manuel',
+    duree: blocs.reduce((t, b) => t + dureeBloc(b), 0),
+  };
 }
 
 // Horaires absolus de chaque bloc, comme un coach les écrit au tableau : 0:00–25:00.
@@ -67,6 +84,34 @@ function horaires(seance) {
 //
 // La logique interne d'un bloc `intervalle` est celle d'emomPos, volontairement : c'est
 // du code éprouvé, on ne le réécrit pas, on l'enveloppe.
+// Position À L'INTÉRIEUR d'un bloc. Sert aux deux modes d'enchaînement : c'est le seul
+// calcul dont a besoin le mode manuel, où chaque bloc repart de zéro.
+function positionDansBloc(b, dans) {
+  const d = dureeBloc(b);
+  if (dans < 0) dans = 0;
+  if (dans >= d) return null; // bloc terminé
+  const pos = { bloc: b, dansBloc: dans, resteBloc: d - dans };
+  if (b.type === 'intervalle') {
+    const cycle = b.work + b.rest;
+    const tour = Math.floor(dans / cycle) + 1;
+    const dansTour = dans - (tour - 1) * cycle;
+    const enWork = dansTour < b.work;
+    pos.phase = enWork ? 'work' : 'rest';
+    pos.tour = tour;
+    pos.tours = b.tours;
+    pos.dansPhase = enWork ? dansTour : dansTour - b.work;
+    pos.restePhase = (enWork ? b.work : cycle) - dansTour;
+  } else {
+    pos.phase = (b.type === 'repos') ? 'repos' : 'libre';
+    pos.tour = 1;
+    pos.tours = 1;
+    pos.dansPhase = dans;
+    pos.restePhase = d - dans;
+  }
+  return pos;
+}
+
+// Position dans une séance ENCHAÎNÉE ('auto'), où le temps court d'un bout à l'autre.
 function positionDansSeance(seance, elapsed) {
   if (elapsed < 0) elapsed = 0;
   let t = 0;
@@ -74,37 +119,36 @@ function positionDansSeance(seance, elapsed) {
     const b = seance.blocs[i];
     const d = dureeBloc(b);
     if (elapsed < t + d) {
-      const dans = elapsed - t;
-      const pos = {
-        index: i,
-        bloc: b,
-        dansBloc: dans,
-        resteBloc: d - dans,
-        resteSeance: seance.duree - elapsed,
-        dernierBloc: (i === seance.blocs.length - 1),
-      };
-      if (b.type === 'intervalle') {
-        const cycle = b.work + b.rest;
-        const tour = Math.floor(dans / cycle) + 1;
-        const dansTour = dans - (tour - 1) * cycle;
-        const enWork = dansTour < b.work;
-        pos.phase = enWork ? 'work' : 'rest';
-        pos.tour = tour;
-        pos.tours = b.tours;
-        pos.dansPhase = enWork ? dansTour : dansTour - b.work;
-        pos.restePhase = (enWork ? b.work : cycle) - dansTour;
-      } else {
-        pos.phase = (b.type === 'repos') ? 'repos' : 'libre';
-        pos.tour = 1;
-        pos.tours = 1;
-        pos.dansPhase = dans;
-        pos.restePhase = d - dans;
-      }
+      const pos = positionDansBloc(b, elapsed - t);
+      pos.index = i;
+      pos.resteSeance = seance.duree - elapsed;
+      pos.dernierBloc = (i === seance.blocs.length - 1);
       return pos;
     }
     t += d;
   }
   return null; // séance terminée
+}
+
+// Séance 'manuel' : le coach lance un bloc à la fois. L'état tient en deux nombres, et
+// c'est le bouton play qui fait avancer l'index, jamais l'horloge.
+function demarrerEnListe(seance) {
+  return { seance: seance, index: 0, dansBloc: 0 };
+}
+function positionEnListe(etat) {
+  const b = etat.seance.blocs[etat.index];
+  if (!b) return null;
+  const pos = positionDansBloc(b, etat.dansBloc) || positionDansBloc(b, dureeBloc(b) - 1);
+  pos.index = etat.index;
+  pos.dernierBloc = (etat.index === etat.seance.blocs.length - 1);
+  pos.attendLeCoach = (etat.dansBloc >= dureeBloc(b));
+  return pos;
+}
+function blocSuivant(etat) {
+  if (etat.index >= etat.seance.blocs.length - 1) return false;
+  etat.index++;
+  etat.dansBloc = 0;
+  return true;
 }
 
 // Les instants où quelque chose doit être dit ou affiché. Calculés UNE fois au
@@ -150,5 +194,6 @@ function seance77() {
 }
 
 if (typeof module !== 'undefined') {
-  module.exports = { creerSeance, dureeBloc, horaires, positionDansSeance, reperes, seance77 };
+  module.exports = { creerSeance, dureeBloc, horaires, positionDansBloc, positionDansSeance,
+                     demarrerEnListe, positionEnListe, blocSuivant, reperes, seance77 };
 }
