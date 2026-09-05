@@ -633,8 +633,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 
   .track-info{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;}
   .t-cover{width:50px;height:50px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;background:rgba(230,63,255,0.08);border:1px solid rgba(230,63,255,0.15);}
+  .t-cover .ico{width:1.6rem;height:1.6rem;}
   .t-name{font-size:0.85rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;}
   .t-meta{font-family:'DM Mono',monospace;font-size:0.56rem;color:var(--muted);margin-top:4px;line-height:1.5;}
+  .t-meta .ico{width:.8rem;height:.8rem;vertical-align:-0.15em;}
 
   @media(max-width:900px){.app{grid-template-columns:1fr;}aside{border-right:none;border-bottom:1px solid var(--border);}.bottom-row{grid-template-columns:1fr;}}
 
@@ -948,7 +950,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     border-radius:12px;padding:10px 12px;
   }
   .fin-video .ico{width:1rem;height:1rem;flex:0 0 auto;}
-  .fin-membre{display:flex;gap:8px;width:100%;}
+  .fin-membre{display:flex;align-items:center;gap:10px;width:100%;}
+  .fin-membre-lab{
+    flex:0 0 auto;font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:2px;
+    color:var(--muted);text-transform:uppercase;}
   .fin-membre .sc-input{flex:1;}
   #finListe{display:flex;flex-direction:column;gap:8px;width:100%;}
   .fin-fermer{
@@ -1188,6 +1193,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     font-family:'DM Mono',monospace;font-size:0.85rem;cursor:pointer;text-align:left;}
   .settings-action-btn:hover{border-color:var(--accent);}
   .settings-action-btn .settings-icon{font-size:1.1rem;}
+  .settings-action-btn svg.settings-icon{width:1.15rem;height:1.15rem;flex:0 0 auto;}
 
   /* ============================================================
      REFONTE v125 — écran principal
@@ -1356,13 +1362,33 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     border:1px solid var(--border);border-radius:7px;color:var(--text);
     padding:6px 9px;margin-top:7px;}
   .sq-texte:focus{outline:none;border-color:var(--accent);}
+  /* 05/09 au soir. Avant : une seule phrase en capitales minuscules a 75%
+     d'opacite, « FOR TIME 1/2 · ENSUITE REPOS 1:00 · APPUIE SUR PLAY », qui passait
+     a la ligne n'importe ou. Trois informations de nature differente au meme niveau,
+     donc aucune ne ressortait. Maintenant : le rang dans une pastille, le nom du bloc
+     en gros, ce qui suit a droite en discret, la consigne en dessous. */
   .seance-bandeau{
-    display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
-    font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:2px;text-transform:uppercase;
-    color:var(--text);opacity:.75;padding:7px 12px;margin:0 0 2px;
-    border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,.03);}
-  .seance-bandeau b{color:var(--accent2);font-weight:400;}
-  .seance-bandeau i{font-style:normal;opacity:.6;}
+    display:flex;align-items:center;gap:10px;width:100%;
+    padding:9px 12px;margin:0 0 4px;
+    border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.03);}
+  .sb-rang{
+    flex:0 0 auto;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:1px;
+    color:var(--accent2);background:rgba(0,229,255,.10);border:1px solid rgba(0,229,255,.3);
+    border-radius:999px;padding:3px 9px;font-variant-numeric:tabular-nums;}
+  .sb-milieu{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:1px;}
+  .sb-nom{
+    font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:2px;
+    color:var(--text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sb-consigne{
+    font-family:'DM Mono',monospace;font-size:.5rem;letter-spacing:1.5px;
+    text-transform:uppercase;color:var(--muted);}
+  .sb-suite{
+    flex:0 0 auto;display:flex;align-items:center;gap:5px;max-width:45%;
+    font-family:'DM Mono',monospace;font-size:.55rem;letter-spacing:1px;
+    text-transform:uppercase;color:var(--muted);text-align:right;}
+  .sb-suite .ico{width:.85rem;height:.85rem;flex:0 0 auto;}
+  .sb-suite span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .seance-bandeau.sb-repos .sb-nom{color:var(--accent2);}
   .sq-pause-reglage{display:flex;align-items:center;justify-content:center;gap:22px;
     margin:0 0 26px;}
   .sq-pause-valeur{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:3px;
@@ -2137,7 +2163,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   <div class="header-right">
     <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD"><svg class="ico" aria-hidden="true"><use href="#i-nouveau"/></svg> <span class="new-wod-label" data-i18n="nav.new">NOUVEAU</span></button>
     <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)"><svg class="ico" aria-hidden="true"><use href="#i-perso"/></svg> <span class="new-wod-label" data-i18n="nav.custom">PERSO</span></button>
-    <button class="new-wod-btn" id="membersBtn" onclick="openMembers()" title="Adhérents & scores"><svg class="ico" aria-hidden="true"><use href="#i-membres"/></svg> <span class="new-wod-label" data-i18n="nav.scores">SCORES</span></button>
+    <!-- Le bouton SCORES a quitte le bandeau le 05/09 : on ne saisit un score qu'APRES
+         un WOD, et l'ecran de fin le propose tout seul a ce moment-la. Le bandeau passe
+         de cinq a quatre boutons, qui respirent. La liste des adherents reste joignable
+         par REGLAGES > Adherents & scores, et par le bouton de l'ecran de fin. -->
     <button class="new-wod-btn" id="seancesBtn" onclick="ouvrirSeances()" title="Séances préparées"><svg class="ico" aria-hidden="true"><use href="#i-liste"/></svg> <span class="new-wod-label" data-i18n="nav.seances">SÉANCES</span></button>
     <button class="new-wod-btn" id="reglagesBtn" onclick="openSettings()" title="Réglages"><svg class="ico" aria-hidden="true"><use href="#i-reglages"/></svg> <span class="new-wod-label" data-i18n="nav.reglages">RÉGLAGES</span></button>
     <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText" data-i18n="status.ready">READY</span></div>
@@ -2239,6 +2268,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <button class="lang-btn" id="btnPT" onclick="setLang('pt')">🇧🇷 PT</button>
         </div>
       </div>
+      <button class="settings-action-btn" onclick="closeSettings();openMembers();"><svg class="ico settings-icon" aria-hidden="true"><use href="#i-membres"/></svg><span data-i18n="nav.scores">Adhérents &amp; scores</span></button>
       <button class="settings-action-btn" onclick="closeSettings();openFavorites();"><span class="settings-icon">⭐</span><span data-i18n="fav.modalTitle">Favoris</span></button>
       <button class="settings-action-btn" onclick="closeSettings();toggleFullscreen();"><span class="settings-icon">⛶</span><span data-i18n="nav.fullscreen">Plein écran</span></button>
       <button class="settings-action-btn" onclick="repsInscOuvrir();"><span class="settings-icon">📋</span><span id="repsInscLabelCoach">Je suis coach</span></button>
@@ -2687,10 +2717,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 
     <div class="bottom-row">
       <div class="track-info">
-        <div class="t-cover" id="tCover">🔥</div>
+        <div class="t-cover" id="tCover"><svg class="ico" aria-hidden="true"><use href="#i-flamme"/></svg></div>
         <div>
           <div class="t-name" id="tName">POGO DANS LA NUIT</div>
-          <div class="t-meta">RAP · Suno AI · 🎙️ Brian (ElevenLabs)</div>
+          <div class="t-meta">RAP · Suno AI · <svg class="ico" aria-hidden="true"><use href="#i-micro"/></svg> Brian (ElevenLabs)</div>
         </div>
       </div>
       <div class="schedule">
@@ -3375,7 +3405,7 @@ function selectTrack(btn,key){
   }
   const info=TRACK_INFO[key];
   document.getElementById('npBadge').textContent='🎵 '+info.name.toUpperCase();
-  document.getElementById('tCover').textContent=info.emoji;
+  majPochette(info);
   document.getElementById('tName').textContent=info.name.toUpperCase();
   if(S.state==='playing'){stopMusic();startMusic();}
 }
@@ -3906,7 +3936,7 @@ function chooseByoMusic(){
   // Libellé "en cours de lecture"
   const npBadge=document.getElementById('npBadge'); if(npBadge) npBadge.textContent='🎧 '+L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA');
   const tName=document.getElementById('tName'); if(tName) tName.textContent=L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA');
-  const tCover=document.getElementById('tCover'); if(tCover) tCover.textContent='🎧';
+  majPochette({ico:'i-casque'});
   // Ferme le wizard comme le fait une tuile catégorie
   const screen=document.getElementById('musicChoiceScreen');
   if(screen && screen.style.display!=='none'){
@@ -6023,29 +6053,45 @@ function majSeanceBandeau(){
   var rang=SQ.blocs.slice(0,i+1).filter(function(x){ return x.type!=='repos'; }).length;
 
   el.textContent='';
-  var t1=document.createElement('b');
-  t1.textContent = (b.type==='repos')
-    ? L3('REPOS','REST','DESCANSO')
-    : (b.titre||b.mode||'WOD')+' '+rang+'/'+wods;
-  el.appendChild(t1);
+  var repos=(b.type==='repos');
+  el.className='seance-bandeau'+(repos?' sb-repos':'');
 
-  if(suivant){
-    var t2=document.createElement('i');
-    var nomSuivant = (suivant.type==='repos')
-      ? L3('repos','rest','descanso')+' '+sqMmss(sqDureeBloc(suivant))
-      : (suivant.titre||suivant.mode||'WOD');
-    t2.textContent='· '+L3('ensuite','next','depois')+' '+nomSuivant;
-    el.appendChild(t2);
-  } else {
-    var t3=document.createElement('i');
-    t3.textContent='· '+L3('dernier bloc','last block','último bloco');
-    el.appendChild(t3);
-  }
+  // Le rang, dans sa pastille. Un repos n'a pas de rang : il est entre deux WOD.
+  var r=document.createElement('span'); r.className='sb-rang';
+  r.textContent = repos ? '· ·' : (rang+'/'+wods);
+  el.appendChild(r);
+
+  var mil=document.createElement('span'); mil.className='sb-milieu';
+  var nom=document.createElement('span'); nom.className='sb-nom';
+  nom.textContent = repos ? L3('REPOS','REST','DESCANSO')
+                          : String(b.titre||b.mode||'WOD').toUpperCase();
+  mil.appendChild(nom);
   if(S.state==='idle' && SQ.enchainement!=='auto'){
-    var t4=document.createElement('i');
-    t4.textContent='· '+L3('appuie sur play','press play','carrega em play');
-    el.appendChild(t4);
+    var c=document.createElement('span'); c.className='sb-consigne';
+    c.textContent=L3('appuie sur play','press play','carrega em play');
+    mil.appendChild(c);
   }
+  el.appendChild(mil);
+
+  // Ce qui vient apres, a droite, avec la fleche du cycle : c'est une information de
+  // second plan, elle ne doit pas se lire au meme niveau que le bloc en cours.
+  var su=document.createElement('span'); su.className='sb-suite';
+  var NS='http://www.w3.org/2000/svg';
+  var svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('class','ico'); svg.setAttribute('aria-hidden','true');
+  var u=document.createElementNS(NS,'use');
+  u.setAttribute('href', suivant ? '#i-cycle' : '#i-drapeau');
+  svg.appendChild(u); su.appendChild(svg);
+  var txt=document.createElement('span');
+  if(suivant){
+    txt.textContent = (suivant.type==='repos')
+      ? (L3('repos','rest','descanso')+' '+sqMmss(sqDureeBloc(suivant)))
+      : String(suivant.titre||suivant.mode||'WOD');
+  } else {
+    txt.textContent=L3('dernier','last','último');
+  }
+  su.appendChild(txt);
+  el.appendChild(su);
   el.style.display='flex';
 }
 
@@ -7127,7 +7173,7 @@ function loadFavorite(idx){
   // de la fonction (chrono jamais mis a jour). Meme repli que applyTrack().
   const info=TRACK_INFO[S.track]||TRACK_INFO['pogo']||{name:'—',emoji:'🎵',sub:''};
   document.getElementById('npBadge').textContent='🎵 '+info.name.toUpperCase();
-  document.getElementById('tCover').textContent=info.emoji;
+  majPochette(info);
   document.getElementById('tName').textContent=info.name.toUpperCase();
   // Set dur or tabata
   if(f.mode==='tabata'){
@@ -7397,6 +7443,22 @@ function chooseLanguage(lang){
 }
 
 
+
+// La pochette du morceau, en bas de l'ecran. Elle affichait l'emoji du morceau : le
+// pistolet de « Crime » trainait donc en permanence sous le chrono, alors que l'ecran
+// de choix est passe au trait. Une seule fonction, une seule verite.
+function majPochette(info){
+  var c=document.getElementById('tCover');
+  if(!c) return;
+  c.textContent='';
+  var NS='http://www.w3.org/2000/svg';
+  var svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('class','ico'); svg.setAttribute('aria-hidden','true');
+  var u=document.createElementNS(NS,'use');
+  u.setAttribute('href','#'+(((info&&info.ico)||'i-note')));
+  svg.appendChild(u); c.appendChild(svg);
+}
+
 // ===== ECRAN DE FIN : LES SCORES (05/09/2026) =====
 // Un seul WOD : une ligne. Plusieurs WOD : une ligne par WOD, plus une ligne pour la
 // seance entiere. Les repos ne se scorent pas. Les valeurs vont dans SQ.scores, donc
@@ -7497,6 +7559,10 @@ function _finMembre(){
     z.appendChild(b);
     return;
   }
+  var lab=document.createElement('span');
+  lab.className='fin-membre-lab';
+  lab.textContent=L3('Qui ?','Who?','Quem?');
+  z.appendChild(lab);
   var sel=document.createElement('select');
   sel.className='sc-input'; sel.id='finMembreSel';
   MEMBERS.forEach(function(m){
@@ -8098,7 +8164,7 @@ function applyTrack(chosen,category){
       const tCover=document.getElementById('tCover');
       const tName=document.getElementById('tName');
       if(npBadge) npBadge.textContent='🎵 '+info.name.toUpperCase();
-      if(tCover) tCover.textContent=info.emoji;
+      majPochette(info);
       if(tName) tName.textContent=info.name.toUpperCase();
     }
     // Activer le bon bouton track
@@ -8394,7 +8460,7 @@ function choosePersoTrack(id){
   S.track=id;
   try{
     const npBadge=document.getElementById('npBadge'); if(npBadge) npBadge.textContent='🎵 '+info.name.toUpperCase();
-    const tCover=document.getElementById('tCover'); if(tCover) tCover.textContent=info.emoji;
+    majPochette(info);
     const tName=document.getElementById('tName'); if(tName) tName.textContent=info.name.toUpperCase();
     document.querySelectorAll('.track-btn').forEach(b=>b.classList.remove('active'));
     const btn=document.querySelector(".track-btn[onclick*=\"'"+id+"'\"]"); if(btn) btn.classList.add('active');
