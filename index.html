@@ -840,14 +840,25 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       radial-gradient(ellipse at top left, rgba(230,63,255,0.15) 0%, transparent 50%),
       radial-gradient(ellipse at bottom right, rgba(0,229,255,0.12) 0%, transparent 50%),
       var(--bg-grad);
-    display:flex;align-items:center;justify-content:center;padding:24px;
+    /* align-items:center sur un conteneur qui defile coupe le HAUT du contenu des
+       qu'il depasse : le titre « PERSO · EMOM » etait mange par l'encoche. On aligne
+       en haut, et c'est la marge auto de l'enfant qui recentre quand il y a la place. */
+    display:flex;align-items:flex-start;justify-content:center;
+    padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));
     animation:welcomeFadeIn 0.4s ease-out;
     overflow-y:auto;
   }
   .timing-choice-content{
     display:flex;flex-direction:column;align-items:center;gap:24px;
     max-width:480px;width:100%;
+    margin-block:auto;
   }
+  /* L'ecran de reglage a beaucoup de blocs : le titre reste en haut, sous le bouton
+     retour, et on serre les espaces. */
+  #customScreen .timing-choice-content{gap:14px;padding-top:52px;}
+  .wizard-title-row{display:flex;align-items:center;justify-content:center;gap:12px;}
+  .wizard-title-row .wizard-title{margin:0;}
+  .wiz-title-ico{width:1.7rem;height:1.7rem;flex:0 0 auto;}
   .timing-choice-buttons{
     display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;
   }
@@ -870,22 +881,47 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   }
   .timing-btn-custom{
     grid-column:1 / -1;
-    background:transparent;
-    border-color:var(--border);
-    color:var(--muted);
+    background:var(--card);
+    border-color:rgba(230,63,255,0.35);
+    color:var(--text);
     font-size:1.2rem;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    padding:18px 16px;
   }
+  .timing-btn-custom .ico{width:1.15rem;height:1.15rem;}
+  .timing-btn-custom:active{border-color:#e63fff;}
 
   /* ===== ÉCRAN PERSONNALISÉ (un par mode) ===== */
   .cs-block{
-    display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;
+    display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;
     background:linear-gradient(135deg,var(--card),var(--card-hover));
-    border:1.5px solid var(--border);border-radius:16px;padding:18px;
+    border:1.5px solid var(--border);border-radius:14px;padding:12px 14px;
   }
   .cs-block-title{
-    font-family:'DM Mono',monospace;font-size:0.72rem;letter-spacing:2px;
-    color:var(--muted);text-transform:uppercase;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:1.5px;
+    color:var(--muted);text-transform:uppercase;text-align:center;
   }
+  .cs-block-title .ico{width:1.1rem;height:1.1rem;}
+  /* Un seul reglage, sans MIN/SEC : titre a gauche, boutons a droite, une ligne.
+     Cinq blocs empiles en colonne obligeaient a faire defiler pour voir le total. */
+  .cs-block.cs-inline{
+    flex-direction:row;justify-content:space-between;gap:10px;padding:10px 14px;
+  }
+  .cs-block.cs-inline .cs-block-title{text-align:left;justify-content:flex-start;flex:1 1 auto;}
+  .cs-block.cs-inline .emom-pickers{flex:0 0 auto;}
+  /* Les valeurs suivaient l'orange du panneau lateral. Sur l'ecran du wizard, tout le
+     reste est en rose/cyan : l'orange y detonnait. Portee limitee a cet ecran, le
+     panneau lateral garde sa couleur de mode. */
+  #customScreen .emom-picker-val{
+    color:var(--accent2);text-shadow:0 0 10px var(--glow-b);
+    font-size:1.9rem;min-width:48px;
+  }
+  #customScreen .emom-picker-btn{width:36px;height:36px;font-size:1.25rem;}
+  #customScreen .emom-picker-btn:hover,
+  #customScreen .emom-picker-btn:active{border-color:var(--accent);color:var(--accent);}
+  #customScreen .emom-pickers{gap:10px;}
+  #customScreen .emom-picker-label{font-size:0.46rem;letter-spacing:1.5px;}
   .cs-summary{
     font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--accent2);
     text-align:center;letter-spacing:1px;
@@ -1844,6 +1880,22 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       <path d="M9.6 5.4L4.8 10.2l4.8 4.8"/>
       <path d="M4.8 10.2h9.6a4.8 4.8 0 0 1 4.8 4.8v3.6"/>
     </symbol>
+    <!-- Ecran de reglage perso (05/09 au soir) -->
+    <symbol id="i-pause" viewBox="0 0 24 24">
+      <path d="M9 4.4v15.2"/>
+      <path d="M15 4.4v15.2"/>
+    </symbol>
+    <symbol id="i-couches" viewBox="0 0 24 24">
+      <path d="M12 2.8l8.4 4.2-8.4 4.2-8.4-4.2z"/>
+      <path d="M3.6 12l8.4 4.2 8.4-4.2"/>
+      <path d="M3.6 16.6l8.4 4.2 8.4-4.2"/>
+    </symbol>
+    <symbol id="i-sens" viewBox="0 0 24 24">
+      <path d="M7.4 3.6v16.8"/>
+      <path d="M3.8 7.2l3.6-3.6 3.6 3.6"/>
+      <path d="M16.6 20.4V3.6"/>
+      <path d="M20.2 16.8l-3.6 3.6-3.6-3.6"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -1957,7 +2009,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 <div id="timingChoiceScreen" class="timing-choice" style="display:none">
   <div class="timing-choice-content">
     <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" style="display:none">←</button>
-    <h2 class="wizard-title" id="timingChoiceTitle" data-i18n="timing.title">Durée</h2>
+    <div class="wizard-title-row">
+      <svg class="ico wiz-title-ico" id="timingChoiceIco" aria-hidden="true"><use href="#i-chrono"/></svg>
+      <h2 class="wizard-title" id="timingChoiceTitle" data-i18n="timing.title">Durée</h2>
+    </div>
     <div class="timing-choice-buttons" id="timingChoiceButtons">
       <!-- Boutons remplis dynamiquement selon le mode -->
     </div>
@@ -2009,7 +2064,10 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 <div id="customScreen" class="timing-choice" style="display:none">
   <div class="timing-choice-content">
     <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" style="display:none">←</button>
-    <h2 class="wizard-title" id="customScreenTitle" data-i18n="cfg.customized">Personnalisé</h2>
+    <div class="wizard-title-row">
+      <svg class="ico wiz-title-ico" id="customScreenIco" aria-hidden="true"><use href="#i-reglages"/></svg>
+      <h2 class="wizard-title" id="customScreenTitle" data-i18n="cfg.customized">Personnalisé</h2>
+    </div>
     <div id="customScreenBody" style="display:flex;flex-direction:column;gap:14px;width:100%"></div>
     <div class="cs-summary" id="customScreenSummary"></div>
     <button class="cs-continue-btn" onclick="csContinue()"><span data-i18n="cfg.continueBtn">Continuer</span> →</button>
@@ -7361,6 +7419,14 @@ function chooseMode(mode){
 }
 
 // ===== WIZARD : ÉCRAN 3 (TIMING) =====
+// L'icone du mode, la meme que sur la tuile de l'ecran d'avant. Le coach garde le fil
+// de ce qu'il est en train de regler jusqu'a la musique.
+var WIZ_ICO_MODE={wod:'i-drapeau',fortime:'i-drapeau',amrap:'i-infini',emom:'i-cloche',tabata:'i-flamme'};
+function _wizPoseIco(idSvg,mode,repli){
+  var svg=document.getElementById(idSvg); if(!svg) return;
+  var u=svg.querySelector('use'); if(!u) return;
+  u.setAttribute('href','#'+(WIZ_ICO_MODE[mode]||repli||'i-chrono'));
+}
 function showTimingChoice(mode){
   _wizEmpiler('timingChoiceScreen');
   const screen=document.getElementById('timingChoiceScreen');
@@ -7380,6 +7446,7 @@ function showTimingChoice(mode){
     titleText=L3('Durée','Duration','Duração');
   }
   if(title) title.textContent=titleText;
+  _wizPoseIco('timingChoiceIco',mode,'i-chrono');
   if(hint) hint.textContent=L3('Glisse vers la gauche pour continuer','Swipe left to continue','Deslize para a esquerda');
   
   // Construire les boutons selon le mode
@@ -7394,7 +7461,17 @@ function showTimingChoice(mode){
     
     const btnCustom=document.createElement('button');
     btnCustom.className='timing-btn timing-btn-custom';
-    btnCustom.textContent=L3('Personnalisé','Custom','Personalizado');
+    btnCustom.textContent='';
+    (function(b){
+      var NS='http://www.w3.org/2000/svg';
+      var svg=document.createElementNS(NS,'svg');
+      svg.setAttribute('class','ico'); svg.setAttribute('aria-hidden','true');
+      var u=document.createElementNS(NS,'use'); u.setAttribute('href','#i-reglages');
+      svg.appendChild(u); b.appendChild(svg);
+      var sp=document.createElement('span');
+      sp.textContent=L3('Personnalisé','Custom','Personalizado');
+      b.appendChild(sp);
+    })(btnCustom);
     btnCustom.onclick=()=>chooseTiming('custom');
     btns.appendChild(btnCustom);
   } else {
@@ -7409,7 +7486,17 @@ function showTimingChoice(mode){
     });
     const btnCustom=document.createElement('button');
     btnCustom.className='timing-btn timing-btn-custom';
-    btnCustom.textContent=L3('Personnalisé','Custom','Personalizado');
+    btnCustom.textContent='';
+    (function(b){
+      var NS='http://www.w3.org/2000/svg';
+      var svg=document.createElementNS(NS,'svg');
+      svg.setAttribute('class','ico'); svg.setAttribute('aria-hidden','true');
+      var u=document.createElementNS(NS,'use'); u.setAttribute('href','#i-reglages');
+      svg.appendChild(u); b.appendChild(svg);
+      var sp=document.createElement('span');
+      sp.textContent=L3('Personnalisé','Custom','Personalizado');
+      b.appendChild(sp);
+    })(btnCustom);
     btnCustom.onclick=()=>chooseTiming('custom');
     btns.appendChild(btnCustom);
   }
@@ -7490,6 +7577,11 @@ function openConfigFromWizard(){
 // ===== ÉCRAN PERSONNALISÉ (un par mode) =====
 let CS={};
 function _csFmt(s){const m=Math.floor(s/60),x=s%60;return m+':'+String(x).padStart(2,'0');}
+// Titre d'un bloc de reglage : icone au trait + libelle. Remplace les emojis de
+// l'ecran perso, les derniers du wizard.
+function _csTitre(ico,txt){
+  return '<div class="cs-block-title"><svg class="ico" aria-hidden="true"><use href="#'+ico+'"/></svg><span>'+txt+'</span></div>';
+}
 function _csStepper(label,valId,minusCall,plusCall,valText){
   return '<div class="emom-picker">'
     + (label?('<div class="emom-picker-label">'+label+'</div>'):'')
@@ -7519,44 +7611,45 @@ function showCustomChoice(mode){
     const names={wod:'For Time',amrap:'AMRAP',emom:'EMOM',tabata:'Tabata'};
     title.textContent=L3('Perso · ','Custom · ','Perso · ')+(names[mode]||'');
   }
+  _wizPoseIco('customScreenIco',mode,'i-reglages');
   let html='';
   if(mode==='emom'){
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3("⚡ Work (effort)","⚡ Work (effort)","⚡ Work (esforço)")+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block">'+_csTitre('i-eclair',L3("Work (effort)","Work (effort)","Work (esforço)"))+'<div class="emom-pickers">'
       + _csStepper('MIN','csv_wmin',"csEmom('work','min',-1)","csEmom('work','min',1)",Math.floor(CS.work/60))
       + _csStepper('SEC','csv_wsec',"csEmom('work','sec',-1)","csEmom('work','sec',1)",String(CS.work%60).padStart(2,'0'))
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3("😮‍💨 Rest (récup)","😮‍💨 Rest (recovery)","😮‍💨 Rest (descanso)")+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block">'+_csTitre('i-pause',L3("Rest (récup)","Rest (recovery)","Rest (descanso)"))+'<div class="emom-pickers">'
       + _csStepper('MIN','csv_rmin',"csEmom('rest','min',-1)","csEmom('rest','min',1)",Math.floor(CS.rest/60))
       + _csStepper('SEC','csv_rsec',"csEmom('rest','sec',-1)","csEmom('rest','sec',1)",String(CS.rest%60).padStart(2,'0'))
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('🔁 Nombre de tours','🔁 Number of rounds','🔁 Número de rounds')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block cs-inline">'+_csTitre('i-cycle',L3('Nombre de tours','Number of rounds','Número de rounds'))+'<div class="emom-pickers">'
       + _csStepper('','csv_rounds',"csRounds(-1)","csRounds(1)",CS.rounds)
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('🔁 Nombre de cycles','🔁 Number of cycles','🔁 Número de ciclos')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block cs-inline">'+_csTitre('i-couches',L3('Nombre de cycles','Number of cycles','Número de ciclos'))+'<div class="emom-pickers">'
       + _csStepper('','csv_cycles',"csCycles(-1)","csCycles(1)",CS.cycles)
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('😮‍💨 Repos entre cycles','😮‍💨 Rest between cycles','😮‍💨 Descanso entre ciclos')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block">'+_csTitre('i-pause',L3('Repos entre cycles','Rest between cycles','Descanso entre ciclos'))+'<div class="emom-pickers">'
       + _csStepper('MIN','csv_cmin',"csCycleRest('min',-1)","csCycleRest('min',1)",Math.floor(CS.cycleRest/60))
       + _csStepper('SEC','csv_csec',"csCycleRest('sec',-1)","csCycleRest('sec',1)",String(CS.cycleRest%60).padStart(2,'0'))
       + '</div></div>';
   } else if(mode==='tabata'){
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('⚡ Work (sec)','⚡ Work (sec)','⚡ Work (seg)')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block cs-inline">'+_csTitre('i-eclair',L3('Work (sec)','Work (sec)','Work (seg)'))+'<div class="emom-pickers">'
       + _csStepper('','csv_tw',"csTab('work',-1)","csTab('work',1)",CS.tabWork)
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('😮‍💨 Rest (sec)','😮‍💨 Rest (sec)','😮‍💨 Rest (seg)')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block cs-inline">'+_csTitre('i-pause',L3('Rest (sec)','Rest (sec)','Rest (seg)'))+'<div class="emom-pickers">'
       + _csStepper('','csv_tr',"csTab('rest',-1)","csTab('rest',1)",CS.tabRest)
       + '</div></div>';
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('🔁 Nombre de tours','🔁 Number of rounds','🔁 Número de rounds')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block cs-inline">'+_csTitre('i-cycle',L3('Nombre de tours','Number of rounds','Número de rounds'))+'<div class="emom-pickers">'
       + _csStepper('','csv_trnd',"csTab('rounds',-1)","csTab('rounds',1)",CS.tabRounds)
       + '</div></div>';
   } else {
-    html+='<div class="cs-block"><div class="cs-block-title">'+L3('⏱ Durée (min)','⏱ Duration (min)','⏱ Duração (min)')+'</div><div class="emom-pickers">'
+    html+='<div class="cs-block cs-inline">'+_csTitre('i-chrono',L3('Durée (min)','Duration (min)','Duração (min)'))+'<div class="emom-pickers">'
       + _csStepper('','csv_dur',"csDur(-1)","csDur(1)",CS.durMin)
       + '</div></div>';
     // Sens du chrono, AMRAP uniquement. C'est ici que le coach passe reellement,
     // pas par #durSection : le bloc doit exister dans les deux ecrans (24/08, build 4).
     if(mode==='amrap'){
-      html+='<div class="cs-block"><div class="cs-block-title">'+L3('↕ Sens du chrono','↕ Clock direction','↕ Sentido do cronômetro')+'</div>'
+      html+='<div class="cs-block">'+_csTitre('i-sens',L3('Sens du chrono','Clock direction','Sentido do cronômetro'))
         + '<div class="lang-switch">'
         + '<button type="button" class="lang-btn sens-chip" data-sens="down" onclick="choisirSens(\'down\')">'+CS.durMin+' → 0</button>'
         + '<button type="button" class="lang-btn sens-chip" data-sens="up" onclick="choisirSens(\'up\')">0 → '+CS.durMin+'</button>'
