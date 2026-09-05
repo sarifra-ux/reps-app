@@ -1,0 +1,454 @@
+<title>77 Feet Madness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap">
+
+<style>
+  /* REPS — maquette du déroulé multi-blocs.
+     Palette et typographie reprises de l'app : on ne réinvente pas une identité, on
+     montre la fonctionnalité dans le monde visuel qu'elle habitera. Écran unique et
+     sombre, assumé : c'est une app de salle, lue à trois mètres, jamais en clair. */
+  :root{
+    --ground:#0a0814;
+    --surface:#14102a;
+    --surface-haut:#1b1636;
+    --bord:#2a2145;
+    --bord-clair:#3a2f5e;
+    --texte:#eeeef8;
+    --texte-faible:#8b86a8;
+    --texte-tres-faible:#5d5878;
+    --magenta:#e63fff;
+    --cyan:#00e5ff;
+    --ambre:#ffb300;
+    --repos:#6f7ba8;
+    --halo-m:rgba(230,63,255,.45);
+    --halo-c:rgba(0,229,255,.35);
+    --mono:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --display:'Bebas Neue',Impact,sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;background:var(--ground);color:var(--texte);
+    font-family:var(--mono);font-size:13px;line-height:1.55;
+    padding:32px 20px 64px;
+  }
+  .page{max-width:1120px;margin:0 auto;}
+
+  /* ---------- en-tête ---------- */
+  .chapeau{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px;margin-bottom:6px;}
+  .logo{font-family:var(--display);font-size:26px;letter-spacing:6px;margin:0;}
+  .logo b{font-weight:400;color:var(--magenta);}
+  .logo i{font-style:normal;color:var(--cyan);}
+  .chapeau .quoi{color:var(--texte-faible);letter-spacing:2px;text-transform:uppercase;font-size:10px;}
+  .intro{color:var(--texte-faible);max-width:62ch;margin:0 0 28px;}
+  .intro strong{color:var(--texte);font-weight:400;}
+
+  /* ---------- disposition ---------- */
+  .duo{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start;}
+  @media (max-width:880px){ .duo{grid-template-columns:1fr;} }
+
+  /* ---------- le tableau du coach ---------- */
+  .tableau{background:var(--surface);border:1px solid var(--bord);border-radius:14px;overflow:hidden;}
+  .tableau-titre{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding:14px 18px;border-bottom:1px solid var(--bord);
+    font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--texte-faible);
+  }
+  .tableau-titre span{color:var(--texte-tres-faible);letter-spacing:1px;text-transform:none;}
+
+  .bloc{
+    display:grid;grid-template-columns:104px 1fr auto;gap:14px;align-items:baseline;
+    width:100%;text-align:left;
+    padding:11px 18px;border:0;border-bottom:1px solid rgba(42,33,69,.55);
+    background:transparent;color:inherit;font:inherit;cursor:pointer;
+    border-left:3px solid transparent;
+  }
+  .bloc:last-child{border-bottom:0;}
+  .bloc:hover{background:var(--surface-haut);}
+  .bloc:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px;}
+  .bloc .h{color:var(--texte-tres-faible);font-variant-numeric:tabular-nums;font-size:12px;}
+  .bloc .nom{color:var(--texte);}
+  .bloc .detail{display:block;color:var(--texte-tres-faible);font-size:11px;margin-top:2px;}
+  .bloc .duree{color:var(--texte-faible);font-variant-numeric:tabular-nums;font-size:11px;}
+  .bloc[data-type="repos"] .nom{color:var(--repos);}
+  .bloc[data-type="libre"] .nom{color:var(--ambre);}
+  .bloc.actif{background:var(--surface-haut);border-left-color:var(--magenta);}
+  .bloc.actif .h{color:var(--texte-faible);}
+  .bloc.passe{opacity:.45;}
+
+  /* ---------- barre de progression segmentée ---------- */
+  .frise{display:flex;gap:2px;height:8px;margin:0 0 4px;}
+  .frise div{background:var(--bord-clair);border-radius:2px;overflow:hidden;position:relative;}
+  .frise div[data-type="repos"]{background:#232a44;}
+  .frise div i{
+    position:absolute;inset:0 auto 0 0;display:block;
+    background:linear-gradient(90deg,var(--magenta),var(--cyan));
+  }
+  .frise div[data-type="repos"] i{background:var(--repos);}
+  .frise div[data-type="libre"] i{background:var(--ambre);}
+
+  /* ---------- transport ---------- */
+  .transport{margin-top:22px;background:var(--surface);border:1px solid var(--bord);
+             border-radius:14px;padding:16px 18px;}
+  .curseur{width:100%;margin:10px 0 6px;accent-color:var(--magenta);}
+  .reglures{display:flex;justify-content:space-between;color:var(--texte-tres-faible);font-size:11px;
+            font-variant-numeric:tabular-nums;}
+  .boutons{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+  .btn{
+    font:inherit;font-size:11px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--texte-faible);background:var(--surface-haut);
+    border:1px solid var(--bord-clair);border-radius:9px;padding:9px 14px;cursor:pointer;
+  }
+  .btn:hover{color:var(--texte);border-color:var(--magenta);}
+  .btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+  .btn[aria-pressed="true"]{color:var(--ground);background:var(--magenta);border-color:var(--magenta);}
+
+  /* ---------- le téléphone ---------- */
+  .tel{
+    background:linear-gradient(170deg,#171233,#0c0a1c);
+    border:1px solid var(--bord-clair);border-radius:30px;padding:14px;
+    box-shadow:0 0 0 1px rgba(230,63,255,.08),0 30px 60px -30px rgba(0,0,0,.9);
+    position:sticky;top:24px;
+  }
+  .tel-ecran{background:var(--ground);border-radius:20px;padding:16px 14px 18px;}
+  .tel-haut{display:flex;justify-content:space-between;align-items:center;
+            color:var(--texte-tres-faible);font-size:10px;letter-spacing:2px;}
+  .tel-haut b{font-family:var(--display);font-size:15px;letter-spacing:4px;color:var(--texte);font-weight:400;}
+
+  .eyebrow{margin-top:16px;font-size:10px;letter-spacing:3px;text-transform:uppercase;
+           color:var(--cyan);min-height:14px;}
+  .cadran{position:relative;width:186px;height:186px;margin:10px auto 4px;}
+  .cadran svg{width:100%;height:100%;transform:rotate(-90deg);}
+  .cadran .fond{fill:none;stroke:var(--bord);stroke-width:5;}
+  .cadran .arc{fill:none;stroke:url(#g);stroke-width:5;stroke-linecap:round;
+               transition:stroke-dashoffset .18s linear;}
+  .cadran .valeur{
+    position:absolute;inset:0;display:grid;place-content:center;
+    font-family:var(--display);font-size:47px;letter-spacing:2px;line-height:1;
+    font-variant-numeric:tabular-nums;white-space:nowrap;
+  }
+  .cadran .valeur em{font-style:normal;color:var(--magenta);}
+  .cadran .valeur span{color:var(--cyan);}
+  .sous-cadran{text-align:center;color:var(--texte-faible);font-size:11px;min-height:16px;}
+
+  .notes{
+    margin-top:14px;padding:10px 12px;border-radius:10px;
+    background:rgba(255,255,255,.03);border:1px solid var(--bord);
+    color:var(--texte-faible);font-size:11px;line-height:1.6;min-height:56px;
+  }
+  .notes b{display:block;color:var(--texte-tres-faible);font-size:9px;letter-spacing:2px;
+           text-transform:uppercase;margin-bottom:4px;font-weight:400;}
+
+  .seance-ligne{display:flex;justify-content:space-between;align-items:baseline;
+                margin-top:14px;color:var(--texte-tres-faible);font-size:10px;
+                letter-spacing:2px;text-transform:uppercase;}
+  .seance-ligne span{font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--texte-faible);}
+  .apres{margin-top:8px;color:var(--texte-tres-faible);font-size:11px;min-height:16px;}
+  .apres b{color:var(--texte-faible);font-weight:400;}
+
+  /* ---------- questions ---------- */
+  .questions{margin-top:36px;border-top:1px solid var(--bord);padding-top:22px;}
+  .questions h2{font-family:var(--display);font-size:20px;letter-spacing:4px;margin:0 0 14px;font-weight:400;}
+  .questions ol{margin:0;padding-left:20px;color:var(--texte-faible);max-width:70ch;}
+  .questions li{margin-bottom:9px;}
+  .questions li b{color:var(--texte);font-weight:400;}
+  .ecart{
+    margin-top:22px;padding:12px 14px;border-radius:10px;
+    border:1px solid rgba(255,179,0,.35);background:rgba(255,179,0,.06);
+    color:var(--texte-faible);max-width:70ch;
+  }
+  .ecart b{color:var(--ambre);font-weight:400;}
+
+  @media (prefers-reduced-motion:reduce){
+    .cadran .arc{transition:none;}
+  }
+</style>
+
+<div class="page">
+
+  <div class="chapeau">
+    <h1 class="logo"><b>R</b>·E·<i>P</i>·S</h1>
+    <div class="quoi">Séance en blocs · maquette</div>
+  </div>
+  <p class="intro">
+    Le programme de la coach, <strong>77 FEET MADNESS</strong>, tel que REPS le déroulerait.
+    Déplace le curseur ou clique un bloc : l'écran de droite montre ce que voit l'athlète à
+    cet instant. Rien de tout ça n'est encore dans l'app, c'est une maquette pour trancher
+    les questions du bas de page.
+  </p>
+
+  <div class="duo">
+
+    <div>
+      <div class="frise" id="frise" aria-hidden="true"></div>
+
+      <div class="tableau">
+        <div class="tableau-titre">
+          Le tableau <span id="totalTexte"></span>
+        </div>
+        <div id="listeBlocs"></div>
+      </div>
+
+      <div class="transport">
+        <label for="curseur" style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--texte-faible)">
+          Position dans la séance
+        </label>
+        <input id="curseur" class="curseur" type="range" min="0" max="4679" value="690" step="1">
+        <div class="reglures"><span>0:00</span><span id="finTexte"></span></div>
+        <div class="boutons">
+          <button class="btn" id="bPause" aria-pressed="true">Pause</button>
+          <button class="btn" id="b1" aria-pressed="false">Temps réel</button>
+          <button class="btn" id="b30" aria-pressed="false">× 30</button>
+          <button class="btn" id="b120" aria-pressed="false">× 120</button>
+          <button class="btn" id="bDebut">Retour au début</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tel">
+      <div class="tel-ecran">
+        <div class="tel-haut"><b>R·E·P·S</b><span id="horaire">0:00</span></div>
+
+        <div class="eyebrow" id="eyebrow"></div>
+
+        <div class="cadran">
+          <svg viewBox="0 0 100 100" aria-hidden="true">
+            <defs>
+              <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="100">
+                <stop offset="0%" stop-color="#e63fff"/>
+                <stop offset="100%" stop-color="#00e5ff"/>
+              </linearGradient>
+            </defs>
+            <circle class="fond" cx="50" cy="50" r="44"/>
+            <circle class="arc" id="arc" cx="50" cy="50" r="44"
+                    stroke-dasharray="276.46" stroke-dashoffset="0"/>
+          </svg>
+          <div class="valeur" id="valeur"><em>00</em>:<span>00</span></div>
+        </div>
+        <div class="sous-cadran" id="sousCadran"></div>
+
+        <div class="notes" id="notes"><b>Au tableau</b><span id="notesTexte"></span></div>
+
+        <div class="seance-ligne">Séance <span id="seanceTexte"></span></div>
+        <div class="apres" id="apres"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="questions">
+    <h2>CE QU'IL RESTE À TRANCHER</h2>
+    <ol>
+      <li><b>Le grand chrono compte quoi ?</b> Ici, le temps restant de la phase en cours, celui
+        qu'on regarde quand on est sous la barre. La position dans la séance est reléguée en bas,
+        en petit. C'est un choix, il peut être inversé.</li>
+      <li><b>Les mouvements restent-ils affichés ?</b> Ici oui, en permanence sous le chrono. La voix
+        ne les dira pas : aucun fichier audio ne contient « high hang power snatch ».</li>
+      <li><b>Que se passe-t-il pendant 8 minutes de repos ?</b> Le décompte tourne et le bloc suivant
+        est annoncé en bas. Reste à décider ce qui se dit, et quand.</li>
+      <li><b>Un score par bloc, ou un par séance ?</b> Ça change la table des scores et les favoris.</li>
+      <li><b>Quand ?</b> Pas dans la version en review chez Apple. Ce chantier touche le cœur du chrono.</li>
+    </ol>
+
+    <p class="ecart">
+      <b>Au passage.</b> Le premier bloc est annoncé 0:00–25:00 sur le tableau, mais son contenu dure
+      26 minutes : 6 + 1 + 3 + 1 + 15. La séance entière fait 78 minutes, pas 77. Sans importance en
+      salle, on ajuste. Mais c'est l'argument de la fonctionnalité : une app qui calcule le total
+      attrape ça la veille, pas au milieu du cours.
+    </p>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // Moteur repris de seances/moteur.js, réduit à ce dont la maquette a besoin.
+  var SEANCE = [
+    {type:'intervalle', titre:'OLY', work:90, rest:0, tours:4,
+     notes:'1 High Hang Power Snatch + 1 OHSQ · 1 Hang Power Snatch + 1 OHSQ · 1 Power Snatch + 1 OHSQ'},
+    {type:'repos', titre:'Rest', duree:60, notes:'Transition'},
+    {type:'intervalle', titre:'OLY', work:90, rest:0, tours:2, notes:'Même complexe, à 70 %'},
+    {type:'repos', titre:'Rest', duree:60, notes:''},
+    {type:'intervalle', titre:'EMOM 15', work:60, rest:0, tours:15,
+     notes:'1 · 60 Heavy Double Unders — 2 · 5/4/3/2/1 Power Snatch — 3 · Rest'},
+    {type:'repos', titre:'Rest', duree:480, notes:'8 minutes'},
+    {type:'intervalle', titre:'Every 5', work:300, rest:0, tours:5,
+     notes:'5 Sandbag Clean (90/70) · 20 m Bearhug Carry · 10 Ring Muscle-ups'},
+    {type:'repos', titre:'Rest', duree:540, notes:'9 minutes'},
+    {type:'libre', titre:'METCON', cap:600,
+     notes:'80 Wall Balls · 60 Toes to Bar · 40 Burpees Box Jumps — time cap 10:00'}
+  ];
+
+  function duree(b){
+    if(b.type==='intervalle') return b.tours*(b.work+b.rest);
+    if(b.type==='repos') return b.duree;
+    return b.cap;
+  }
+  var TOTAL = SEANCE.reduce(function(t,b){ return t+duree(b); },0);
+
+  function position(elapsed){
+    var t=0;
+    for(var i=0;i<SEANCE.length;i++){
+      var b=SEANCE[i], d=duree(b);
+      if(elapsed < t+d){
+        var dans=elapsed-t;
+        var p={index:i,bloc:b,dansBloc:dans,resteBloc:d-dans,debut:t,duree:d};
+        if(b.type==='intervalle'){
+          var cycle=b.work+b.rest;
+          var tour=Math.floor(dans/cycle)+1;
+          var dansTour=dans-(tour-1)*cycle;
+          p.tour=tour; p.tours=b.tours;
+          p.phase = dansTour<b.work ? 'work' : 'rest';
+          p.restePhase = (p.phase==='work'? b.work : cycle) - dansTour;
+          p.dureePhase = p.phase==='work' ? b.work : b.rest;
+        } else {
+          p.tour=1; p.tours=1; p.phase=b.type;
+          p.restePhase=d-dans; p.dureePhase=d;
+        }
+        return p;
+      }
+      t+=d;
+    }
+    return null;
+  }
+
+  function mmss(s){
+    s=Math.max(0,Math.round(s));
+    return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+  }
+  function libelle(b){
+    if(b.type==='intervalle'){
+      var e = b.work%60===0 ? (b.work/60)+' min' : b.work+' s';
+      return b.tours+' × '+e;
+    }
+    if(b.type==='repos') return 'repos';
+    return 'cap '+mmss(b.cap);
+  }
+
+  // --- construction du tableau et de la frise ---
+  var listeBlocs=document.getElementById('listeBlocs');
+  var frise=document.getElementById('frise');
+  var debuts=[], t=0;
+  SEANCE.forEach(function(b,i){
+    debuts.push(t);
+    var d=duree(b);
+
+    var el=document.createElement('button');
+    el.className='bloc'; el.type='button';
+    el.setAttribute('data-type',b.type);
+    el.setAttribute('data-i',i);
+    el.innerHTML='<span class="h">'+mmss(t)+' – '+mmss(t+d)+'</span>'+
+                 '<span><span class="nom">'+b.titre+'</span>'+
+                 (b.notes?'<span class="detail">'+b.notes+'</span>':'')+'</span>'+
+                 '<span class="duree">'+libelle(b)+'</span>';
+    el.addEventListener('click',function(){ aller(debuts[i]); });
+    listeBlocs.appendChild(el);
+
+    var seg=document.createElement('div');
+    seg.style.flex=d;
+    seg.setAttribute('data-type',b.type);
+    seg.appendChild(document.createElement('i'));
+    frise.appendChild(seg);
+
+    t+=d;
+  });
+  document.getElementById('totalTexte').textContent='9 blocs · '+mmss(TOTAL);
+  document.getElementById('finTexte').textContent=mmss(TOTAL);
+
+  var blocsEl=Array.prototype.slice.call(listeBlocs.children);
+  var segsEl=Array.prototype.slice.call(frise.children);
+
+  // --- rendu ---
+  var curseur=document.getElementById('curseur');
+  curseur.max=TOTAL-1;
+  var arc=document.getElementById('arc'), CIRC=2*Math.PI*44;
+
+  function rendre(elapsed){
+    var p=position(elapsed);
+    if(!p) return;
+
+    document.getElementById('horaire').textContent=mmss(elapsed);
+
+    // cadran : le temps restant de la PHASE en cours
+    var reste=p.restePhase;
+    var frac = p.dureePhase ? (p.dureePhase-reste)/p.dureePhase : 0;
+    arc.setAttribute('stroke-dasharray',CIRC.toFixed(2));
+    arc.setAttribute('stroke-dashoffset',(CIRC*(1-frac)).toFixed(2));
+    var m=Math.floor(Math.max(0,reste)/60), s=Math.max(0,Math.round(reste))%60;
+    document.getElementById('valeur').innerHTML=
+      '<em>'+String(m).padStart(2,'0')+'</em>:<span>'+String(s).padStart(2,'0')+'</span>';
+
+    var eb=document.getElementById('eyebrow');
+    var sc=document.getElementById('sousCadran');
+    if(p.bloc.type==='intervalle'){
+      eb.textContent=p.bloc.titre+' · tour '+p.tour+'/'+p.tours;
+      eb.style.color='var(--cyan)';
+      sc.textContent='intervalle de '+mmss(p.bloc.work);
+    } else if(p.bloc.type==='repos'){
+      eb.textContent='Repos';
+      eb.style.color='var(--repos)';
+      sc.textContent='bloc de '+mmss(p.duree);
+    } else {
+      eb.textContent=p.bloc.titre+' · time cap';
+      eb.style.color='var(--ambre)';
+      sc.textContent='cap '+mmss(p.bloc.cap);
+    }
+
+    document.getElementById('notesTexte').textContent=p.bloc.notes||'—';
+    document.getElementById('seanceTexte').textContent=mmss(elapsed)+' / '+mmss(TOTAL);
+
+    var suivant=SEANCE[p.index+1];
+    document.getElementById('apres').innerHTML= suivant
+      ? 'Ensuite : <b>'+suivant.titre+'</b> dans '+mmss(p.resteBloc)
+      : 'Dernier bloc de la séance';
+
+    blocsEl.forEach(function(el,i){
+      el.classList.toggle('actif', i===p.index);
+      el.classList.toggle('passe', i<p.index);
+    });
+    segsEl.forEach(function(seg,i){
+      var jauge=seg.firstChild, d=duree(SEANCE[i]);
+      var f = i<p.index ? 1 : (i>p.index ? 0 : p.dansBloc/d);
+      jauge.style.width=(f*100).toFixed(1)+'%';
+    });
+  }
+
+  // --- transport ---
+  var pos=Number(curseur.value), vitesse=0, dernier=null, raf=null;
+
+  function aller(v){
+    pos=Math.max(0,Math.min(TOTAL-1,v));
+    curseur.value=pos;
+    rendre(pos);
+  }
+  curseur.addEventListener('input',function(){ vit(0); aller(Number(curseur.value)); });
+
+  var btns={0:document.getElementById('bPause'),1:document.getElementById('b1'),
+            30:document.getElementById('b30'),120:document.getElementById('b120')};
+  function vit(v){
+    vitesse=v;
+    Object.keys(btns).forEach(function(k){
+      btns[k].setAttribute('aria-pressed', String(Number(k)===v));
+    });
+    if(v===0){ if(raf) cancelAnimationFrame(raf); raf=null; dernier=null; return; }
+    if(!raf){ dernier=performance.now(); raf=requestAnimationFrame(pas); }
+  }
+  function pas(now){
+    if(!vitesse){ raf=null; return; }
+    var dt=(now-dernier)/1000; dernier=now;
+    pos+=dt*vitesse;
+    if(pos>=TOTAL-1){ pos=TOTAL-1; vit(0); }
+    curseur.value=Math.round(pos);
+    rendre(pos);
+    if(vitesse) raf=requestAnimationFrame(pas);
+  }
+  Object.keys(btns).forEach(function(k){
+    btns[k].addEventListener('click',function(){ vit(Number(k)); });
+  });
+  document.getElementById('bDebut').addEventListener('click',function(){ vit(0); aller(0); });
+
+  rendre(pos);
+})();
+</script>
