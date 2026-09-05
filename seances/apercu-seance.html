@@ -4,10 +4,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap">
 
 <style>
-  /* REPS — maquette du déroulé multi-blocs.
-     Palette et typographie reprises de l'app : on ne réinvente pas une identité, on
-     montre la fonctionnalité dans le monde visuel qu'elle habitera. Écran unique et
-     sombre, assumé : c'est une app de salle, lue à trois mètres, jamais en clair. */
+  /* REPS — maquette des séances en blocs : préparer, puis dérouler.
+     Palette et typographie reprises de l'app : on montre la fonctionnalité dans le monde
+     visuel qu'elle habitera. Écran unique et sombre, assumé — c'est une app de salle,
+     lue à trois mètres, jamais en clair. */
   :root{
     --ground:#0a0814;
     --surface:#14102a;
@@ -21,8 +21,6 @@
     --cyan:#00e5ff;
     --ambre:#ffb300;
     --repos:#6f7ba8;
-    --halo-m:rgba(230,63,255,.45);
-    --halo-c:rgba(0,229,255,.35);
     --mono:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
     --display:'Bebas Neue',Impact,sans-serif;
   }
@@ -31,28 +29,125 @@
   body{
     margin:0;background:var(--ground);color:var(--texte);
     font-family:var(--mono);font-size:13px;line-height:1.55;
-    padding:32px 20px 64px;
+    padding:30px 20px 64px;
   }
   .page{max-width:1120px;margin:0 auto;}
 
-  /* ---------- en-tête ---------- */
   .chapeau{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 18px;margin-bottom:6px;}
-  .logo{font-family:var(--display);font-size:26px;letter-spacing:6px;margin:0;}
+  .logo{font-family:var(--display);font-size:26px;letter-spacing:6px;margin:0;font-weight:400;}
   .logo b{font-weight:400;color:var(--magenta);}
   .logo i{font-style:normal;color:var(--cyan);}
   .chapeau .quoi{color:var(--texte-faible);letter-spacing:2px;text-transform:uppercase;font-size:10px;}
-  .intro{color:var(--texte-faible);max-width:62ch;margin:0 0 28px;}
+  .intro{color:var(--texte-faible);max-width:64ch;margin:0 0 22px;}
   .intro strong{color:var(--texte);font-weight:400;}
 
-  /* ---------- disposition ---------- */
-  .duo{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start;}
+  /* ---------- onglets ---------- */
+  .onglets{display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--bord);}
+  .onglet{
+    font:inherit;font-size:11px;letter-spacing:3px;text-transform:uppercase;
+    background:none;border:0;border-bottom:2px solid transparent;
+    color:var(--texte-tres-faible);padding:10px 16px;cursor:pointer;margin-bottom:-1px;
+  }
+  .onglet:hover{color:var(--texte-faible);}
+  .onglet[aria-selected="true"]{color:var(--texte);border-bottom-color:var(--magenta);}
+  .onglet:focus-visible{outline:2px solid var(--cyan);outline-offset:-4px;}
+
+  /* ---------- barre de séance ---------- */
+  .barre{
+    display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;
+    background:var(--surface);border:1px solid var(--bord);border-radius:14px;
+    padding:14px 18px;margin-bottom:14px;
+  }
+  .nom-seance{
+    font-family:var(--display);font-size:24px;letter-spacing:3px;
+    background:none;border:0;border-bottom:1px dashed var(--bord-clair);
+    color:var(--texte);padding:2px 4px;min-width:220px;flex:1;
+  }
+  .nom-seance:focus{outline:none;border-bottom-color:var(--magenta);}
+  .total{margin-left:auto;text-align:right;}
+  .total .v{font-family:var(--display);font-size:26px;letter-spacing:2px;color:var(--cyan);
+            font-variant-numeric:tabular-nums;display:block;line-height:1;}
+  .total .l{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--texte-tres-faible);}
+
+  .bascule{display:flex;gap:0;border:1px solid var(--bord-clair);border-radius:9px;overflow:hidden;}
+  .bascule button{
+    font:inherit;font-size:10px;letter-spacing:2px;text-transform:uppercase;
+    background:transparent;border:0;color:var(--texte-faible);padding:8px 12px;cursor:pointer;
+  }
+  .bascule button[aria-pressed="true"]{background:var(--magenta);color:#12071a;}
+  .bascule button:focus-visible{outline:2px solid var(--cyan);outline-offset:-2px;}
+  .aide{color:var(--texte-tres-faible);font-size:11px;flex-basis:100%;margin:0;}
+
+  /* ---------- éditeur ---------- */
+  .carte{
+    background:var(--surface);border:1px solid var(--bord);border-radius:13px;
+    padding:12px 14px;margin-bottom:8px;
+    display:grid;grid-template-columns:120px 1fr auto;gap:12px;align-items:start;
+    border-left:3px solid var(--bord-clair);
+  }
+  .carte[data-type="intervalle"]{border-left-color:var(--magenta);}
+  .carte[data-type="repos"]{border-left-color:var(--repos);}
+  .carte[data-type="libre"]{border-left-color:var(--ambre);}
+  @media (max-width:720px){ .carte{grid-template-columns:1fr;} }
+
+  .typechoix{display:flex;flex-direction:column;gap:3px;}
+  .typechoix button{
+    font:inherit;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;
+    background:transparent;border:1px solid var(--bord);border-radius:7px;
+    color:var(--texte-tres-faible);padding:5px 8px;cursor:pointer;text-align:left;
+  }
+  .typechoix button[aria-pressed="true"]{color:var(--texte);border-color:var(--bord-clair);
+    background:var(--surface-haut);}
+  .typechoix button:focus-visible{outline:2px solid var(--cyan);outline-offset:1px;}
+
+  .champs{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:flex-end;}
+  .champ{display:flex;flex-direction:column;gap:3px;}
+  .champ label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--texte-tres-faible);}
+  .champ input[type="number"]{
+    font:inherit;width:74px;background:var(--ground);border:1px solid var(--bord);
+    border-radius:7px;color:var(--texte);padding:6px 8px;font-variant-numeric:tabular-nums;
+  }
+  .champ input:focus{outline:none;border-color:var(--magenta);}
+  .duree-bloc{font-family:var(--display);font-size:19px;letter-spacing:2px;color:var(--cyan);
+              font-variant-numeric:tabular-nums;padding-bottom:2px;}
+  .titre-bloc, .notes-bloc{
+    font:inherit;width:100%;background:var(--ground);border:1px solid var(--bord);
+    border-radius:7px;color:var(--texte);padding:6px 9px;margin-top:8px;
+  }
+  .notes-bloc{color:var(--texte-faible);font-size:12px;}
+  .titre-bloc::placeholder,.notes-bloc::placeholder{color:var(--texte-tres-faible);}
+  .titre-bloc:focus,.notes-bloc:focus{outline:none;border-color:var(--magenta);}
+
+  .outils{display:flex;gap:4px;}
+  .outils button{
+    font:inherit;font-size:13px;line-height:1;width:30px;height:30px;
+    background:transparent;border:1px solid var(--bord);border-radius:7px;
+    color:var(--texte-faible);cursor:pointer;
+  }
+  .outils button:hover:not(:disabled){color:var(--texte);border-color:var(--bord-clair);}
+  .outils button:disabled{opacity:.28;cursor:default;}
+  .outils button.sup:hover{color:#ff5c7a;border-color:#ff5c7a;}
+  .outils button:focus-visible{outline:2px solid var(--cyan);outline-offset:1px;}
+
+  .ajouts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+  .btn{
+    font:inherit;font-size:11px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--texte-faible);background:var(--surface-haut);
+    border:1px solid var(--bord-clair);border-radius:9px;padding:9px 14px;cursor:pointer;
+  }
+  .btn:hover{color:var(--texte);border-color:var(--magenta);}
+  .btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
+  .btn[aria-pressed="true"]{color:#12071a;background:var(--magenta);border-color:var(--magenta);}
+  .btn.fort{color:var(--texte);border-color:var(--magenta);}
+
+  /* ---------- déroulé ---------- */
+  .duo{display:grid;grid-template-columns:1fr 340px;gap:26px;align-items:start;}
   @media (max-width:880px){ .duo{grid-template-columns:1fr;} }
 
-  /* ---------- le tableau du coach ---------- */
   .tableau{background:var(--surface);border:1px solid var(--bord);border-radius:14px;overflow:hidden;}
   .tableau-titre{
     display:flex;justify-content:space-between;align-items:center;gap:12px;
-    padding:14px 18px;border-bottom:1px solid var(--bord);
+    padding:13px 18px;border-bottom:1px solid var(--bord);
     font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--texte-faible);
   }
   .tableau-titre span{color:var(--texte-tres-faible);letter-spacing:1px;text-transform:none;}
@@ -77,34 +172,21 @@
   .bloc.actif .h{color:var(--texte-faible);}
   .bloc.passe{opacity:.45;}
 
-  /* ---------- barre de progression segmentée ---------- */
   .frise{display:flex;gap:2px;height:8px;margin:0 0 4px;}
   .frise div{background:var(--bord-clair);border-radius:2px;overflow:hidden;position:relative;}
   .frise div[data-type="repos"]{background:#232a44;}
-  .frise div i{
-    position:absolute;inset:0 auto 0 0;display:block;
-    background:linear-gradient(90deg,var(--magenta),var(--cyan));
-  }
+  .frise div i{position:absolute;inset:0 auto 0 0;display:block;
+               background:linear-gradient(90deg,var(--magenta),var(--cyan));}
   .frise div[data-type="repos"] i{background:var(--repos);}
   .frise div[data-type="libre"] i{background:var(--ambre);}
 
-  /* ---------- transport ---------- */
-  .transport{margin-top:22px;background:var(--surface);border:1px solid var(--bord);
+  .transport{margin-top:20px;background:var(--surface);border:1px solid var(--bord);
              border-radius:14px;padding:16px 18px;}
   .curseur{width:100%;margin:10px 0 6px;accent-color:var(--magenta);}
   .reglures{display:flex;justify-content:space-between;color:var(--texte-tres-faible);font-size:11px;
             font-variant-numeric:tabular-nums;}
   .boutons{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
-  .btn{
-    font:inherit;font-size:11px;letter-spacing:2px;text-transform:uppercase;
-    color:var(--texte-faible);background:var(--surface-haut);
-    border:1px solid var(--bord-clair);border-radius:9px;padding:9px 14px;cursor:pointer;
-  }
-  .btn:hover{color:var(--texte);border-color:var(--magenta);}
-  .btn:focus-visible{outline:2px solid var(--cyan);outline-offset:2px;}
-  .btn[aria-pressed="true"]{color:var(--ground);background:var(--magenta);border-color:var(--magenta);}
 
-  /* ---------- le téléphone ---------- */
   .tel{
     background:linear-gradient(170deg,#171233,#0c0a1c);
     border:1px solid var(--bord-clair);border-radius:30px;padding:14px;
@@ -131,7 +213,6 @@
   .cadran .valeur em{font-style:normal;color:var(--magenta);}
   .cadran .valeur span{color:var(--cyan);}
   .sous-cadran{text-align:center;color:var(--texte-faible);font-size:11px;min-height:16px;}
-
   .notes{
     margin-top:14px;padding:10px 12px;border-radius:10px;
     background:rgba(255,255,255,.03);border:1px solid var(--bord);
@@ -139,7 +220,6 @@
   }
   .notes b{display:block;color:var(--texte-tres-faible);font-size:9px;letter-spacing:2px;
            text-transform:uppercase;margin-bottom:4px;font-weight:400;}
-
   .seance-ligne{display:flex;justify-content:space-between;align-items:baseline;
                 margin-top:14px;color:var(--texte-tres-faible);font-size:10px;
                 letter-spacing:2px;text-transform:uppercase;}
@@ -147,116 +227,121 @@
   .apres{margin-top:8px;color:var(--texte-tres-faible);font-size:11px;min-height:16px;}
   .apres b{color:var(--texte-faible);font-weight:400;}
 
-  /* ---------- questions ---------- */
-  .questions{margin-top:36px;border-top:1px solid var(--bord);padding-top:22px;}
+  .questions{margin-top:34px;border-top:1px solid var(--bord);padding-top:22px;}
   .questions h2{font-family:var(--display);font-size:20px;letter-spacing:4px;margin:0 0 14px;font-weight:400;}
   .questions ol{margin:0;padding-left:20px;color:var(--texte-faible);max-width:70ch;}
   .questions li{margin-bottom:9px;}
   .questions li b{color:var(--texte);font-weight:400;}
   .ecart{
-    margin-top:22px;padding:12px 14px;border-radius:10px;
+    margin-top:20px;padding:12px 14px;border-radius:10px;
     border:1px solid rgba(255,179,0,.35);background:rgba(255,179,0,.06);
     color:var(--texte-faible);max-width:70ch;
   }
   .ecart b{color:var(--ambre);font-weight:400;}
-
-  @media (prefers-reduced-motion:reduce){
-    .cadran .arc{transition:none;}
-  }
+  [hidden]{display:none !important;}
+  @media (prefers-reduced-motion:reduce){ .cadran .arc{transition:none;} }
 </style>
 
 <div class="page">
 
   <div class="chapeau">
     <h1 class="logo"><b>R</b>·E·<i>P</i>·S</h1>
-    <div class="quoi">Séance en blocs · maquette</div>
+    <div class="quoi">Séances en blocs · maquette</div>
   </div>
   <p class="intro">
-    Le programme de la coach, <strong>77 FEET MADNESS</strong>, tel que REPS le déroulerait.
-    Déplace le curseur ou clique un bloc : l'écran de droite montre ce que voit l'athlète à
-    cet instant. Rien de tout ça n'est encore dans l'app, c'est une maquette pour trancher
-    les questions du bas de page.
+    Préparer plusieurs WOD à l'avance, puis les dérouler. La séance chargée est
+    <strong>77 FEET MADNESS</strong>, le programme de la coach. Modifie-la, ajoute des blocs :
+    le total se recalcule à chaque frappe. Rien de tout ça n'est encore dans l'app.
   </p>
 
-  <div class="duo">
-
-    <div>
-      <div class="frise" id="frise" aria-hidden="true"></div>
-
-      <div class="tableau">
-        <div class="tableau-titre">
-          Le tableau <span id="totalTexte"></span>
-        </div>
-        <div id="listeBlocs"></div>
-      </div>
-
-      <div class="transport">
-        <label for="curseur" style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--texte-faible)">
-          Position dans la séance
-        </label>
-        <input id="curseur" class="curseur" type="range" min="0" max="4679" value="690" step="1">
-        <div class="reglures"><span>0:00</span><span id="finTexte"></span></div>
-        <div class="boutons">
-          <button class="btn" id="bPause" aria-pressed="true">Pause</button>
-          <button class="btn" id="b1" aria-pressed="false">Temps réel</button>
-          <button class="btn" id="b30" aria-pressed="false">× 30</button>
-          <button class="btn" id="b120" aria-pressed="false">× 120</button>
-          <button class="btn" id="bDebut">Retour au début</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="tel">
-      <div class="tel-ecran">
-        <div class="tel-haut"><b>R·E·P·S</b><span id="horaire">0:00</span></div>
-
-        <div class="eyebrow" id="eyebrow"></div>
-
-        <div class="cadran">
-          <svg viewBox="0 0 100 100" aria-hidden="true">
-            <defs>
-              <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="100">
-                <stop offset="0%" stop-color="#e63fff"/>
-                <stop offset="100%" stop-color="#00e5ff"/>
-              </linearGradient>
-            </defs>
-            <circle class="fond" cx="50" cy="50" r="44"/>
-            <circle class="arc" id="arc" cx="50" cy="50" r="44"
-                    stroke-dasharray="276.46" stroke-dashoffset="0"/>
-          </svg>
-          <div class="valeur" id="valeur"><em>00</em>:<span>00</span></div>
-        </div>
-        <div class="sous-cadran" id="sousCadran"></div>
-
-        <div class="notes" id="notes"><b>Au tableau</b><span id="notesTexte"></span></div>
-
-        <div class="seance-ligne">Séance <span id="seanceTexte"></span></div>
-        <div class="apres" id="apres"></div>
-      </div>
-    </div>
-
+  <div class="onglets" role="tablist">
+    <button class="onglet" id="ongletEdit" role="tab" aria-selected="true">Préparer</button>
+    <button class="onglet" id="ongletVoir" role="tab" aria-selected="false">Dérouler</button>
   </div>
+
+  <div class="barre">
+    <input class="nom-seance" id="nomSeance" value="77 FEET MADNESS" aria-label="Nom de la séance">
+    <div class="bascule" role="group" aria-label="Enchaînement">
+      <button id="bManuel" aria-pressed="true">Un par un</button>
+      <button id="bAuto" aria-pressed="false">Enchaîné</button>
+    </div>
+    <div class="total"><span class="v" id="totalV">0:00</span><span class="l" id="totalL">total</span></div>
+    <p class="aide" id="aideMode"></p>
+  </div>
+
+  <!-- ================= PRÉPARER ================= -->
+  <section id="vueEdit">
+    <div id="listeEdit"></div>
+    <div class="ajouts">
+      <button class="btn" data-ajout="intervalle">+ Intervalle</button>
+      <button class="btn" data-ajout="repos">+ Repos</button>
+      <button class="btn" data-ajout="libre">+ Bloc libre</button>
+      <button class="btn fort" id="bVersDeroule">Voir le déroulé →</button>
+    </div>
+  </section>
+
+  <!-- ================= DÉROULER ================= -->
+  <section id="vueVoir" hidden>
+    <div class="duo">
+      <div>
+        <div class="frise" id="frise" aria-hidden="true"></div>
+        <div class="tableau">
+          <div class="tableau-titre">Le tableau <span id="totalTexte"></span></div>
+          <div id="listeBlocs"></div>
+        </div>
+        <div class="transport">
+          <label for="curseur" style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--texte-faible)">
+            Position dans la séance
+          </label>
+          <input id="curseur" class="curseur" type="range" min="0" max="100" value="0" step="1">
+          <div class="reglures"><span>0:00</span><span id="finTexte"></span></div>
+          <div class="boutons">
+            <button class="btn" id="bPause" aria-pressed="true">Pause</button>
+            <button class="btn" id="b1" aria-pressed="false">Temps réel</button>
+            <button class="btn" id="b30" aria-pressed="false">× 30</button>
+            <button class="btn" id="b120" aria-pressed="false">× 120</button>
+            <button class="btn" id="bDebut">Retour au début</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tel">
+        <div class="tel-ecran">
+          <div class="tel-haut"><b>R·E·P·S</b><span id="horaire">0:00</span></div>
+          <div class="eyebrow" id="eyebrow"></div>
+          <div class="cadran">
+            <svg viewBox="0 0 100 100" aria-hidden="true">
+              <defs>
+                <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="100" y2="100">
+                  <stop offset="0%" stop-color="#e63fff"/><stop offset="100%" stop-color="#00e5ff"/>
+                </linearGradient>
+              </defs>
+              <circle class="fond" cx="50" cy="50" r="44"/>
+              <circle class="arc" id="arc" cx="50" cy="50" r="44" stroke-dasharray="276.46" stroke-dashoffset="0"/>
+            </svg>
+            <div class="valeur" id="valeur"><em>00</em>:<span>00</span></div>
+          </div>
+          <div class="sous-cadran" id="sousCadran"></div>
+          <div class="notes"><b>Au tableau</b><span id="notesTexte"></span></div>
+          <div class="seance-ligne">Séance <span id="seanceTexte"></span></div>
+          <div class="apres" id="apres"></div>
+        </div>
+      </div>
+    </div>
+  </section>
 
   <div class="questions">
     <h2>CE QU'IL RESTE À TRANCHER</h2>
     <ol>
       <li><b>Le grand chrono compte quoi ?</b> Ici, le temps restant de la phase en cours, celui
-        qu'on regarde quand on est sous la barre. La position dans la séance est reléguée en bas,
-        en petit. C'est un choix, il peut être inversé.</li>
+        qu'on regarde quand on est sous la barre. La position dans la séance est en bas, en petit.</li>
       <li><b>Les mouvements restent-ils affichés ?</b> Ici oui, en permanence sous le chrono. La voix
         ne les dira pas : aucun fichier audio ne contient « high hang power snatch ».</li>
       <li><b>Que se passe-t-il pendant 8 minutes de repos ?</b> Le décompte tourne et le bloc suivant
-        est annoncé en bas. Reste à décider ce qui se dit, et quand.</li>
+        est annoncé. Reste à décider ce qui se dit, et quand.</li>
       <li><b>Un score par bloc, ou un par séance ?</b> Ça change la table des scores et les favoris.</li>
-      <li><b>Quand ?</b> Pas dans la version en review chez Apple. Ce chantier touche le cœur du chrono.</li>
     </ol>
-
-    <p class="ecart">
-      <b>Au passage.</b> Le premier bloc est annoncé 0:00–25:00 sur le tableau, mais son contenu dure
-      26 minutes : 6 + 1 + 3 + 1 + 15. La séance entière fait 78 minutes, pas 77. Sans importance en
-      salle, on ajuste. Mais c'est l'argument de la fonctionnalité : une app qui calcule le total
-      attrape ça la veille, pas au milieu du cours.
-    </p>
+    <p class="ecart" id="messageEcart"></p>
   </div>
 </div>
 
@@ -264,49 +349,42 @@
 (function(){
   'use strict';
 
-  // Moteur repris de seances/moteur.js, réduit à ce dont la maquette a besoin.
-  var SEANCE = [
-    {type:'intervalle', titre:'OLY', work:90, rest:0, tours:4,
-     notes:'1 High Hang Power Snatch + 1 OHSQ · 1 Hang Power Snatch + 1 OHSQ · 1 Power Snatch + 1 OHSQ'},
-    {type:'repos', titre:'Rest', duree:60, notes:'Transition'},
-    {type:'intervalle', titre:'OLY', work:90, rest:0, tours:2, notes:'Même complexe, à 70 %'},
-    {type:'repos', titre:'Rest', duree:60, notes:''},
-    {type:'intervalle', titre:'EMOM 15', work:60, rest:0, tours:15,
-     notes:'1 · 60 Heavy Double Unders — 2 · 5/4/3/2/1 Power Snatch — 3 · Rest'},
-    {type:'repos', titre:'Rest', duree:480, notes:'8 minutes'},
-    {type:'intervalle', titre:'Every 5', work:300, rest:0, tours:5,
-     notes:'5 Sandbag Clean (90/70) · 20 m Bearhug Carry · 10 Ring Muscle-ups'},
-    {type:'repos', titre:'Rest', duree:540, notes:'9 minutes'},
-    {type:'libre', titre:'METCON', cap:600,
-     notes:'80 Wall Balls · 60 Toes to Bar · 40 Burpees Box Jumps — time cap 10:00'}
-  ];
-
-  function duree(b){
+  // ===== Moteur, repris de seances/moteur.js =====
+  function dureeBloc(b){
     if(b.type==='intervalle') return b.tours*(b.work+b.rest);
     if(b.type==='repos') return b.duree;
     return b.cap;
   }
-  var TOTAL = SEANCE.reduce(function(t,b){ return t+duree(b); },0);
+  function dureeSeance(s){ return s.blocs.reduce(function(t,b){ return t+dureeBloc(b); },0); }
 
-  function position(elapsed){
+  function positionDansBloc(b,dans){
+    var d=dureeBloc(b);
+    if(dans<0) dans=0;
+    if(dans>=d) return null;
+    var pos={bloc:b,dansBloc:dans,resteBloc:d-dans};
+    if(b.type==='intervalle'){
+      var cycle=b.work+b.rest;
+      var tour=Math.floor(dans/cycle)+1;
+      var dansTour=dans-(tour-1)*cycle;
+      var enWork=dansTour<b.work;
+      pos.phase=enWork?'work':'rest';
+      pos.tour=tour; pos.tours=b.tours;
+      pos.restePhase=(enWork?b.work:cycle)-dansTour;
+      pos.dureePhase=enWork?b.work:b.rest;
+    } else {
+      pos.phase=b.type; pos.tour=1; pos.tours=1;
+      pos.restePhase=d-dans; pos.dureePhase=d;
+    }
+    return pos;
+  }
+  function positionDansSeance(s,elapsed){
     var t=0;
-    for(var i=0;i<SEANCE.length;i++){
-      var b=SEANCE[i], d=duree(b);
-      if(elapsed < t+d){
-        var dans=elapsed-t;
-        var p={index:i,bloc:b,dansBloc:dans,resteBloc:d-dans,debut:t,duree:d};
-        if(b.type==='intervalle'){
-          var cycle=b.work+b.rest;
-          var tour=Math.floor(dans/cycle)+1;
-          var dansTour=dans-(tour-1)*cycle;
-          p.tour=tour; p.tours=b.tours;
-          p.phase = dansTour<b.work ? 'work' : 'rest';
-          p.restePhase = (p.phase==='work'? b.work : cycle) - dansTour;
-          p.dureePhase = p.phase==='work' ? b.work : b.rest;
-        } else {
-          p.tour=1; p.tours=1; p.phase=b.type;
-          p.restePhase=d-dans; p.dureePhase=d;
-        }
+    for(var i=0;i<s.blocs.length;i++){
+      var b=s.blocs[i], d=dureeBloc(b);
+      if(elapsed<t+d){
+        var p=positionDansBloc(b,elapsed-t);
+        p.index=i; p.debut=t; p.duree=d;
+        p.dernierBloc=(i===s.blocs.length-1);
         return p;
       }
       t+=d;
@@ -314,124 +392,266 @@
     return null;
   }
 
-  function mmss(s){
-    s=Math.max(0,Math.round(s));
-    return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
+  function mmss(s){ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+  // ===== État =====
+  var SEANCE_DEPART = {
+    nom:'77 FEET MADNESS', enchainement:'manuel',
+    blocs:[
+      {type:'intervalle',titre:'OLY',work:90,rest:0,tours:4,
+       notes:'1 High Hang Power Snatch + 1 OHSQ · 1 Hang Power Snatch + 1 OHSQ · 1 Power Snatch + 1 OHSQ'},
+      {type:'repos',titre:'Rest',duree:60,notes:'Transition'},
+      {type:'intervalle',titre:'OLY',work:90,rest:0,tours:2,notes:'Même complexe, à 70 %'},
+      {type:'repos',titre:'Rest',duree:60,notes:''},
+      {type:'intervalle',titre:'EMOM 15',work:60,rest:0,tours:15,
+       notes:'1 · 60 Heavy Double Unders — 2 · 5/4/3/2/1 Power Snatch — 3 · Rest'},
+      {type:'repos',titre:'Rest',duree:480,notes:'8 minutes'},
+      {type:'intervalle',titre:'Every 5',work:300,rest:0,tours:5,
+       notes:'5 Sandbag Clean (90/70) · 20 m Bearhug Carry · 10 Ring Muscle-ups'},
+      {type:'repos',titre:'Rest',duree:540,notes:'9 minutes'},
+      {type:'libre',titre:'METCON',cap:600,
+       notes:'80 Wall Balls · 60 Toes to Bar · 40 Burpees Box Jumps — time cap 10:00'}
+    ]
+  };
+
+  var CLE='reps.seance.maquette';
+  var seance;
+  try{
+    var brut=localStorage.getItem(CLE);
+    seance = brut ? JSON.parse(brut) : JSON.parse(JSON.stringify(SEANCE_DEPART));
+  }catch(e){ seance = JSON.parse(JSON.stringify(SEANCE_DEPART)); }
+  if(!seance || !seance.blocs || !seance.blocs.length) seance=JSON.parse(JSON.stringify(SEANCE_DEPART));
+
+  function sauver(){ try{ localStorage.setItem(CLE, JSON.stringify(seance)); }catch(e){} }
+
+  // ===== Préparer =====
+  var listeEdit=document.getElementById('listeEdit');
+
+  function blocNeuf(type){
+    if(type==='intervalle') return {type:'intervalle',titre:'',work:60,rest:0,tours:10,notes:''};
+    if(type==='repos') return {type:'repos',titre:'Rest',duree:180,notes:''};
+    return {type:'libre',titre:'METCON',cap:600,notes:''};
   }
-  function libelle(b){
-    if(b.type==='intervalle'){
-      var e = b.work%60===0 ? (b.work/60)+' min' : b.work+' s';
-      return b.tours+' × '+e;
-    }
-    if(b.type==='repos') return 'repos';
-    return 'cap '+mmss(b.cap);
+  function convertir(b,type){
+    var n=blocNeuf(type);
+    n.titre=b.titre; n.notes=b.notes;
+    return n;
   }
 
-  // --- construction du tableau et de la frise ---
-  var listeBlocs=document.getElementById('listeBlocs');
-  var frise=document.getElementById('frise');
-  var debuts=[], t=0;
-  SEANCE.forEach(function(b,i){
-    debuts.push(t);
-    var d=duree(b);
+  function champ(label,valeur,unite,min,max,onchange){
+    var d=document.createElement('div'); d.className='champ';
+    var l=document.createElement('label'); l.textContent=label;
+    var i=document.createElement('input');
+    i.type='number'; i.value=valeur; i.min=min; i.max=max; i.step=1;
+    i.inputMode='numeric';
+    i.setAttribute('aria-label',label+(unite?' en '+unite:''));
+    i.addEventListener('input',function(){ onchange(Math.max(min,Math.min(max,Number(i.value)||min))); });
+    d.appendChild(l); d.appendChild(i);
+    return d;
+  }
 
-    var el=document.createElement('button');
-    el.className='bloc'; el.type='button';
-    el.setAttribute('data-type',b.type);
-    el.setAttribute('data-i',i);
-    el.innerHTML='<span class="h">'+mmss(t)+' – '+mmss(t+d)+'</span>'+
-                 '<span><span class="nom">'+b.titre+'</span>'+
-                 (b.notes?'<span class="detail">'+b.notes+'</span>':'')+'</span>'+
-                 '<span class="duree">'+libelle(b)+'</span>';
-    el.addEventListener('click',function(){ aller(debuts[i]); });
-    listeBlocs.appendChild(el);
+  function rendreEdit(){
+    listeEdit.textContent='';
+    seance.blocs.forEach(function(b,i){
+      var carte=document.createElement('div');
+      carte.className='carte'; carte.setAttribute('data-type',b.type);
 
-    var seg=document.createElement('div');
-    seg.style.flex=d;
-    seg.setAttribute('data-type',b.type);
-    seg.appendChild(document.createElement('i'));
-    frise.appendChild(seg);
+      // choix du type
+      var tc=document.createElement('div'); tc.className='typechoix';
+      [['intervalle','Intervalle'],['repos','Repos'],['libre','Bloc libre']].forEach(function(pair){
+        var bt=document.createElement('button');
+        bt.type='button'; bt.textContent=pair[1];
+        bt.setAttribute('aria-pressed', String(b.type===pair[0]));
+        bt.addEventListener('click',function(){
+          if(b.type===pair[0]) return;
+          seance.blocs[i]=convertir(b,pair[0]); majTout();
+        });
+        tc.appendChild(bt);
+      });
+      carte.appendChild(tc);
 
-    t+=d;
+      // champs du bloc
+      var mid=document.createElement('div');
+      var champs=document.createElement('div'); champs.className='champs';
+      if(b.type==='intervalle'){
+        champs.appendChild(champ('Travail (s)',b.work,'secondes',1,3600,function(v){ b.work=v; majTout(); }));
+        champs.appendChild(champ('Repos (s)',b.rest,'secondes',0,3600,function(v){ b.rest=v; majTout(); }));
+        champs.appendChild(champ('Tours',b.tours,'',1,99,function(v){ b.tours=v; majTout(); }));
+      } else if(b.type==='repos'){
+        champs.appendChild(champ('Durée (s)',b.duree,'secondes',1,3600,function(v){ b.duree=v; majTout(); }));
+      } else {
+        champs.appendChild(champ('Time cap (s)',b.cap,'secondes',1,7200,function(v){ b.cap=v; majTout(); }));
+      }
+      var dur=document.createElement('div');
+      dur.className='duree-bloc'; dur.textContent=mmss(dureeBloc(b));
+      champs.appendChild(dur);
+      mid.appendChild(champs);
+
+      var t=document.createElement('input');
+      t.className='titre-bloc'; t.value=b.titre||''; t.placeholder='Nom du bloc (OLY, METCON…)';
+      t.setAttribute('aria-label','Nom du bloc');
+      t.addEventListener('input',function(){ b.titre=t.value; sauver(); });
+      mid.appendChild(t);
+
+      var n=document.createElement('input');
+      n.className='notes-bloc'; n.value=b.notes||''; n.placeholder='Mouvements, charges, consignes…';
+      n.setAttribute('aria-label','Mouvements et consignes');
+      n.addEventListener('input',function(){ b.notes=n.value; sauver(); });
+      mid.appendChild(n);
+      carte.appendChild(mid);
+
+      // outils
+      var o=document.createElement('div'); o.className='outils';
+      var haut=document.createElement('button');
+      haut.type='button'; haut.textContent='↑'; haut.title='Monter'; haut.setAttribute('aria-label','Monter le bloc');
+      haut.disabled=(i===0);
+      haut.addEventListener('click',function(){
+        var x=seance.blocs.splice(i,1)[0]; seance.blocs.splice(i-1,0,x); majTout();
+      });
+      var bas=document.createElement('button');
+      bas.type='button'; bas.textContent='↓'; bas.title='Descendre'; bas.setAttribute('aria-label','Descendre le bloc');
+      bas.disabled=(i===seance.blocs.length-1);
+      bas.addEventListener('click',function(){
+        var x=seance.blocs.splice(i,1)[0]; seance.blocs.splice(i+1,0,x); majTout();
+      });
+      var sup=document.createElement('button');
+      sup.type='button'; sup.className='sup'; sup.textContent='×'; sup.title='Supprimer';
+      sup.setAttribute('aria-label','Supprimer le bloc');
+      sup.disabled=(seance.blocs.length<=1);
+      sup.addEventListener('click',function(){ seance.blocs.splice(i,1); majTout(); });
+      o.appendChild(haut); o.appendChild(bas); o.appendChild(sup);
+      carte.appendChild(o);
+
+      listeEdit.appendChild(carte);
+    });
+  }
+
+  document.querySelectorAll('[data-ajout]').forEach(function(b){
+    b.addEventListener('click',function(){
+      seance.blocs.push(blocNeuf(b.getAttribute('data-ajout')));
+      majTout();
+      listeEdit.lastChild.scrollIntoView({block:'nearest'});
+    });
   });
-  document.getElementById('totalTexte').textContent='9 blocs · '+mmss(TOTAL);
-  document.getElementById('finTexte').textContent=mmss(TOTAL);
 
-  var blocsEl=Array.prototype.slice.call(listeBlocs.children);
-  var segsEl=Array.prototype.slice.call(frise.children);
+  var nomEl=document.getElementById('nomSeance');
+  nomEl.value=seance.nom;
+  nomEl.addEventListener('input',function(){ seance.nom=nomEl.value; sauver(); });
 
-  // --- rendu ---
-  var curseur=document.getElementById('curseur');
-  curseur.max=TOTAL-1;
-  var arc=document.getElementById('arc'), CIRC=2*Math.PI*44;
+  var bManuel=document.getElementById('bManuel'), bAuto=document.getElementById('bAuto');
+  function majMode(){
+    var manuel=(seance.enchainement!=='auto');
+    bManuel.setAttribute('aria-pressed',String(manuel));
+    bAuto.setAttribute('aria-pressed',String(!manuel));
+    document.getElementById('aideMode').textContent = manuel
+      ? "Un par un : tu lances chaque bloc quand la classe est prête. Rien ne décale si une explication déborde."
+      : "Enchaîné : les blocs se suivent sans intervention, repos compris. Pour un test chronométré.";
+  }
+  bManuel.addEventListener('click',function(){ seance.enchainement='manuel'; majTout(); });
+  bAuto.addEventListener('click',function(){ seance.enchainement='auto'; majTout(); });
 
-  function rendre(elapsed){
-    var p=position(elapsed);
+  // ===== Dérouler =====
+  var listeBlocs=document.getElementById('listeBlocs'), frise=document.getElementById('frise');
+  var curseur=document.getElementById('curseur'), arc=document.getElementById('arc');
+  var CIRC=2*Math.PI*44;
+  var debuts=[], blocsEl=[], segsEl=[], TOTAL=0, pos=0;
+
+  function construireDeroule(){
+    listeBlocs.textContent=''; frise.textContent='';
+    debuts=[]; blocsEl=[]; segsEl=[];
+    var t=0;
+    seance.blocs.forEach(function(b,i){
+      debuts.push(t);
+      var d=dureeBloc(b);
+
+      var el=document.createElement('button');
+      el.className='bloc'; el.type='button'; el.setAttribute('data-type',b.type);
+      var h=document.createElement('span'); h.className='h'; h.textContent=mmss(t)+' – '+mmss(t+d);
+      var mid=document.createElement('span');
+      var nom=document.createElement('span'); nom.className='nom';
+      nom.textContent=b.titre || (b.type==='repos'?'Repos':(b.type==='libre'?'Bloc libre':'Intervalle'));
+      mid.appendChild(nom);
+      if(b.notes){ var de=document.createElement('span'); de.className='detail'; de.textContent=b.notes; mid.appendChild(de); }
+      var du=document.createElement('span'); du.className='duree';
+      du.textContent = b.type==='intervalle' ? (b.tours+' × '+mmss(b.work)) : (b.type==='repos'?'repos':'cap '+mmss(b.cap));
+      el.appendChild(h); el.appendChild(mid); el.appendChild(du);
+      el.addEventListener('click',(function(k){ return function(){ vit(0); aller(debuts[k]); }; })(i));
+      listeBlocs.appendChild(el); blocsEl.push(el);
+
+      var seg=document.createElement('div');
+      seg.style.flex=d; seg.setAttribute('data-type',b.type);
+      seg.appendChild(document.createElement('i'));
+      frise.appendChild(seg); segsEl.push(seg);
+
+      t+=d;
+    });
+    TOTAL=t;
+    curseur.max=Math.max(1,TOTAL-1);
+    document.getElementById('totalTexte').textContent=seance.blocs.length+' blocs · '+mmss(TOTAL);
+    document.getElementById('finTexte').textContent=mmss(TOTAL);
+    if(pos>TOTAL-1) pos=TOTAL-1;
+  }
+
+  function rendreDeroule(elapsed){
+    var p=positionDansSeance(seance,elapsed);
     if(!p) return;
-
     document.getElementById('horaire').textContent=mmss(elapsed);
 
-    // cadran : le temps restant de la PHASE en cours
     var reste=p.restePhase;
-    var frac = p.dureePhase ? (p.dureePhase-reste)/p.dureePhase : 0;
+    var frac=p.dureePhase?(p.dureePhase-reste)/p.dureePhase:0;
     arc.setAttribute('stroke-dasharray',CIRC.toFixed(2));
     arc.setAttribute('stroke-dashoffset',(CIRC*(1-frac)).toFixed(2));
     var m=Math.floor(Math.max(0,reste)/60), s=Math.max(0,Math.round(reste))%60;
     document.getElementById('valeur').innerHTML=
       '<em>'+String(m).padStart(2,'0')+'</em>:<span>'+String(s).padStart(2,'0')+'</span>';
 
-    var eb=document.getElementById('eyebrow');
-    var sc=document.getElementById('sousCadran');
+    var eb=document.getElementById('eyebrow'), sc=document.getElementById('sousCadran');
     if(p.bloc.type==='intervalle'){
-      eb.textContent=p.bloc.titre+' · tour '+p.tour+'/'+p.tours;
-      eb.style.color='var(--cyan)';
-      sc.textContent='intervalle de '+mmss(p.bloc.work);
+      eb.textContent=(p.bloc.titre||'Intervalle')+' · tour '+p.tour+'/'+p.tours;
+      eb.style.color='var(--cyan)'; sc.textContent='intervalle de '+mmss(p.bloc.work);
     } else if(p.bloc.type==='repos'){
-      eb.textContent='Repos';
-      eb.style.color='var(--repos)';
-      sc.textContent='bloc de '+mmss(p.duree);
+      eb.textContent='Repos'; eb.style.color='var(--repos)'; sc.textContent='bloc de '+mmss(p.duree);
     } else {
-      eb.textContent=p.bloc.titre+' · time cap';
-      eb.style.color='var(--ambre)';
-      sc.textContent='cap '+mmss(p.bloc.cap);
+      eb.textContent=(p.bloc.titre||'Bloc libre')+' · time cap';
+      eb.style.color='var(--ambre)'; sc.textContent='cap '+mmss(p.bloc.cap);
     }
 
     document.getElementById('notesTexte').textContent=p.bloc.notes||'—';
     document.getElementById('seanceTexte').textContent=mmss(elapsed)+' / '+mmss(TOTAL);
 
-    var suivant=SEANCE[p.index+1];
-    document.getElementById('apres').innerHTML= suivant
-      ? 'Ensuite : <b>'+suivant.titre+'</b> dans '+mmss(p.resteBloc)
-      : 'Dernier bloc de la séance';
+    var suivant=seance.blocs[p.index+1];
+    var apres=document.getElementById('apres');
+    apres.textContent='';
+    if(suivant){
+      var manuel=(seance.enchainement!=='auto');
+      apres.appendChild(document.createTextNode(manuel?'Au signal : ':'Ensuite : '));
+      var b=document.createElement('b');
+      b.textContent=suivant.titre||(suivant.type==='repos'?'Repos':'Bloc libre');
+      apres.appendChild(b);
+      apres.appendChild(document.createTextNode(manuel?'' : ' dans '+mmss(p.resteBloc)));
+    } else {
+      apres.textContent='Dernier bloc de la séance';
+    }
 
     blocsEl.forEach(function(el,i){
-      el.classList.toggle('actif', i===p.index);
-      el.classList.toggle('passe', i<p.index);
+      el.classList.toggle('actif',i===p.index);
+      el.classList.toggle('passe',i<p.index);
     });
     segsEl.forEach(function(seg,i){
-      var jauge=seg.firstChild, d=duree(SEANCE[i]);
-      var f = i<p.index ? 1 : (i>p.index ? 0 : p.dansBloc/d);
-      jauge.style.width=(f*100).toFixed(1)+'%';
+      var f = i<p.index ? 1 : (i>p.index ? 0 : p.dansBloc/dureeBloc(seance.blocs[i]));
+      seg.firstChild.style.width=(f*100).toFixed(1)+'%';
     });
   }
 
-  // --- transport ---
-  var pos=Number(curseur.value), vitesse=0, dernier=null, raf=null;
-
-  function aller(v){
-    pos=Math.max(0,Math.min(TOTAL-1,v));
-    curseur.value=pos;
-    rendre(pos);
-  }
+  // transport
+  var vitesse=0, dernier=null, raf=null;
+  function aller(v){ pos=Math.max(0,Math.min(TOTAL-1,v)); curseur.value=Math.round(pos); rendreDeroule(pos); }
   curseur.addEventListener('input',function(){ vit(0); aller(Number(curseur.value)); });
-
   var btns={0:document.getElementById('bPause'),1:document.getElementById('b1'),
             30:document.getElementById('b30'),120:document.getElementById('b120')};
   function vit(v){
     vitesse=v;
-    Object.keys(btns).forEach(function(k){
-      btns[k].setAttribute('aria-pressed', String(Number(k)===v));
-    });
+    Object.keys(btns).forEach(function(k){ btns[k].setAttribute('aria-pressed',String(Number(k)===v)); });
     if(v===0){ if(raf) cancelAnimationFrame(raf); raf=null; dernier=null; return; }
     if(!raf){ dernier=performance.now(); raf=requestAnimationFrame(pas); }
   }
@@ -441,14 +661,51 @@
     pos+=dt*vitesse;
     if(pos>=TOTAL-1){ pos=TOTAL-1; vit(0); }
     curseur.value=Math.round(pos);
-    rendre(pos);
+    rendreDeroule(pos);
     if(vitesse) raf=requestAnimationFrame(pas);
   }
-  Object.keys(btns).forEach(function(k){
-    btns[k].addEventListener('click',function(){ vit(Number(k)); });
-  });
+  Object.keys(btns).forEach(function(k){ btns[k].addEventListener('click',function(){ vit(Number(k)); }); });
   document.getElementById('bDebut').addEventListener('click',function(){ vit(0); aller(0); });
 
-  rendre(pos);
+  // ===== onglets =====
+  var oE=document.getElementById('ongletEdit'), oV=document.getElementById('ongletVoir');
+  function onglet(voir){
+    oE.setAttribute('aria-selected',String(!voir));
+    oV.setAttribute('aria-selected',String(voir));
+    document.getElementById('vueEdit').hidden=voir;
+    document.getElementById('vueVoir').hidden=!voir;
+    if(!voir) vit(0); else rendreDeroule(pos);
+  }
+  oE.addEventListener('click',function(){ onglet(false); });
+  oV.addEventListener('click',function(){ onglet(true); });
+  document.getElementById('bVersDeroule').addEventListener('click',function(){ onglet(true); });
+
+  // ===== mise à jour globale =====
+  function majTout(){
+    sauver();
+    rendreEdit();
+    construireDeroule();
+    majMode();
+    document.getElementById('totalV').textContent=mmss(TOTAL);
+    document.getElementById('totalL').textContent=seance.blocs.length+' blocs';
+    rendreDeroule(pos);
+
+    // L'écart entre ce qui est annoncé et ce qui est calculé : l'argument de la fonction.
+    var msg=document.getElementById('messageEcart');
+    if(seance.nom.trim().toUpperCase()==='77 FEET MADNESS' && TOTAL!==4620){
+      msg.innerHTML='<b>Au passage.</b> Le tableau annonce 77:00 et un premier bloc de 0:00 à 25:00. '+
+        'Le calcul donne '+mmss(TOTAL)+', et 26:00 pour ce premier bloc : 6 + 1 + 3 + 1 + 15. '+
+        'Sans importance en salle, on ajuste. Mais c\'est l\'argument de la fonctionnalité : une app '+
+        'qui calcule le total attrape ça la veille, pas au milieu du cours.';
+      msg.hidden=false;
+    } else {
+      msg.textContent='Le total se recalcule à chaque frappe. C\'est là que se voit un programme qui ne tombe pas juste.';
+      msg.hidden=false;
+    }
+  }
+
+  majTout();
+  aller(690);
+  onglet(false);
 })();
 </script>
