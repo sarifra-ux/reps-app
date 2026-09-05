@@ -2920,6 +2920,23 @@ const VOIX_PACKS={
 };
 let S_voix='max';
 try{ const _v=localStorage.getItem('reps_voix'); if(_v&&VOIX_PACKS[_v]) S_voix=_v; }catch(e){}
+// « MUTANT FR il parle en anglais » (Francois, 05/09 au soir). Ce n'etait pas un bug :
+// max n'a que des fichiers EN et PT, et se replie sur l'anglais. Mais une app en
+// francais dont la voix PAR DEFAUT compte en anglais, c'est un defaut, pas un choix.
+// Au PREMIER lancement en francais, on prend donc LEO, la seule voix francaise.
+// Un choix deja enregistre n'est jamais touche : celui qui aime MUTANT le garde.
+function _voixParDefautSelonLangue(){
+  try{
+    if(localStorage.getItem('reps_voix')) return;          // choix explicite : on ne touche pas
+    const lang=localStorage.getItem('reps_lang');
+    if(lang!=='fr') return;
+    const p=VOIX_PACKS[S_voix]||{};
+    const parleFr = !p.langues || p.langues.indexOf('fr')>=0;
+    if(parleFr) return;
+    if(VOIX_PACKS.leo){ S_voix='leo'; }                     // pas d'ecriture en memoire :
+  }catch(e){}                                              // ca reste un defaut, pas un choix
+}
+_voixParDefautSelonLangue();
 
 // ===== PLUS AUCUNE VOIX DE TELEPHONE (24/08/2026, build 4) =====
 // Jusqu'au build 3, toute phrase sans fichier mp3 partait dans speechSynthesis,
@@ -3070,6 +3087,9 @@ function choisirVoix(cle){
   // Filet : si une annonce a ete coupee en plein ducking, la musique doit remonter.
   try{ duckResetAll(); }catch(e){}
   try{ for(const k in _recBuf) delete _recBuf[k]; }catch(e){}
+  // Le cache vient d'etre vide pour cette voix : on le remplit MAINTENANT, sinon le
+  // prochain lancement retombe sur le chemin <audio> et son premier chiffre fragile.
+  setTimeout(function(){ try{ prechargerDecompteEnAvance('changement de voix'); }catch(e){} }, 0);
   try{ for(const k in _naLoaded) delete _naLoaded[k]; }catch(e){}
   try{ for(const k in countBuffers) delete countBuffers[k]; }catch(e){}
   try{ for(const k in roundBuffers) delete roundBuffers[k]; }catch(e){}
@@ -4574,6 +4594,35 @@ function decompteBuffersPrets(liste){
   for(const f of liste) if(!_recBuf[f]) return false;
   return true;
 }
+
+// ===== LE DECOMPTE EST PRECHARGE AVANT LE PLAY, PAS PENDANT (05/09/2026 au soir) =====
+//
+// LA CAUSE DU « 10 » MANQUANT, apres trois fausses pistes.
+//
+// launch() appelait prechargerDecompteBuffers() puis, VINGT LIGNES PLUS BAS, testait
+// decompteBuffersPrets(). Or ce prechargement est un fetch + decodeAudioData : il est
+// asynchrone et ne peut pas avoir fini en vingt lignes. Le test echouait donc au
+// PREMIER lancement, on tombait sur le chemin <audio> de repli, et c'est ce chemin-la
+// qui a la course sur le premier chiffre. Aux lancements suivants les buffers etaient
+// en cache, le chemin Web Audio passait, et tout marchait.
+//
+// C'est exactement ce que Francois decrit : « je fais reset et je remets start, on
+// n'entend plus rien, puis je reprends et ca marche ». Le decompte etait fiable une
+// fois sur deux, selon l'etat du cache.
+//
+// On precharge donc des que la voix ET la langue sont connues : fin du wizard, fin du
+// chargement, changement de voix, changement de langue. Aucun geste utilisateur n'est
+// requis pour un fetch et un decodeAudioData ; seul ctx.resume() en demande un, et il
+// reste dans launch().
+function prechargerDecompteEnAvance(raison){
+  try{
+    if(typeof byoMusic!=='undefined' && byoMusic) return;   // Ma musique : voix natives
+    if(!ensureAudioCtx()) return;
+    prechargerDecompteBuffers();
+    DBG('decompte preche a l\'avance ('+(raison||'')+')');
+  }catch(e){ DBG('prechargement en avance: '+((e&&e.message)||e)); }
+}
+
 function prechargerDecompteBuffers(){
   try{
     if(byoMusic) return;            // Ma musique : les voix passent par le natif
@@ -7378,6 +7427,9 @@ function closeWelcome(){
 function finishWizard(){
   document.body.classList.remove('wizard-active');
   document.body.classList.add('epured-mode');
+  // Le coach va appuyer sur play dans les secondes qui viennent : c'est le moment de
+  // decoder les onze sons du decompte, pendant qu'il ne se passe rien.
+  try{ prechargerDecompteEnAvance('fin du wizard'); }catch(e){}
 }
 
 // ===== OUVRIR / FERMER LE PANNEAU DE RÉGLAGES COMPLET =====
@@ -7483,6 +7535,11 @@ function updateSettingsVolVoice(v){
 function chooseLanguage(lang){
   try{localStorage.setItem('reps_lang',lang);}catch(e){}
   setLang(lang);
+  // La langue vient d'etre choisie : c'est seulement maintenant qu'on peut savoir si la
+  // voix par defaut la parle. Au tout premier lancement, reps_lang etait encore vide
+  // quand le script a tourne.
+  try{ _voixParDefautSelonLangue(); }catch(e){}
+  try{ prechargerDecompteEnAvance('choix de la langue'); }catch(e){}
   // Cacher l'écran de choix de langue
   const c=document.getElementById('langChoiceScreen');
   if(c){
@@ -8304,6 +8361,8 @@ window.addEventListener('DOMContentLoaded',()=>{
   } else {
     // Tous les choix sont faits, on est en mode épuré dès le départ
     document.body.classList.add('epured-mode');
+    // Le coach rouvre l'app pour lancer un WOD : on decode le decompte tout de suite.
+    setTimeout(function(){ try{ prechargerDecompteEnAvance('ouverture de l\'app'); }catch(e){} }, 800);
   }
   
   if(savedLang==='fr'||savedLang==='en'||savedLang==='pt'){
