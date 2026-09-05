@@ -3007,11 +3007,22 @@ const COUNT_ONSET_VOIX={
   // Ecarts entendus entre deux chiffres, avant -> apres : MUTANT en 140 ms -> 0,
   // MIKE en 70 ms -> 0, LEO fr 30 ms -> 0. SAM fr et MUTANT fr etaient deja justes.
   // Si les mp3 changent, relancer docs/mesurer-onsets.py et recoller ce bloc.
-  max  : { fr:[0,0,0,0,0,0,0,0,0,0,50], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
-  nina : { fr:[0,0,0,0,0,0,0,0,0,0,0], en:[0,0,0,0,0,40,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,0,0,0] },
-  sam  : { fr:[10,40,30,30,30,20,30,20,40,30,40], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,0,0,40,0,0] },
+  // RE-MESURE DU 05/09/2026 AU SOIR, sur les fichiers reellement livres, PACK PAR PACK.
+  // Fenetres de 5 ms, seuil a -20 dB sous le pic. Les valeurs d'avant etaient a zero
+  // presque partout, ce qui n'a jamais correspondu aux fichiers.
+  //
+  // Le « 10 » de chaque pack porte desormais 150 ms de silence en tete, d'ou son onset
+  // de ~160 ms. C'est le seul mot joue a l'instant zero, quand la sortie audio de
+  // l'iPhone vient a peine de s'ouvrir : sans marge, la latence de demarrage mangeait
+  // son attaque. Voir le journal du 05/09 pour la mesure complete.
+  //
+  // Le « dix » de LEO a aussi ete remonte de 3,1 dB : il etait a -9,5 dB quand le reste
+  // du pack est a -6,5 dB. Il n'etait pas « mange », il etait REELLEMENT plus faible.
+  max  : { fr:[155,5,10,5,10,10,10,10,10,10,70], en:[165,10,10,15,10,10,10,10,10,10,10], pt:[160,5,10,10,10,10,10,5,10,5,10] },
+  nina : { fr:[160,10,10,10,10,10,10,10,10,5,5], en:[160,10,10,10,10,55,10,10,10,10,10], pt:[160,10,10,10,10,10,10,5,10,5,15] },
+  sam  : { fr:[170,55,40,45,45,35,45,35,10,45,50], en:[160,15,10,10,10,10,20,10,10,15,10], pt:[165,10,10,10,5,10,10,10,55,10,10] },
   eva  : { fr:[0,0,0,0,0,0,0,0,60,0,0], en:[0,0,0,0,0,0,0,0,0,0,0], pt:[0,0,0,0,0,0,10,0,0,0,50] },
-  leo  : { fr:[30,40,30,40,40,20,20,30,20,40,30] }
+  leo  : { fr:[195,50,40,80,50,40,35,40,35,50,40] }
 };
 // Les onsets suivent le fichier reellement joue, pas la langue de l'interface :
 // si MIKE annonce en anglais dans une app en francais, ce sont ses onsets EN
