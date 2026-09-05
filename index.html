@@ -1268,6 +1268,14 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     border:1px solid var(--border);border-radius:7px;color:var(--text);
     padding:6px 9px;margin-top:7px;}
   .sq-texte:focus{outline:none;border-color:var(--accent);}
+  .sq-pause-reglage{display:flex;align-items:center;justify-content:center;gap:22px;
+    margin:0 0 26px;}
+  .sq-pause-valeur{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;letter-spacing:3px;
+    color:var(--accent2);font-variant-numeric:tabular-nums;min-width:150px;text-align:center;}
+  .sq-pas{font-family:'Bebas Neue',sans-serif;font-size:2rem;line-height:1;width:58px;height:58px;
+    background:var(--card);border:2px solid var(--border);border-radius:16px;
+    color:var(--text);cursor:pointer;}
+  .sq-pas:active{border-color:var(--accent);}
   .sq-etape{font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:3px;
     margin:0 0 12px;color:var(--text);}
   .sq-tuiles{display:flex;flex-direction:column;gap:8px;}
@@ -1708,6 +1716,54 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 </div>
 
 <!-- ===== ÉCRAN 2 : CHOIX DU MODE WOD ===== -->
+<!-- ===== ÉCRAN 1 BIS : UN WOD OU PLUSIEURS ? (05/09/2026) =====
+     Premiere question du wizard, avant meme le mode. Un seul WOD : le flux d'avant,
+     inchange au bouton pres. Plusieurs : on enchaine mode, duree, puis pause ou fin,
+     et on repasse par les memes ecrans. -->
+<div id="nbWodScreen" class="mode-choice" style="display:none">
+  <div class="mode-choice-content">
+    <h2 class="wizard-title" id="nbWodTitle">Ta séance</h2>
+    <div class="mode-choice-tiles">
+      <button class="mode-tile mode-tile-fortime" onclick="choisirNbWod(false)">
+        <svg class="ico mode-tile-icon" aria-hidden="true"><use href="#i-chrono"/></svg>
+        <span class="mode-tile-name" id="nbWod1">UN SEUL WOD</span>
+      </button>
+      <button class="mode-tile mode-tile-amrap" onclick="choisirNbWod(true)">
+        <svg class="ico mode-tile-icon" aria-hidden="true"><use href="#i-liste"/></svg>
+        <span class="mode-tile-name" id="nbWodN">PLUSIEURS WOD</span>
+      </button>
+    </div>
+    <div class="wizard-hint" id="nbWodHint">Plusieurs WOD : tu les prépares les uns après les autres</div>
+  </div>
+</div>
+
+<!-- ===== ÉCRAN DE PAUSE ENTRE DEUX WOD ===== -->
+<div id="pauseWodScreen" class="mode-choice" style="display:none">
+  <div class="mode-choice-content">
+    <h2 class="wizard-title" id="pauseWodTitle">Repos avant le WOD suivant</h2>
+    <div class="sq-pause-reglage">
+      <button type="button" class="sq-pas" onclick="pauseWodPas(-30)" aria-label="Moins 30 secondes">−</button>
+      <div class="sq-pause-valeur" id="pauseWodValeur">3:00</div>
+      <button type="button" class="sq-pas" onclick="pauseWodPas(30)" aria-label="Plus 30 secondes">+</button>
+    </div>
+    <div class="mode-choice-tiles">
+      <button class="mode-tile mode-tile-amrap" onclick="pauseWodValider(true)">
+        <svg class="ico mode-tile-icon" aria-hidden="true"><use href="#i-goutte"/></svg>
+        <span class="mode-tile-name" id="pauseWodOk">REPOS PUIS WOD SUIVANT</span>
+      </button>
+      <button class="mode-tile mode-tile-emom" onclick="pauseWodValider(false)">
+        <svg class="ico mode-tile-icon" aria-hidden="true"><use href="#i-cloche"/></svg>
+        <span class="mode-tile-name" id="pauseWodSans">WOD SUIVANT, SANS REPOS</span>
+      </button>
+      <button class="mode-tile mode-tile-tabata" id="pauseWodFin" onclick="pauseWodTerminer()" style="display:none">
+        <svg class="ico mode-tile-icon" aria-hidden="true"><use href="#i-drapeau"/></svg>
+        <span class="mode-tile-name" id="pauseWodFinNom">TERMINER LA SÉANCE</span>
+      </button>
+    </div>
+    <div class="wizard-hint" id="pauseWodHint"></div>
+  </div>
+</div>
+
 <div id="modeChoiceScreen" class="mode-choice" style="display:none">
   <div class="mode-choice-content">
     <h2 class="wizard-title" id="modeChoiceTitle" data-i18n="cfg.mode">Mode d'entraînement</h2>
@@ -5517,6 +5573,142 @@ function sqEnTete(){
 }
 function sqTout(){ sqEnTete(); sqRendreAssistant(); sqRendreListe(); }
 
+// ===== SEANCE A PLUSIEURS WOD : LE FIL DU WIZARD (05/09/2026) =====
+// Dessine par Francois. Un seul chemin, pas deux : la question « un WOD ou plusieurs ? »
+// arrive avant le choix du mode, et le reste du wizard ne change pas. On repasse par les
+// MEMES ecrans a chaque WOD, on intercale un ecran de repos, et l'ecran de repos propose
+// la fin des qu'il y a deux WOD.
+//
+//   nbWod -> mode -> duree -> [repos ? suivant ? fin ?] -> mode -> duree -> ... -> musique
+//
+// S.multi vaut faux par defaut : sans lui, chooseTiming se comporte exactement comme
+// avant, et le chemin d'un WOD seul n'est touche par rien de tout ceci.
+var PAUSE_WOD=180;   // duree en cours de reglage sur l'ecran de repos
+
+function _wizCacher(id,puis){
+  var e=document.getElementById(id);
+  if(!e){ if(puis) puis(); return; }
+  e.style.opacity='0'; e.style.transition='opacity 0.4s ease';
+  setTimeout(function(){ e.style.display='none'; if(puis) puis(); },400);
+}
+function _wizMontrer(id){
+  var e=document.getElementById(id);
+  if(!e) return;
+  document.body.classList.add('wizard-active');
+  e.style.display='flex'; e.style.opacity='1';
+}
+
+function montrerNbWod(){
+  S.multi=false;
+  SQ=null; sqCharger(); SQ.blocs=[]; sqSauver();
+  var t=document.getElementById('nbWodTitle');
+  if(t) t.textContent=L3('Ta séance','Your session','Tua sessão');
+  var u=document.getElementById('nbWod1'), n=document.getElementById('nbWodN');
+  if(u) u.textContent=L3('UN SEUL WOD','ONE WOD','UM WOD');
+  if(n) n.textContent=L3('PLUSIEURS WOD','SEVERAL WODS','VÁRIOS WODS');
+  var h=document.getElementById('nbWodHint');
+  if(h) h.textContent=L3('Plusieurs WOD : tu les prépares les uns après les autres',
+                         'Several WODs: you set them up one after another',
+                         'Vários WODs: preparas um depois do outro');
+  _wizMontrer('nbWodScreen');
+}
+function choisirNbWod(multi){
+  S.multi=!!multi;
+  _wizCacher('nbWodScreen', function(){ showModeChoice(); });
+}
+
+// Le WOD qui vient d'etre regle devient un bloc. On lit l'etat de l'app, pas des champs :
+// c'est deja S qui porte le mode, la duree et les reglages EMOM ou Tabata.
+function blocDepuisEtat(){
+  var m=S.mode;
+  if(m==='emom'){
+    return {mode:'emom',type:'intervalle',titre:'EMOM',
+            work:S.emomIntervalSec||60, rest:S.emomRestSec||0,
+            tours:S.emomRounds||Math.max(1,Math.round((S.dur||10)*60/((S.emomIntervalSec||60)+(S.emomRestSec||0)))),
+            notes:''};
+  }
+  if(m==='tabata'){
+    return {mode:'tabata',type:'intervalle',titre:'TABATA',
+            work:S.tabWorkSec||20, rest:S.tabRestSec||10, tours:S.tabTotalRounds||8, notes:''};
+  }
+  return {mode:(m==='amrap'?'amrap':'fortime'), type:'libre',
+          titre:(m==='amrap'?'AMRAP':'FOR TIME'),
+          cap:Math.max(1,Math.round((S.dur||10)*60)), notes:''};
+}
+
+function apresWodDeLaSeance(){
+  sqCharger();
+  SQ.blocs.push(blocDepuisEtat());
+  sqSauver();
+  montrerPauseWod();
+}
+
+function nbWodPoses(){
+  sqCharger();
+  return SQ.blocs.filter(function(b){ return b.type!=='repos'; }).length;
+}
+
+function montrerPauseWod(){
+  PAUSE_WOD=180;
+  var n=nbWodPoses();
+  var t=document.getElementById('pauseWodTitle');
+  if(t) t.textContent=L3('Repos avant le WOD '+(n+1),'Rest before WOD '+(n+1),'Descanso antes do WOD '+(n+1));
+  var o=document.getElementById('pauseWodOk'), sa=document.getElementById('pauseWodSans'),
+      f=document.getElementById('pauseWodFinNom');
+  if(o) o.textContent=L3('REPOS PUIS WOD SUIVANT','REST THEN NEXT WOD','DESCANSO E PRÓXIMO WOD');
+  if(sa) sa.textContent=L3('WOD SUIVANT, SANS REPOS','NEXT WOD, NO REST','PRÓXIMO WOD, SEM DESCANSO');
+  if(f) f.textContent=L3('TERMINER LA SÉANCE','FINISH THE SESSION','TERMINAR A SESSÃO');
+  // La fin n'a de sens qu'a partir de deux WOD : en dessous, ce n'est pas une seance.
+  var fin=document.getElementById('pauseWodFin');
+  if(fin) fin.style.display = (n>=2) ? 'flex' : 'none';
+  var h=document.getElementById('pauseWodHint');
+  if(h) h.textContent = (n>=2)
+    ? L3(n+' WOD posés · '+sqMmss(sqTotal()), n+' WODs so far · '+sqMmss(sqTotal()), n+' WODs · '+sqMmss(sqTotal()))
+    : L3('Une séance, c\'est au moins deux WOD','A session needs at least two WODs','Uma sessão precisa de dois WODs');
+  majPauseWod();
+  _wizMontrer('pauseWodScreen');
+}
+function majPauseWod(){
+  var v=document.getElementById('pauseWodValeur');
+  if(v) v.textContent=sqMmss(PAUSE_WOD);
+}
+function pauseWodPas(d){
+  PAUSE_WOD=Math.max(30,Math.min(3600,PAUSE_WOD+d));
+  majPauseWod();
+}
+function pauseWodValider(avecRepos){
+  if(avecRepos){
+    sqCharger();
+    SQ.blocs.push({mode:'repos',type:'repos',titre:'REPOS',duree:PAUSE_WOD,notes:''});
+    sqSauver();
+  }
+  _wizCacher('pauseWodScreen', function(){ showModeChoice(); });
+}
+// A la fin du reglage, S porte les valeurs du DERNIER WOD configure. Sans ce
+// rechargement, le coach arriverait sur l'ecran d'attente avec le dernier WOD arme en
+// croyant lancer le premier. On remet donc le bloc 1 dans l'etat de l'app.
+function chargerBlocDansEtat(b){
+  if(!b) return;
+  if(b.type==='intervalle' && b.mode==='tabata'){
+    S.mode='tabata'; S.tabWorkSec=b.work; S.tabRestSec=b.rest; S.tabTotalRounds=b.tours;
+  } else if(b.type==='intervalle'){
+    S.mode='emom'; S.emomIntervalSec=b.work; S.emomRestSec=b.rest; S.emomRounds=b.tours;
+    S.dur=Math.max(1,Math.round(b.tours*(b.work+b.rest)/60));
+  } else if(b.type==='repos'){
+    S.mode='wod'; S.dur=Math.max(1,Math.round(b.duree/60));
+  } else {
+    S.mode=(b.mode==='amrap')?'amrap':'wod'; S.dur=Math.max(1,Math.round(b.cap/60));
+  }
+  var tab=document.querySelector('.mode-tab[onclick*="\''+S.mode+'\'"]');
+  if(tab){ try{ setMode(tab,S.mode); }catch(e){} }
+  try{ updateTotalFromMode(); updateClock(); }catch(e){}
+}
+function pauseWodTerminer(){
+  sqCharger();
+  chargerBlocDansEtat(SQ.blocs[0]);
+  _wizCacher('pauseWodScreen', function(){ showMusicChoice(); });
+}
+
 function ouvrirSeances(){
   sqCharger();
   SQ_BROUILLON=null; SQ_EDITE=-1;
@@ -6754,8 +6946,8 @@ function resetWizard(){
   // Sortir du mode épuré
   document.body.classList.remove('epured-mode');
   document.body.classList.add('wizard-active');
-  // Lancer le wizard depuis l'écran mode
-  showModeChoice();
+  // Lancer le wizard depuis la premiere question : un WOD ou plusieurs ? (05/09/2026)
+  montrerNbWod();
 }
 
 // ===== MENU SETTINGS =====
@@ -6994,7 +7186,12 @@ function chooseTiming(value){
   
   // "Personnalisé" => on ouvre le panneau de réglages complet (work/rest EMOM,
   // durée custom, track...). Sinon (durée preset) => écran musique du wizard.
-  const next = (value==='custom') ? (()=>showCustomChoice(S.mode)) : showMusicChoice;
+  //
+  // SEANCE A PLUSIEURS WOD (05/09/2026) : le WOD qu'on vient de regler est mis de cote
+  // et on passe a « repos, WOD suivant ou fin » au lieu d'aller a la musique. La musique
+  // se choisit une seule fois, a la fin, pour toute la seance.
+  const next = (value==='custom') ? (()=>showCustomChoice(S.mode))
+             : (S.multi ? apresWodDeLaSeance : showMusicChoice);
   const screen=document.getElementById('timingChoiceScreen');
   if(screen){
     screen.style.opacity='0';
