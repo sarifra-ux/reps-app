@@ -934,6 +934,30 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   }
   .cs-continue-btn:active{transform:scale(0.98);}
 
+  /* ===== ECRAN DE FIN : LES SCORES ===== */
+  #finScreen .timing-choice-content{gap:12px;padding-top:52px;}
+  .fin-sous{
+    font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:2px;
+    color:var(--muted);text-transform:uppercase;text-align:center;
+  }
+  .fin-video{
+    display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    font-family:'DM Mono',monospace;font-size:0.66rem;letter-spacing:1.5px;
+    color:var(--accent2);text-transform:uppercase;text-align:center;
+    background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.25);
+    border-radius:12px;padding:10px 12px;
+  }
+  .fin-video .ico{width:1rem;height:1rem;flex:0 0 auto;}
+  .fin-membre{display:flex;gap:8px;width:100%;}
+  .fin-membre .sc-input{flex:1;}
+  #finListe{display:flex;flex-direction:column;gap:8px;width:100%;}
+  .fin-fermer{
+    background:none;border:none;color:var(--muted);cursor:pointer;
+    font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:2px;
+    text-transform:uppercase;padding:6px 12px;
+  }
+  .fin-fermer:active{color:var(--accent);}
+
   /* ===== ÉCRAN CHOIX DE LA MUSIQUE ===== */
   .music-choice{
     position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;z-index:99996;
@@ -2075,6 +2099,29 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     <div class="wizard-hint" data-i18n="cfg.continue">Règle, puis continue vers la musique</div>
   </div>
 </div>
+<!-- ===== ECRAN DE FIN : LES SCORES (05/09/2026) =====
+     Francois : « il y a trop d'infos, enregistrer un score je veux que tu crees un ecran
+     seul avec ses infos apres avoir fini le wod ». Le panneau ENREGISTRER UN SCORE quitte
+     l'ecran principal, qui respire. Et pendant que la video se monte, il y a enfin
+     quelque chose d'utile a faire au lieu d'attendre. -->
+<div id="finScreen" class="timing-choice" style="display:none">
+  <div class="timing-choice-content">
+    <div class="wizard-title-row">
+      <svg class="ico wiz-title-ico" aria-hidden="true"><use href="#i-drapeau"/></svg>
+      <h2 class="wizard-title" id="finTitre">Terminé</h2>
+    </div>
+    <div class="fin-sous" id="finSous"></div>
+    <div class="fin-video" id="finVideo" style="display:none"></div>
+    <div class="fin-membre" id="finMembre"></div>
+    <div id="finListe"></div>
+    <button type="button" class="cs-continue-btn" id="finEnr" onclick="finEnregistrer()">
+      <span id="finEnrTexte">ENREGISTRER</span>
+    </button>
+    <button type="button" class="fin-fermer" onclick="fermerFin()" id="finFermer">Fermer</button>
+    <div class="sc-feedback" id="finFeedback"></div>
+  </div>
+</div>
+
 <!-- Emplacement reserve a l'apercu camera natif (ecran partage).
      Hauteur 0 au repos, --cam-h pendant le tournage. C'est un VRAI element du flux :
      tout ce qui suit (header, carte, commandes) descend naturellement dessous, sans
@@ -2623,17 +2670,18 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 
     <button id="addVideoBtn" onclick="startVideoOverlayFlow()" style="display:none;width:100%;margin-top:10px;padding:14px;font:800 15px/1 -apple-system,system-ui,sans-serif;letter-spacing:.3px;color:#fff;background:linear-gradient(135deg,#7c3aed,#a855f7);border:0;border-radius:12px;box-shadow:0 6px 18px rgba(124,58,237,.35);"></button>
 
-    <div class="score-capture" id="scoreCapture">
+    <!-- Le panneau ENREGISTRER UN SCORE a quitte l'ecran principal le 05/09 : il prenait
+         un tiers de la hauteur en permanence pour un geste qui n'arrive qu'a la fin.
+         Il est devenu #finScreen, qui s'ouvre tout seul quand le WOD ou la seance est
+         fini. Les elements restent ici, MASQUES et vides : une dizaine de fonctions les
+         lisent encore (prefillScoreWod, refreshScoreMemberSelect, membersRefreshI18n,
+         finishNow...) et les supprimer casserait tout ce chemin pour rien. -->
+    <div class="score-capture" id="scoreCapture" style="display:none" aria-hidden="true">
       <div class="sc-label" id="scoreCaptureLabel">Enregistrer un score</div>
-      <div class="sc-row">
-        <select class="sc-input" id="scoreMember"></select>
-        <button class="sc-input sc-addmbr" id="scoreAddMember" onclick="openMembers()" style="display:none">👥 Ajouter un adhérent</button>
-        <input type="text" class="sc-input" id="scoreWod" data-i18n-ph="ph.wodtype" placeholder="Type de WOD / exo">
-      </div>
-      <div class="sc-row">
-        <input type="text" class="sc-input sc-grow" id="scoreValue" data-i18n-ph="ph.score" placeholder="Score (12:34, 8+12…)">
-        <button class="sc-save-btn" onclick="saveTimerScore()" data-i18n="score.save">Enregistrer</button>
-      </div>
+      <select class="sc-input" id="scoreMember"></select>
+      <button class="sc-input sc-addmbr" id="scoreAddMember" onclick="openMembers()" style="display:none">Ajouter un adhérent</button>
+      <input type="text" class="sc-input" id="scoreWod" data-i18n-ph="ph.wodtype" placeholder="Type de WOD / exo">
+      <input type="text" class="sc-input sc-grow" id="scoreValue" data-i18n-ph="ph.score" placeholder="Score (12:34, 8+12…)">
       <div class="sc-feedback" id="scoreFeedback"></div>
     </div>
 
@@ -5945,6 +5993,7 @@ function seanceApresBloc(){
   if(i>=SQ.blocs.length){
     // Derniere ligne du tableau.
     S.seance=null;
+    S.seanceFinie=true;          // pour que l'ecran de fin liste TOUS les blocs
     majSeanceBandeau();
     var st=document.getElementById('timerStatus');
     if(st) st.textContent=L3('Séance terminée','Session complete','Sessão concluída');
@@ -6160,12 +6209,14 @@ function setFilmStatus(t, ico){
     const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
     svg.setAttribute('class','ico'); svg.setAttribute('aria-hidden','true');
     const use=document.createElementNS('http://www.w3.org/2000/svg','use');
-    use.setAttribute('href','#'+ico);
+    use.setAttribute('href', ico.indexOf('i-')===0 ? ('#'+ico) : ('#i-'+ico));
     svg.appendChild(use); el.appendChild(svg);
   }
   const sp=document.createElement('span');
   sp.textContent=t;
   el.appendChild(sp);
+  // Le meme message sur l'ecran des scores : c'est la qu'on attend, maintenant.
+  try{ finStatutVideo(t,ico); }catch(e){}
 }
 async function finishFilmAndExport(){
   const VO=_videoOverlayPlugin();
@@ -6927,6 +6978,10 @@ function end(){
   // WOD seul se termine exactement comme avant. Ajoute a la FIN de end() a dessein :
   // rien de ce qui precede n'est touche.
   try{ seanceApresBloc(); }catch(e){ DBG('seance: '+((e&&e.message)||e)); }
+  // L'ecran des scores. S.seance vaut null soit parce que c'etait un WOD seul, soit
+  // parce que la seance vient de finir : dans les deux cas il n'y a plus rien apres,
+  // donc c'est le moment. Le delai laisse l'annonce TIME finir de sonner.
+  if(!S.seance){ setTimeout(function(){ try{ ouvrirFinScreen(); }catch(e){ DBG('fin: '+((e&&e.message)||e)); } }, 2200); }
 }
 
 // Terminer le WOD avant la fin du temps imparti.
@@ -7339,6 +7394,177 @@ function chooseLanguage(lang){
   }
   // Afficher le splash habituel puis enchaîner sur le wizard mode
   showWelcomeThenWizard();
+}
+
+
+// ===== ECRAN DE FIN : LES SCORES (05/09/2026) =====
+// Un seul WOD : une ligne. Plusieurs WOD : une ligne par WOD, plus une ligne pour la
+// seance entiere. Les repos ne se scorent pas. Les valeurs vont dans SQ.scores, donc
+// l'ecran SEANCES et celui-ci montrent exactement les memes chiffres.
+var FIN = { seance:false, lignes:[] };
+
+function ouvrirFinScreen(){
+  var ecran=document.getElementById('finScreen');
+  if(!ecran) return;
+  var etaitSeance = !!S.seanceFinie;
+  S.seanceFinie = false;
+  FIN.seance = etaitSeance;
+  FIN.lignes = [];
+
+  var titre=document.getElementById('finTitre');
+  var sous=document.getElementById('finSous');
+  var liste=document.getElementById('finListe');
+  if(!liste) return;
+  liste.textContent='';
+
+  if(etaitSeance){
+    sqCharger();
+    if(titre) titre.textContent=L3('Séance terminée','Session complete','Sessão concluída');
+    if(sous) sous.textContent=(SQ.nom||'')+' · '+sqMmss(sqTotal());
+    if(!SQ.scores) SQ.scores=[];
+    var t=0;
+    SQ.blocs.forEach(function(b,i){
+      var d=sqDureeBloc(b), debut=t; t+=d;
+      if(b.type==='repos') return;              // un repos ne se score pas
+      FIN.lignes.push(_finLigne(
+        sqMmss(debut)+'–'+sqMmss(debut+d),
+        String(b.titre||b.mode||'WOD').toUpperCase(),
+        SQ.scores[i]||'',
+        function(v){ SQ.scores[i]=v; sqSauver(); },
+        liste, false));
+    });
+    // Le total de la seance, en plus du detail : Francois a demande les deux.
+    if(FIN.lignes.length>1){
+      FIN.lignes.push(_finLigne(
+        sqMmss(t),
+        L3('SÉANCE ENTIÈRE','WHOLE SESSION','SESSÃO INTEIRA'),
+        SQ.scoreTotal||'',
+        function(v){ SQ.scoreTotal=v; sqSauver(); },
+        liste, true));
+    }
+  } else {
+    // WOD seul : une ligne, pre-remplie du temps ecoule en for time.
+    if(titre) titre.textContent=L3('WOD terminé','Workout complete','Treino concluído');
+    if(sous) sous.textContent=currentWodLabel();
+    var pre='';
+    try{
+      if(S.mode==='wod'){ var e=Math.max(0,(S.total||0)-(S.remain||0));
+        pre=pad(Math.floor(e/60))+':'+pad(e%60); }
+    }catch(err){}
+    FIN.lignes.push(_finLigne(sqMmss(S.total||0), currentWodLabel().toUpperCase(),
+                              pre, function(){}, liste, false));
+  }
+
+  _finMembre();
+  var fb=document.getElementById('finFeedback'); if(fb) fb.textContent='';
+  var enr=document.getElementById('finEnrTexte');
+  if(enr) enr.textContent=L3('ENREGISTRER','SAVE','SALVAR');
+  var fer=document.getElementById('finFermer');
+  if(fer) fer.textContent=L3('Fermer','Close','Fechar');
+  document.body.classList.add('wizard-active');
+  ecran.style.display='flex'; ecran.style.opacity='1';
+}
+
+// Une ligne du tableau. En DOM : le nom d'un bloc vient d'une saisie possible.
+function _finLigne(horaire,nom,valeur,onSave,parent,total){
+  var l=document.createElement('div');
+  l.className='sq-ligne'+(total?' sq-ligne-total':'');
+  var h=document.createElement('span'); h.className='sq-h'; h.textContent=horaire;
+  var n=document.createElement('span'); n.className='sq-nom-bloc'; n.textContent=nom;
+  var d=document.createElement('span'); d.className='sq-det'; d.textContent='';
+  var sc=document.createElement('input');
+  sc.className='sq-score'; sc.type='text';
+  sc.value=valeur||'';
+  sc.placeholder=L3('score','score','score');
+  sc.setAttribute('aria-label',nom);
+  sc.addEventListener('input',function(){ onSave(sc.value); });
+  l.appendChild(h); l.appendChild(n); l.appendChild(d); l.appendChild(sc);
+  parent.appendChild(l);
+  return {nom:nom, input:sc};
+}
+
+// Le choix de l'adherent, une seule fois en haut : c'est la meme personne pour tous
+// les blocs d'une seance.
+function _finMembre(){
+  var z=document.getElementById('finMembre');
+  if(!z) return;
+  z.textContent='';
+  if(typeof MEMBERS==='undefined' || !MEMBERS || MEMBERS.length===0){
+    var b=document.createElement('button');
+    b.className='sc-input sc-addmbr';
+    b.textContent=L3('Ajouter un adhérent','Add a member','Adicionar um membro');
+    b.onclick=function(){ try{ openMembers(); }catch(e){} };
+    z.appendChild(b);
+    return;
+  }
+  var sel=document.createElement('select');
+  sel.className='sc-input'; sel.id='finMembreSel';
+  MEMBERS.forEach(function(m){
+    var o=document.createElement('option');
+    o.value=m.id;
+    o.textContent=((m.prenom||'')+' '+(m.nom||'')).trim()||'—';
+    sel.appendChild(o);
+  });
+  z.appendChild(sel);
+}
+
+function finEnregistrer(){
+  var fb=document.getElementById('finFeedback');
+  var sel=document.getElementById('finMembreSel');
+  var remplies=FIN.lignes.filter(function(l){ return (l.input.value||'').trim(); });
+  if(!remplies.length){
+    if(fb){ fb.style.color='var(--accent-tabata)';
+            fb.textContent=L3('Entre au moins un score.','Enter at least one score.','Digite ao menos um score.'); }
+    return;
+  }
+  // Sans adherent, les scores restent quand meme dans la seance : on ne perd rien,
+  // on le dit, et on ferme. C'est le cas de quelqu'un qui s'entraine seul.
+  if(!sel || !sel.value){
+    if(fb){ fb.style.color='var(--green)';
+            fb.textContent=L3('Gardé dans la séance ✓','Kept in the session ✓','Guardado na sessão ✓'); }
+    setTimeout(fermerFin,1200);
+    return;
+  }
+  var m=MEMBERS.find(function(x){ return x.id===sel.value; });
+  if(!m) return;
+  remplies.forEach(function(l){
+    m.scores.unshift({id:mbrUid(), value:l.input.value.trim(), wod:l.nom, date:Date.now()});
+  });
+  try{ saveMembersData(); }catch(e){}
+  var nom=((m.prenom||'')+' '+(m.nom||'')).trim();
+  if(fb){ fb.style.color='var(--green)';
+          fb.textContent=remplies.length+' '+L3('score(s) pour ','score(s) for ','score(s) para ')+nom+' ✓'; }
+  setTimeout(fermerFin,1400);
+}
+
+function fermerFin(){
+  var e=document.getElementById('finScreen');
+  if(!e) return;
+  e.style.opacity='0'; e.style.transition='opacity 0.3s ease';
+  setTimeout(function(){
+    e.style.display='none'; e.style.transition='';
+    document.body.classList.remove('wizard-active');
+  },300);
+}
+
+// Le montage de la video se raconte AUSSI sur cet ecran : c'est la qu'on est pendant
+// l'attente, plus sur le chrono.
+function finStatutVideo(txt,ico){
+  var z=document.getElementById('finVideo');
+  if(!z) return;
+  if(!txt){ z.style.display='none'; z.textContent=''; return; }
+  z.textContent='';
+  if(ico){
+    var NS='http://www.w3.org/2000/svg';
+    var svg=document.createElementNS(NS,'svg');
+    svg.setAttribute('class','ico'); svg.setAttribute('aria-hidden','true');
+    var u=document.createElementNS(NS,'use');
+    u.setAttribute('href', ico.indexOf('i-')===0 ? ('#'+ico) : ('#i-'+ico));
+    svg.appendChild(u); z.appendChild(svg);
+  }
+  var sp=document.createElement('span'); sp.textContent=txt;
+  z.appendChild(sp);
+  z.style.display='flex';
 }
 
 // ===== WIZARD : ÉCRAN 2 (MODE WOD) =====
