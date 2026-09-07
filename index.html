@@ -950,7 +950,11 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     border-radius:12px;padding:10px 12px;
   }
   .fin-video .ico{width:1rem;height:1rem;flex:0 0 auto;}
-  .fin-membre{display:flex;align-items:center;gap:10px;width:100%;}
+  .fin-membre{display:flex;align-items:center;gap:10px;width:100%;flex-wrap:wrap;}
+  /* La saisie d'un nouvel adherent tient sur sa propre ligne : deux champs cote a
+     cote sous le menu deroulant, sinon les trois controles se serrent a 80px. */
+  .fin-membre-new{display:flex;gap:8px;width:100%;}
+  .fin-membre-new .sc-input{flex:1;min-width:0;}
   .fin-membre-lab{
     flex:0 0 auto;font-family:'DM Mono',monospace;font-size:0.6rem;letter-spacing:2px;
     color:var(--muted);text-transform:uppercase;}
@@ -2865,7 +2869,12 @@ const COUNT_ONSET={
 // disparait du selecteur hors francais, au lieu d'y rester et d'etre muet.
 // Voir voixDisponible().
 const VOIX_PACKS={
-  max :{dossier:'',           nom:'MUTANT', langues:['en','pt'], repli:'en', desc:['la voix de monstre (annonce en anglais)','the monster voice','a voz de monstro']},
+  // 07/09/2026, demande de Francois : MUTANT disparait en francais. Une voix qui
+  // annonce en anglais dans une app reglee en francais, ce n'est pas un repli
+  // acceptable, c'est un defaut. Concretement on lui retire `repli`, et c'est
+  // voixDisponible() qui le fait disparaitre du selecteur hors de ['en','pt'].
+  // Il reste intact en anglais et en portugais, ou il est la voix par defaut.
+  max :{dossier:'',           nom:'MUTANT', langues:['en','pt'], desc:['la voix de monstre (annonce en anglais)','the monster voice','a voz de monstro']},
   nina:{dossier:'voix/nina/', nom:'MIKE',   langues:['en','pt'], repli:'en', desc:['le coach americain (annonce en anglais)','the american coach','o coach americano']},
   sam :{dossier:'voix/sam/',  nom:'SAM',  desc:['le pote qui encourage','the mate who cheers','o parceiro que anima']},
   // EVA RETIREE LE 31/08/2026, decision de Francois.
@@ -2933,6 +2942,19 @@ function voixDisponible(cle){
   if(!p.langues) return true;                       // SAM, EVA : les trois langues
   if(p.langues.indexOf(S.lang)>=0) return true;
   return !!p.repli;
+}
+
+// Le pack a prendre quand celui qui est actif ne parle pas la langue courante.
+// C'etait « MUTANT » en dur. Depuis que MUTANT n'est plus propose en francais, un
+// repli en dur sur lui laissait l'app sur une voix indisponible : le selecteur ne
+// la montrait plus, mais elle continuait de sortir. On prend le premier pack qui
+// parle VRAIMENT la langue, l'ordre gardant MUTANT en tete la ou il existe encore
+// (en, pt) pour ne rien changer a ce que ces utilisateurs entendent aujourd'hui.
+function voixParDefaut(){
+  const ordre=['max','sam','nina','leo'];
+  for(let i=0;i<ordre.length;i++){ if(VOIX_PACKS[ordre[i]] && voixDisponible(ordre[i])) return ordre[i]; }
+  for(const c in VOIX_PACKS){ if(voixDisponible(c)) return c; }
+  return 'max';
 }
 // Prefixe un nom de fichier d'annonce par le dossier de la voix active.
 // Les CLES internes (caches, pool, _repsSrc) restent les noms nus : seul le
@@ -3287,7 +3309,7 @@ function applyI18n(){
   // bascule sur MUTANT. choisirVoix fait le travail complet : caches audio vides,
   // pool natif invalide, badge remis a jour. Le faire a la main laisserait
   // l'ancienne voix sortir du pool.
-  try{ if(!voixDisponible(S_voix)) choisirVoix('max'); }catch(e){}
+  try{ if(!voixDisponible(S_voix)) choisirVoix(voixParDefaut()); }catch(e){}
   try{ majBadgeVoix(); }catch(e){}        // badge + chips + description suivent la langue
   try{ membersRefreshI18n(); }catch(e){}  // libelles du bloc score, ecrits en JS
   try{ setFilmCamBtn(); }catch(e){}       // libelle du bouton camera, ecrit en JS aussi
@@ -4237,9 +4259,22 @@ let _duckCount=0; // nombre de ducks ouverts (miroir de _ducks.size, lu ailleurs
 // marge avant saturation, le ducking en avait 20 devant lui et n'en utilisait que 12.
 // Valeurs precedentes : 0.25 / 0.12 / 0.15 (-12 / -18 / -16 dB).
 // A REGLER A L'OREILLE SUR UNE VRAIE SONO. C'est ici, et nulle part ailleurs.
-const DUCK_ANNONCE  = 0.10;  // ROUND / REST / TIME        (-20 dB)
-const DUCK_CRUNCH   = 0.05;  // decompte EMOM "crunch"     (-26 dB)
-const DUCK_DECOMPTE = 0.06;  // decompte 3-2-1-GO du depart (-24 dB)
+// ===== DOSAGE UNIQUE, 07/09/2026 =====
+// Il y avait trois profondeurs differentes : -20 dB sur ROUND/REST/TIME, -26 dB sur
+// le 3-2-1 d'un round EMOM, -24 dB sur le decompte de depart. Trois reglages nes a
+// trois moments differents, jamais compares entre eux.
+// Francois, le 07/09 : « le son coupe quand on entend le decompte sur 3/2/1 et REST,
+// ca me va, mais dans ce cas il faut le faire avec tout le monde. » Le dosage qu'il
+// valide est celui de playAnnounceEl, soit 0.10. Les trois passent donc a 0.10 et il
+// n'y a plus qu'un chiffre a regler a l'oreille sur une sono.
+// Effet concret : la musique remonte un peu pendant le decompte de depart (0.06 ->
+// 0.10) et pendant le 3-2-1 d'un round (0.05 -> 0.10). C'est voulu, c'est le meme
+// niveau partout. Les trois noms restent : ils disent OU le duck s'applique, plus a
+// quelle profondeur.
+const DUCK_VOIX     = 0.10;  // toutes les annonces        (-20 dB)
+const DUCK_ANNONCE  = DUCK_VOIX;  // ROUND / REST / TIME
+const DUCK_CRUNCH   = DUCK_VOIX;  // decompte 3-2-1 d'un round EMOM
+const DUCK_DECOMPTE = DUCK_VOIX;  // decompte 10 -> GO du depart
 function musicTargetVolume(){
   // Le curseur est desormais visible et reel sur toutes les plateformes.
   // Sa valeur par defaut est 100 %, pour que le son au premier lancement soit
@@ -4306,7 +4341,15 @@ function playBeep(){
   mixAttachVoix(beepAudio);
   busAttachEl(beepAudio);
   setElVolume(beepAudio, niveauVoix());
+  _duckCourt(DUCK_VOIX, 700);
   beepAudio.play().catch(()=>{});
+}
+
+// Duck de duree fixe, pour un son court dont on ne suit pas la fin (bip, tick).
+// Fermeture garantie par le minuteur : un duck ouvert et jamais referme laisserait
+// la musique baissee pour le reste du WOD, c'est le defaut qu'on evite partout.
+function _duckCourt(niveau, ms){
+  try{ const id=duckStart(niveau); setTimeout(()=>duckEnd(id), ms||700); }catch(e){}
 }
 
 let tickAudio=null;
@@ -4324,6 +4367,10 @@ function playTick(){
   mixAttachVoix(tickAudio);
   busAttachEl(tickAudio);
   setElVolume(tickAudio, niveauVoix());
+  // Le bip etait le SEUL son de l'app qui ne baissait pas la musique. Il tombe le plus
+  // souvent en meme temps que la voix, donc on ne l'entendait pas ; mais au top d'un
+  // round sans repos il part seul, et il passait alors sous la musique a plein niveau.
+  _duckCourt(DUCK_VOIX, 700);
   tickAudio.play().catch(()=>{});
 }
 
@@ -4627,7 +4674,14 @@ function _ensureElRing(){
   if(_elRing.length) return;
   for(let i=0;i<_EL_POOL_SIZE;i++){
     const a=new Audio();
-    a.preload='none';
+    // preload='none' etait la cause n1 du 07/09/2026 : l'element ne va chercher le
+    // fichier qu'au moment du play(). Sur une annonce jouee dans la seconde qui suit
+    // le changement de src, il n'a rien a jouer — mesure sur l'iPhone de Francois :
+    // « MUET currentTime=0 rs=1 », rs=1 voulant dire « je n'ai que les metadonnees ».
+    // 'auto' sur SIX elements de 10 a 18 ko ne coute rien ; la fuite memoire redoutee
+    // en 2026-08 venait d'elements qui s'accumulaient, pas de ceux-la, et
+    // stopAllAnnounces() vide deja leur src entre deux WOD.
+    a.preload='auto';
     try{a.playsInline=true;a.setAttribute('playsinline','');}catch(e){}
     _elRing.push(a);
   }
@@ -4635,7 +4689,9 @@ function _ensureElRing(){
 function _elFor(src){
   _ensureElRing();
   const a=_elRing[_elRR % _EL_POOL_SIZE]; _elRR++;
-  if(a._repsSrc!==src){ try{ a.src=VP(src); }catch(e){} a._repsSrc=src; }
+  // load() explicite : poser .src ne declenche pas toujours le chargement, et c'est
+  // precisement ce delai qui rendait muettes les annonces d'un round EMOM.
+  if(a._repsSrc!==src){ try{ a.src=VP(src); if(a.load) a.load(); }catch(e){} a._repsSrc=src; }
   return a;
 }
 
@@ -4798,6 +4854,26 @@ function unlockAnnounceEls(){
   });
 }
 // Joue une annonce via element <audio>. onFail = repli Web Audio.
+// Repli generique quand l'appelant n'en fournit pas : meme chemin que playCountWA,
+// mais pour n'importe quel fichier d'annonce.
+function jouerAnnonceWA(src){
+  const ctx=ensureAudioCtx();
+  if(!ctx) return;
+  const jouer=(buf)=>{
+    if(!buf) return;
+    try{
+      const s=ctx.createBufferSource(); s.buffer=buf;
+      const g=ctx.createGain(); g.gain.value=niveauVoix();
+      s.connect(g); g.connect(ctx.destination); busAttachGain(g);
+      const id=duckStart();
+      s.onended=()=>duckEnd(id);
+      s.start(0);
+    }catch(e){ DBG('secours WA KO '+((e&&e.name)||e)); }
+  };
+  const b=_recBuf[src];
+  if(b) jouer(b); else _loadRecBuf(src).then(jouer);
+}
+
 function playAnnounceEl(src, onFail){
   if(!src) return false;
   if(nativeVoiceOn()){ // Ma musique : voix natives par-dessus la musique du client, jamais de <audio> WebKit
@@ -4812,11 +4888,37 @@ function playAnnounceEl(src, onFail){
     busAttachEl(a);
     setElVolume(a, niveauVoix());
     DBG('play <audio> '+src);
+    // Meme mesure d'effet que sur le decompte de depart : c'est ce chemin qui porte
+    // le 3-2-1 de fin de round en EMOM, et lui non plus ne disait rien quand un
+    // chiffre partait « avec succes » mais sans son.
+    setTimeout(()=>{ try{
+      DBG('  -> '+src+' '+(a.currentTime>0.02?('SON t='+a.currentTime.toFixed(2)+'s'):'MUET currentTime=0')
+          +' rs='+a.readyState+(a.muted?' flagMuet':''));
+    }catch(e){} },220);
     duckStart();
     let done=false;
     const finish=()=>{ if(done) return; done=true; duckEnd(); };
     a.onended=finish;
     a.onerror=()=>{ finish(); if(onFail) onFail(); };
+    // ===== LE FILET, 07/09/2026 =====
+    // Cette fonction repondait « c'est joue » des que play() etait APPELE. Un element
+    // qui disait oui puis ne sortait aucun son n'etait donc jamais rattrape : les
+    // replis Web Audio (playCountWA, playRestWA, playRoundWA) existaient et n'etaient
+    // appeles que sur une erreur. Sur l'iPhone de Francois, sequence EMOM du 07/09 :
+    // les quatre premieres annonces sortent, les quatre suivantes affichent
+    // « MUET currentTime=0 » sans la moindre erreur. Silencieuses et satisfaites.
+    // On mesure donc l'effet : 130 ms apres, si la tete de lecture n'a pas bouge,
+    // l'element n'a rien joue. On le coupe et on passe par les buffers decodes.
+    let secouru=false;
+    const secours=()=>{
+      if(done||secouru) return;
+      secouru=true;
+      try{ a.pause(); a.currentTime=0; }catch(e){}
+      DBG('  -> '+src+' rien sorti, bascule Web Audio');
+      finish();
+      if(onFail) onFail(); else jouerAnnonceWA(src);
+    };
+    setTimeout(()=>{ try{ if(!done && a.currentTime<=0.005) secours(); }catch(e){} },130);
     try{a.currentTime=0;}catch(e){}
     const p=a.play();
     if(p&&p.then) p.catch(e=>{ DBG('REJETE '+src+' : '+e.name); finish(); if(onFail) onFail(); });
@@ -6330,57 +6432,386 @@ document.addEventListener('DOMContentLoaded',()=>{
 function cancelSync(){ const el=document.getElementById('syncOverlay'); if(el) el.style.display='none'; _syncCtx=null; }
 function confirmSync(){ cancelSync(); }
 
-// ===== PANNEAU DE DEBUG (activé par ?debug=1 dans l'URL) =====
-// Activation : ?debug=1 dans l'URL (web) OU 5 appuis rapides sur le logo (app iOS,
-// où il n'y a pas d'URL à modifier).
+// ===== PANNEAU DE DEBUG =====
+//
+// Historique : active par ?debug=1 (web), puis par 5 appuis sur le logo, puis plus
+// rien du tout — les 5 appuis ont ete fermes parce qu'un reviewer App Store pouvait
+// tomber dessus. Resultat : sur iPhone le journal etait ILLISIBLE sans un Mac, un
+// cable et Safari, alors que Capacitor 8 ne remonte meme pas les console.log du JS
+// vers la console Xcode. Diagnostiquer un son ou un chrono a la salle etait impossible.
+//
+// Depuis le 07/09/2026, deux verrous au lieu d'un :
+//   1. window.Capacitor.DEBUG, pose par le natif (CapacitorBridge.isDevEnvironment).
+//      Vrai en Debug, FAUX en Release, donc faux sur TestFlight et sur l'App Store.
+//      Le panneau n'existe pas dans le build que voit un reviewer ou un client.
+//   2. un appui LONG de 1,8 s sur le logo. Pas cinq tapes : un appui long ne se fait
+//      pas par accident, et il ne peut pas etre declenche en scrollant.
+//
+// Le journal tourne en permanence, panneau ouvert ou non. C'est le point important :
+// on ouvre toujours le panneau APRES le bug, jamais avant.
+const DBG_MAX=400;              // ~un WOD entier, cout memoire negligeable
+const _dbgBuf=[];
 let DEBUG_ON=/[?&]debug=1/.test(location.search);
-let _dbgEl=null;
+let _dbgEl=null, _dbgCorps=null, _dbgTitre=null;
+
+function dbgAutorise(){
+  try{ if(/[?&]debug=1/.test(location.search)) return true; }catch(e){}
+  try{ return !!(window.Capacitor && window.Capacitor.DEBUG===true); }catch(e){ return false; }
+}
+
+function DBG(msg){
+  // Toujours dans la console JS : lisible depuis Safari sur le Mac quand on l'a.
+  try{ console.log('[REPS] '+msg); }catch(e){}
+  const d=new Date();
+  const t=String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')+'.'+String(d.getMilliseconds()).padStart(3,'0');
+  const ligne=t+'  '+msg;
+  _dbgBuf.push(ligne);
+  if(_dbgBuf.length>DBG_MAX) _dbgBuf.shift();
+  if(!DEBUG_ON) return;
+  if(!_dbgEl){ dbgOuvrir(); return; }
+  dbgLigne(ligne);
+  dbgTitre();
+}
+
+function dbgTitre(){
+  if(_dbgTitre) _dbgTitre.textContent=_dbgBuf.length+' L';
+}
+
+function dbgLigne(txt){
+  if(!_dbgCorps) return;
+  const l=document.createElement('div');
+  l.textContent=txt;                     // en DOM : une ligne peut porter un nom saisi
+  _dbgCorps.appendChild(l);
+  _dbgCorps.scrollTop=_dbgCorps.scrollHeight;
+}
+
+function dbgBouton(txt,fn){
+  const b=document.createElement('button');
+  b.type='button';
+  b.textContent=txt;
+  b.style.cssText='background:rgba(255,255,255,.12);color:#fff;border:none;border-radius:6px;'+
+    'font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:1px;padding:7px 9px;cursor:pointer;';
+  b.onclick=fn;
+  return b;
+}
+
+function dbgOuvrir(){
+  if(_dbgEl) return;
+  _dbgEl=document.createElement('div');
+  _dbgEl.style.cssText='position:fixed;left:0;right:0;bottom:0;z-index:99999;'+
+    'background:rgba(0,0,0,.94);display:flex;flex-direction:column;max-height:46vh;'+
+    'padding-bottom:env(safe-area-inset-bottom);';
+
+  const barre=document.createElement('div');
+  barre.style.cssText='display:flex;align-items:center;gap:6px;padding:8px;'+
+    'border-bottom:1px solid rgba(255,255,255,.15);flex:0 0 auto;';
+  _dbgTitre=document.createElement('span');
+  _dbgTitre.style.cssText='flex:1;color:#8f8;font:600 10px/1 ui-monospace,Menlo,monospace;letter-spacing:1px;white-space:nowrap;overflow:hidden;';
+  barre.appendChild(_dbgTitre);
+  barre.appendChild(dbgBouton('COPIER',dbgCopier));
+  barre.appendChild(dbgBouton('CONTEXTE',dbgContexte));
+  barre.appendChild(dbgBouton('SON',testSonOuvrir));
+  barre.appendChild(dbgBouton('VIDER',function(){ _dbgBuf.length=0; _dbgCorps.textContent=''; dbgTitre(); }));
+  barre.appendChild(dbgBouton('✕',dbgFermer));
+  _dbgEl.appendChild(barre);
+
+  _dbgCorps=document.createElement('div');
+  _dbgCorps.style.cssText='overflow:auto;-webkit-overflow-scrolling:touch;padding:6px 8px;'+
+    'color:#0f0;font:11px/1.35 ui-monospace,Menlo,monospace;white-space:pre-wrap;'+
+    'user-select:text;-webkit-user-select:text;';
+  _dbgEl.appendChild(_dbgCorps);
+
+  document.body.appendChild(_dbgEl);
+  // Tout l'historique, pas seulement la suite : c'est ce qui rend le panneau utile.
+  _dbgBuf.forEach(dbgLigne);
+  dbgTitre();
+}
+
+function dbgFermer(){
+  DEBUG_ON=false;
+  if(_dbgEl){ _dbgEl.remove(); }
+  _dbgEl=null; _dbgCorps=null; _dbgTitre=null;
+}
+
+function dbgBascule(){
+  if(!dbgAutorise()) return;
+  if(DEBUG_ON && _dbgEl){ dbgFermer(); return; }
+  DEBUG_ON=true;
+  dbgOuvrir();
+  DBG('debug ON — appui long sur le logo pour couper');
+  try{ testOverlayPlugin(); }catch(e){}
+}
+
+// L'etat audio en une ligne, celui qu'on recopiait a la main dans la console Safari.
+function dbgContexte(){
+  const o={};
+  try{ o.voix=S_voix; }catch(e){}
+  try{ o.lang=S.lang; }catch(e){}
+  try{ o.replie=_packReplie(); }catch(e){}
+  try{ const l=listeDecompte(); o.f10=VP(l[0]); o.f1=VP(l[9]); }catch(e){}
+  try{ o.bufs=Object.keys(countBuffers).length+'/11'; }catch(e){}
+  try{ o.byo=byoMusic; }catch(e){}
+  try{ o.vol=document.getElementById('volVoice').value; }catch(e){}
+  try{ o.mode=S.mode; o.filming=!!S.filming; o.bus=!!_busActive; }catch(e){}
+  try{ o.plateforme=(window.Capacitor&&Capacitor.getPlatform)?Capacitor.getPlatform():'web'; }catch(e){}
+  DBG('CONTEXTE '+JSON.stringify(o));
+}
+
+function dbgCopier(){
+  const txt=_dbgBuf.join('\n');
+  const ok=function(){ if(_dbgTitre){ _dbgTitre.textContent='copié ✓'; setTimeout(dbgTitre,1600); } };
+  const repli=function(){
+    // execCommand est obsolete mais reste le seul chemin fiable en WKWebView
+    // quand l'API presse-papier est refusee. Le champ est hors ecran, pas cache :
+    // un input en display:none n'est pas selectionnable.
+    const ta=document.createElement('textarea');
+    ta.value=txt;
+    ta.style.cssText='position:fixed;top:0;left:0;width:1px;height:1px;opacity:0.01;';
+    document.body.appendChild(ta);
+    ta.focus(); ta.setSelectionRange(0,txt.length);
+    let fait=false;
+    try{ fait=document.execCommand('copy'); }catch(e){}
+    ta.remove();
+    if(fait) ok();
+    else if(_dbgTitre){ _dbgTitre.textContent='copie refusée'; setTimeout(dbgTitre,2600); }
+  };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt).then(ok,repli);
+      return;
+    }
+  }catch(e){}
+  repli();
+}
+
+// ===== TEST DU SON, 07/09/2026 =====
+//
+// Pourquoi cet ecran existe. On a passe une journee sur un « 2 » qu'on n'entend pas,
+// a s'envoyer des enregistrements. Trois raisons pour lesquelles ca ne pouvait pas
+// marcher :
+//   1. personne ne peut ecouter a ma place ;
+//   2. un enregistrement avec de la musique par-dessus ne se mesure pas — la voix du
+//      morceau occupe exactement la bande du decompte ;
+//   3. le decompte a DEUX chemins de lecture (elements <audio>, horloge Web Audio) et
+//      on ne savait jamais lequel avait joue.
+//
+// Donc on arrete de mesurer a distance. L'app joue les onze sons un par un, ici, sur
+// l'appareil, par un chemin CHOISI, sans musique. Francois appuie quand il n'entend
+// rien. A la fin, une ligne par fichier : chemin, mesure machine, et son oreille.
+// Un appui = une donnee. C'est tout ce qui manquait.
+let _ts=null;
+
+function testSonOuvrir(){
+  if(!dbgAutorise()) return;
+  if(_ts) return;
+  _ts={ecran:null,idx:-1,liste:[],rien:{},mesure:{},chemin:null,sched:null};
+  const e=document.createElement('div');
+  e.style.cssText='position:fixed;inset:0;z-index:100000;background:#000;display:flex;'+
+    'flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;'+
+    'padding-bottom:calc(24px + env(safe-area-inset-bottom));';
+  const t=document.createElement('div');
+  t.style.cssText='color:#8f8;font:600 11px/1.4 ui-monospace,Menlo,monospace;letter-spacing:2px;text-align:center;';
+  t.textContent='TEST DU SON — la musique est coupée';
+  const nom=document.createElement('div');
+  nom.id='tsNom';
+  nom.style.cssText='color:#fff;font:700 30px/1.1 ui-monospace,Menlo,monospace;text-align:center;min-height:76px;'+
+    'display:flex;align-items:center;';
+  nom.textContent='prêt';
+  const sous=document.createElement('div');
+  sous.id='tsSous';
+  sous.style.cssText='color:#888;font:11px/1.4 ui-monospace,Menlo,monospace;text-align:center;min-height:16px;';
+  const rien=document.createElement('button');
+  rien.id='tsRien'; rien.type='button';
+  rien.textContent="JE N'ENTENDS RIEN";
+  rien.style.cssText='width:100%;max-width:420px;padding:34px 12px;border:none;border-radius:18px;'+
+    'background:#c0203a;color:#fff;font:700 17px/1 ui-monospace,Menlo,monospace;letter-spacing:1px;'+
+    'cursor:pointer;opacity:0.35;';
+  rien.disabled=true;
+  rien.onclick=()=>{
+    if(_ts.idx<0||_ts.idx>=_ts.liste.length) return;
+    _ts.rien[_ts.idx]=true;
+    rien.style.background='#5a0f1e';
+    const s=document.getElementById('tsSous'); if(s) s.textContent='noté : rien entendu';
+  };
+  const rangee=document.createElement('div');
+  rangee.style.cssText='display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%;max-width:420px;';
+  const mk=(txt,fn,fond)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=txt;
+    b.style.cssText='flex:1;min-width:120px;padding:15px 10px;border:none;border-radius:12px;background:'+(fond||'#242424')+
+      ';color:#fff;font:600 12px/1.2 ui-monospace,Menlo,monospace;letter-spacing:1px;cursor:pointer;';
+    b.onclick=fn; return b; };
+  rangee.appendChild(mk('CHEMIN <audio>',()=>testSonLancer('audio'),'#1d3f6b'));
+  rangee.appendChild(mk('CHEMIN Web Audio',()=>testSonLancer('wa'),'#1d3f6b'));
+  const rangee0=document.createElement('div');
+  rangee0.style.cssText='display:flex;gap:10px;width:100%;max-width:420px;';
+  rangee0.appendChild(mk('SÉQUENCE EMOM 3-2-1',()=>testSonLancer('emom'),'#6b3a1d'));
+  const rangee2=document.createElement('div');
+  rangee2.style.cssText=rangee.style.cssText;
+  rangee2.appendChild(mk('RÉSULTAT DANS LE LOG',testSonBilan));
+  rangee2.appendChild(mk('FERMER',testSonFermer));
+  e.appendChild(t); e.appendChild(nom); e.appendChild(sous); e.appendChild(rien);
+  e.appendChild(rangee0); e.appendChild(rangee); e.appendChild(rangee2);
+  document.body.appendChild(e);
+  _ts.ecran=e;
+}
+
+function testSonFermer(){
+  if(!_ts) return;
+  try{ if(_ts.sched) clearInterval(_ts.sched); }catch(e){}
+  try{ stopAllAnnounces(); }catch(e){}
+  try{ _ts.ecran.remove(); }catch(e){}
+  _ts=null;
+}
+
+// Le test coupe la musique pour de bon : c'est elle qui rendait toute mesure
+// impossible, ici comme dans les enregistrements d'ecran.
+function testSonLancer(chemin){
+  if(!_ts) return;
+  try{ stopMusic(); }catch(e){}
+  try{ stopAllAnnounces(); }catch(e){}
+  if(_ts.sched){ try{ clearInterval(_ts.sched); }catch(e){} _ts.sched=null; }
+  // ===== LA DECOUVERTE DU 07/09, 21h =====
+  // Le 3-2-1 d'un round EMOM ne joue PAS les memes fichiers que le decompte de depart.
+  // Depart  : count-fr-3.mp3, count-fr-2.mp3, count-fr-1.mp3   (table COUNT_AUDIO_FR)
+  // EMOM    : fr-3.mp3,       fr-2.mp3,       fr-1.mp3         (table COUNT_AUDIO)
+  // Deux jeux d'enregistrements differents. Mon premier ecran de test ne jouait que le
+  // premier : il pouvait donc dire « tout va bien » pendant que l'EMOM restait casse.
+  // La sequence ci-dessous rejoue le vrai enchainement d'un EMOM, bip compris, au rythme
+  // reel d'une seconde, avec le REPOS et le ROUND qui tombent juste derriere le « 1 ».
+  const liste = (chemin==='emom')
+    ? ['fr-3.mp3','fr-2.mp3','fr-1.mp3','rest-fr.mp3','fr-3.mp3','fr-2.mp3','fr-1.mp3','round-2-fr.mp3']
+    : listeDecompte().slice();
+  _ts.liste=liste; _ts.idx=-1; _ts.rien={}; _ts.mesure={}; _ts.chemin=chemin;
+  DBG('=== TEST SON, chemin '+(chemin==='wa'?'Web Audio':'<audio>')+', voix='+S_voix+' lang='+S.lang+' ===');
+  const nom=document.getElementById('tsNom'), sous=document.getElementById('tsSous'), rien=document.getElementById('tsRien');
+  rien.disabled=false; rien.style.opacity='1';
+
+  const affiche=(i)=>{
+    _ts.idx=i;
+    rien.style.background='#c0203a';
+    nom.textContent=liste[i].replace('count-','').replace('.mp3','');
+    sous.textContent=(i+1)+'/'+liste.length+'  ·  '+VP(liste[i]);
+  };
+  const fini=()=>{
+    _ts.idx=-1; rien.disabled=true; rien.style.opacity='0.35';
+    nom.textContent='terminé'; sous.textContent='appuie sur RÉSULTAT DANS LE LOG';
+    testSonBilan();
+  };
+
+  if(chemin==='emom'){
+    // On passe par les MEMES fonctions que le WOD : playCount (donc playAnnounceEl et
+    // le pool tournant de 6 elements), playBipDecompte, playRest, playRound. Rien n'est
+    // recopie : si le defaut est dans ce chemin, il sort ici.
+    let i=0;
+    const pas=()=>{
+      if(!_ts) return;
+      if(i>=liste.length){ fini(); return; }
+      const f=liste[i], k=i; affiche(i);
+      const av=_dbgBuf.length;
+      try{
+        const m=/^fr-(\d)\.mp3$/.exec(f);
+        if(m){ playBipDecompte(); playCount(parseInt(m[1],10)); }
+        else if(f.indexOf('rest')===0) playRest();
+        else playRound(2);
+      }catch(e){ _ts.mesure[k]='appel KO '+e.name; }
+      // On relit ce que le chemin lui-meme a ecrit : « -> <fichier> SON t=... » ou MUET.
+      setTimeout(()=>{ try{
+        const l=_dbgBuf.slice(av).filter(x=>x.indexOf('  -> ')>=0).map(x=>x.split('  -> ')[1]);
+        // Si le filet a joue, c'est LUI le resultat : la ligne « MUET » qui suit decrit
+        // l'element qu'on vient de couper, pas ce qui est sorti du haut-parleur.
+        const secours=l.find(x=>x.indexOf('bascule Web Audio')>=0);
+        _ts.mesure[k]=secours?('secours Web Audio (le <audio> n a rien sorti)')
+                             :(l.length?l[l.length-1]:'aucune mesure');
+      }catch(e){} },700);
+      i++;
+      setTimeout(pas,1000);   // rythme reel d'un EMOM : une seconde
+    };
+    setTimeout(pas,600);
+    return;
+  }
+
+  if(chemin==='audio'){
+    // Exactement la preparation du WOD, et dans le geste utilisateur du bouton.
+    try{ preparerDecompte(liste); }catch(e){ DBG('test son: preparerDecompte KO '+e.name); }
+    let i=0;
+    const pas=()=>{
+      if(!_ts) return;
+      if(i>=liste.length){ fini(); return; }
+      const f=liste[i], k=i; affiche(i);
+      const a=_cdElFor(f);
+      a._repsPris=true;
+      try{ a.muted=false; }catch(e){}
+      try{ const vrai=VP(f); if(!a.src||a.src.indexOf(vrai)<0){ a.src=vrai; if(a.load) a.load(); } }catch(e){}
+      try{ a.volume=Math.min(niveauVoix()*2.0,1.0); }catch(e){}
+      try{ a.currentTime=0; }catch(e){}
+      const pr=a.play();
+      const mesurer=()=>setTimeout(()=>{ try{
+          _ts.mesure[k]=(a.currentTime>0.02)?('joue t='+a.currentTime.toFixed(2)+'s'):'MUET currentTime=0';
+        }catch(e){} },300);
+      if(pr&&pr.then) pr.then(mesurer,err=>{ _ts.mesure[k]='REJETE '+err.name; });
+      else mesurer();
+      i++;
+      setTimeout(pas,1500);
+    };
+    setTimeout(pas,600);
+    return;
+  }
+
+  // Chemin Web Audio : on arme un son a la fois, pas les onze d'un coup. Si le defaut
+  // vient d'une file de onze sources armees dix secondes a l'avance, ce test le montre
+  // en creux — ici tout marche, la-bas non.
+  const ctx=ensureAudioCtx();
+  if(!ctx){ DBG('test son: pas de contexte audio'); return; }
+  Promise.all(liste.map(f=>_recBuf[f]?Promise.resolve(_recBuf[f]):_loadRecBuf(f))).then(()=>{
+    let i=0;
+    const pas=()=>{
+      if(!_ts) return;
+      if(i>=liste.length){ fini(); return; }
+      const f=liste[i], k=i; affiche(i);
+      const b=_recBuf[f];
+      if(!b){ _ts.mesure[k]='BUFFER ABSENT'; i++; setTimeout(pas,1500); return; }
+      try{
+        const src=ctx.createBufferSource(); src.buffer=b;
+        const g=ctx.createGain(); g.gain.value=Math.min(niveauVoix()*2.0,1.0);
+        src.connect(g); g.connect(ctx.destination);
+        let ok=false;
+        src.onended=()=>{ ok=true; _ts.mesure[k]='joue dur='+b.duration.toFixed(2)+'s'; };
+        setTimeout(()=>{ if(!ok) _ts.mesure[k]='JAMAIS JOUE (ctx='+ctx.state+')'; }, (b.duration+0.6)*1000);
+        src.start(0);
+      }catch(e){ _ts.mesure[k]='start KO '+e.name; }
+      i++;
+      setTimeout(pas,1500);
+    };
+    setTimeout(pas,600);
+  });
+}
+
+function testSonBilan(){
+  if(!_ts||!_ts.liste.length) return;
+  const nomChemin=(_ts.chemin==='wa')?'Web Audio':((_ts.chemin==='emom')?'sequence EMOM':'<audio>');
+  DBG('--- BILAN, chemin '+nomChemin+' ---');
+  let muets=0;
+  _ts.liste.forEach((f,i)=>{
+    const oreille=_ts.rien[i]?'RIEN ENTENDU':'entendu';
+    if(_ts.rien[i]) muets++;
+    DBG('  '+String(i+1).padStart(2)+' '+f.padEnd(18)+' | machine: '+(_ts.mesure[i]||'?').padEnd(26)+' | oreille: '+oreille);
+  });
+  DBG('--- '+muets+' fichier(s) marques inaudibles sur '+_ts.liste.length+' ---');
+}
+
+// Appui long sur le logo. 1,8 s : au-dela d'un appui rate, en deca de l'agacement.
 (function(){
-  let taps=0, last=0;
   document.addEventListener('DOMContentLoaded',()=>{
     const logo=document.querySelector('.logo');
     if(!logo) return;
-    logo.style.cursor='pointer';
-    logo.addEventListener('click',()=>{
-      const now=Date.now();
-      taps=(now-last<800)?taps+1:1;
-      last=now;
-      if(taps>=5){
-        taps=0;
-        // Panneau de diagnostic reserve au dev : on n'y accede plus par 5 appuis
-        // (un reviewer App Store pouvait tomber dessus par accident). Pour l'activer,
-        // ouvrir l'app avec ?debug=1 dans l'URL.
-        if(!/[?&]debug=1/.test(location.search)) return;
-        DEBUG_ON=!DEBUG_ON;
-        if(!DEBUG_ON && _dbgEl){ _dbgEl.remove(); _dbgEl=null; }
-        else { DBG('debug ON — 5 appuis sur le logo pour couper'); testOverlayPlugin(); }
-      }
-    });
+    if(!dbgAutorise()) return;   // en Release, on n'installe meme pas l'ecouteur
+    try{ logo.style.webkitTouchCallout='none'; logo.style.webkitUserSelect='none'; logo.style.userSelect='none'; }catch(e){}
+    let tmr=null;
+    const debut=()=>{ clearTimeout(tmr); tmr=setTimeout(dbgBascule,1800); };
+    const arret=()=>{ clearTimeout(tmr); tmr=null; };
+    ['touchstart','mousedown'].forEach(e=>logo.addEventListener(e,debut,{passive:true}));
+    ['touchend','touchmove','touchcancel','mouseup','mouseleave'].forEach(e=>logo.addEventListener(e,arret,{passive:true}));
   });
 })();
-function DBG(msg){
-  // Toujours ecrit dans la console JS, meme quand le panneau visuel est coupe.
-  // Sans ca, une erreur comme « export KO » etait INVISIBLE sur l'app iOS : le
-  // panneau ne s'ouvre que via ?debug=1, et il n'y a pas d'URL a modifier dans
-  // une WKWebView. On peut desormais tout lire depuis Safari sur le Mac :
-  // Safari > Developpement > [iPhone] > REPS, onglet Console.
-  // Invisible pour l'utilisateur, aucun risque cote App Store.
-  try{ console.log('[REPS] '+msg); }catch(e){}
-  if(!DEBUG_ON) return;
-  if(!_dbgEl){
-    _dbgEl=document.createElement('div');
-    _dbgEl.style.cssText='position:fixed;left:0;right:0;bottom:0;max-height:38vh;overflow:auto;'+
-      'z-index:99999;background:rgba(0,0,0,.88);color:#0f0;font:11px/1.35 ui-monospace,Menlo,monospace;'+
-      'padding:6px;white-space:pre-wrap;';
-    document.body.appendChild(_dbgEl);
-  }
-  const d=new Date();
-  const t=String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0')+'.'+String(d.getMilliseconds()).padStart(3,'0');
-  const line=document.createElement('div');
-  line.textContent=t+'  '+msg;
-  _dbgEl.appendChild(line);
-  _dbgEl.scrollTop=_dbgEl.scrollHeight;
-}
 
 // ===== ORDONNANCEUR SUR HORLOGE ABSOLUE =====
 // Les setTimeout/setInterval d'iOS peuvent être ralentis : on ne compte plus les
@@ -6525,19 +6956,32 @@ function launch(){
     const anchor=ctx.currentTime+lead;
     const gainVol=Math.min(vol*2.0,1.0);
     S.cdWA=[];
-    const startBuf=(buf,when)=>{
+    // MESURE DE L'EFFET, 07/09/2026. source.start(when) arme un son jusqu'a dix
+    // secondes a l'avance : l'appel reussit toujours, et rien ne disait ensuite si le
+    // son etait REELLEMENT sorti. onended ne se declenche que sur une lecture qui a
+    // eu lieu ; le chien de garde ecrit une ligne quand elle n'a pas eu lieu. C'est la
+    // seule facon de distinguer « arme » de « joue » sur ce chemin.
+    const startBuf=(buf,when,nom)=>{
       if(!buf) return;
       try{
         const src=ctx.createBufferSource(); src.buffer=buf;
         const g=ctx.createGain(); g.gain.value=gainVol;
         src.connect(g); g.connect(ctx.destination); busAttachGain(g);
+        let joue=false;
+        src.onended=()=>{ joue=true; DBG('  -> '+(nom||'?')+' JOUE'); };
+        const retard=Math.max(0,(when-ctx.currentTime)+buf.duration+0.6)*1000;
+        setTimeout(()=>{ if(!joue) DBG('  -> '+(nom||'?')+' JAMAIS JOUE (arme a +'+(when-anchor).toFixed(2)+'s, ctx='+ctx.state+')'); }, retard);
         src.start(when); S.cdWA.push(src);
-      }catch(e){ DBG('cd horloge start KO '+e.name); }
+      }catch(e){ DBG('cd horloge start KO '+(nom||'?')+' '+e.name); }
     };
     countAudioList.forEach((file,i)=>{
-      startBuf(_recBuf[file], anchor + Math.max(0, i*1000-(_onsets[i]||0)+_onset0)/1000);
+      const b=_recBuf[file];
+      // Meme raison qu'en A : sans cette ligne, un buffer absent ou vide passait
+      // sans un mot. startBuf() sort silencieusement sur un buffer nul.
+      DBG('cd horloge '+file+(b?(' dur='+b.duration.toFixed(2)+'s'):' BUFFER ABSENT'));
+      startBuf(b, anchor + Math.max(0, i*1000-(_onsets[i]||0)+_onset0)/1000, file);
     });
-    if(!SIGNAL_DEPART_REMPLACE_VOIX) startBuf(_recBuf[START_AUDIO], anchor+_tGo/1000);
+    if(!SIGNAL_DEPART_REMPLACE_VOIX) startBuf(_recBuf[START_AUDIO], anchor+_tGo/1000, START_AUDIO);
     const leadMs=Math.round(lead*1000);
     S.cdT0=Date.now()+leadMs;
     S.cdSched=runAbsSchedule([
@@ -6572,9 +7016,26 @@ function launch(){
       }catch(e){}
       try{a.volume=Math.min(vol*2.0,1.0);}catch(e){}
       try{a.currentTime=0;}catch(e){}
+      // ===== INSTRUMENTATION DU 07/09/2026 =====
+      // Avant, ce pas n'ecrivait une ligne QUE si play() etait rejete, ou si play()
+      // ne renvoyait pas de promesse (navigateur ancien). Sur iOS il en renvoie
+      // toujours une : un chiffre qui sortait MUET sans etre rejete ne laissait donc
+      // AUCUNE trace. Le journal etait aveugle exactement sur le cas qu'on cherche,
+      // et c'est la meme faute que les bancs verts du 05/09 : on mesurait l'appel,
+      // pas son effet.
+      // Desormais on relit currentTime 220 ms plus tard. Un element qui joue vraiment
+      // a avance ; un element « joue » avec succes mais silencieux est reste a 0.
+      const _srcCourt=String(a.src||'').split('/').pop().slice(0,28);
+      const _mesure=()=>setTimeout(()=>{
+        try{
+          const avance=a.currentTime>0.02;
+          DBG('countdown '+file+' -> '+(avance?('SON t='+a.currentTime.toFixed(2)+'s'):'MUET currentTime=0')
+              +' rs='+a.readyState+' vol='+a.volume.toFixed(2)+(a.muted?' flagMuet':'')+' src='+_srcCourt);
+        }catch(e){}
+      },220);
       const pr=a.play();
-      if(pr&&pr.catch) pr.catch(err=>DBG('countdown '+file+' REJETE '+err.name));
-      else DBG('countdown '+file);
+      if(pr&&pr.then) pr.then(_mesure,err=>DBG('countdown '+file+' REJETE '+err.name+' src='+_srcCourt));
+      else _mesure();
     }});
   });
   // Signal de depart EN PLUS de la voix : meme instant que le GO.
@@ -7562,27 +8023,55 @@ function _finMembre(){
   var z=document.getElementById('finMembre');
   if(!z) return;
   z.textContent='';
-  if(typeof MEMBERS==='undefined' || !MEMBERS || MEMBERS.length===0){
-    var b=document.createElement('button');
-    b.className='sc-input sc-addmbr';
-    b.textContent=L3('Ajouter un adhérent','Add a member','Adicionar um membro');
-    b.onclick=function(){ try{ openMembers(); }catch(e){} };
-    z.appendChild(b);
-    return;
-  }
   var lab=document.createElement('span');
   lab.className='fin-membre-lab';
   lab.textContent=L3('Qui ?','Who?','Quem?');
   z.appendChild(lab);
-  var sel=document.createElement('select');
-  sel.className='sc-input'; sel.id='finMembreSel';
-  MEMBERS.forEach(function(m){
-    var o=document.createElement('option');
-    o.value=m.id;
-    o.textContent=((m.prenom||'')+' '+(m.nom||'')).trim()||'—';
-    sel.appendChild(o);
-  });
-  z.appendChild(sel);
+
+  // Le menu deroulant n'existe que s'il y a deja quelqu'un.
+  var sel=null;
+  if(typeof MEMBERS!=='undefined' && MEMBERS && MEMBERS.length){
+    sel=document.createElement('select');
+    sel.className='sc-input'; sel.id='finMembreSel';
+    MEMBERS.forEach(function(m){
+      var o=document.createElement('option');
+      o.value=m.id;
+      o.textContent=((m.prenom||'')+' '+(m.nom||'')).trim()||'\u2014';
+      sel.appendChild(o);
+    });
+    var on=document.createElement('option');
+    on.value='__new__';
+    on.textContent=L3('+ Nouvel adherent','+ New member','+ Novo membro');
+    sel.appendChild(on);
+    z.appendChild(sel);
+  }
+
+  // Avant, sans adherent, cet ecran affichait un BOUTON qui ouvrait la liste des
+  // adherents : on quittait l'ecran de fin, on perdait les scores tapes, et on ne
+  // pouvait rien ecrire ici. Les deux champs sont maintenant sur place.
+  var zn=document.createElement('div');
+  zn.className='fin-membre-new'; zn.id='finMembreNew';
+  var p=document.createElement('input');
+  p.type='text'; p.className='sc-input'; p.id='finMbrPrenom';
+  p.placeholder=L3('Prenom','First name','Nome');
+  p.setAttribute('autocomplete','off');
+  p.setAttribute('aria-label',L3('Prenom','First name','Nome'));
+  var n=document.createElement('input');
+  n.type='text'; n.className='sc-input'; n.id='finMbrNom';
+  n.placeholder=L3('Nom','Last name','Sobrenome');
+  n.setAttribute('autocomplete','off');
+  n.setAttribute('aria-label',L3('Nom','Last name','Sobrenome'));
+  zn.appendChild(p); zn.appendChild(n);
+  z.appendChild(zn);
+
+  if(sel){
+    zn.style.display='none';
+    sel.onchange=function(){
+      var neuf=(sel.value==='__new__');
+      zn.style.display=neuf?'flex':'none';
+      if(neuf){ try{ p.focus(); }catch(e){} }
+    };
+  }
 }
 
 function finEnregistrer(){
@@ -7594,16 +8083,29 @@ function finEnregistrer(){
             fb.textContent=L3('Entre au moins un score.','Enter at least one score.','Digite ao menos um score.'); }
     return;
   }
+  // Un nom tape ici cree l'adherent sur place. C'est le seul moment ou le coach a
+  // la personne devant lui ; l'envoyer sur un autre ecran, c'est perdre le score.
+  var m=null;
+  var _p=document.getElementById('finMbrPrenom'), _n=document.getElementById('finMbrNom');
+  var pv=((_p&&_p.value)||'').trim(), nv=((_n&&_n.value)||'').trim();
+  var veutNouveau=(!sel || sel.value==='__new__');
+  if(veutNouveau && (pv||nv)){
+    m={id:mbrUid(),prenom:pv,nom:nv,scores:[]};
+    MEMBERS.push(m);
+    try{ saveMembersData(); }catch(e){}
+    try{ renderMembers(); }catch(e){}
+    try{ refreshScoreMemberSelect(); }catch(e){}
+  } else if(sel && sel.value && sel.value!=='__new__'){
+    m=MEMBERS.find(function(x){ return x.id===sel.value; });
+  }
   // Sans adherent, les scores restent quand meme dans la seance : on ne perd rien,
   // on le dit, et on ferme. C'est le cas de quelqu'un qui s'entraine seul.
-  if(!sel || !sel.value){
+  if(!m){
     if(fb){ fb.style.color='var(--green)';
             fb.textContent=L3('Gardé dans la séance ✓','Kept in the session ✓','Guardado na sessão ✓'); }
     setTimeout(fermerFin,1200);
     return;
   }
-  var m=MEMBERS.find(function(x){ return x.id===sel.value; });
-  if(!m) return;
   remplies.forEach(function(l){
     m.scores.unshift({id:mbrUid(), value:l.input.value.trim(), wod:l.nom, date:Date.now()});
   });
