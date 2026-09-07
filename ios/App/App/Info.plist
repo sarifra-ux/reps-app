@@ -43,11 +43,19 @@
 	<array>
 		<string>armv7</string>
 	</array>
+	<!-- 07/09/2026 : verrouillage en portrait.
+	     L'app autorisait les deux paysages, mais la feuille de style n'a AUCUNE
+	     regle pour cette orientation. Constate sur un enregistrement d'ecran de
+	     Francois : logo a la verticale, boutons couches, chiffre du decompte
+	     coupe par le bord de l'ecran, chrono reduit a une barre noire. L'app
+	     etait inutilisable en plein WOD, et il suffit de poser le telephone de
+	     travers sur un banc pour y tomber.
+	     Le portrait n'est pas un repli, c'est la forme du produit : chrono lu a
+	     bout de bras, telephone cale debout, et l'export video est en 1080x1920.
+	     Rouvrir cette liste quand une vraie mise en page paysage existera. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
