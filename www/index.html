@@ -7611,14 +7611,35 @@ function updateVolVoice(v){
 }
 
 // ===== FULLSCREEN =====
+function _estNatif(){
+  try{
+    if(!window.Capacitor) return false;
+    if(typeof window.Capacitor.isNativePlatform==='function') return !!window.Capacitor.isNativePlatform();
+    return !!window.Capacitor.isNative;
+  }catch(e){ return false; }
+}
 function toggleFullscreen(){
   document.body.classList.toggle('fullscreen-mode');
+  // En app native la webview occupe deja tout l'ecran : l'API Fullscreen n'ajoute
+  // rien et declenche la banniere systeme iOS
+  // « "capacitor://localhost" is in full screen. Swipe down to exit. »
+  // qui expose l'URL interne et propose un geste qui sort du plein ecran WebKit
+  // sans retirer la classe. Le plein ecran est donc purement CSS sur natif.
+  if(_estNatif()) return;
   if(document.body.classList.contains('fullscreen-mode')){
     if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
   } else {
     if(document.exitFullscreen && document.fullscreenElement) document.exitFullscreen().catch(()=>{});
   }
 }
+// Sur le web, si l'utilisateur sort du plein ecran par le navigateur (Echap,
+// geste, barre systeme), la classe doit suivre sinon l'app reste amputee.
+document.addEventListener('fullscreenchange',function(){
+  if(_estNatif()) return;
+  if(!document.fullscreenElement && document.body.classList.contains('fullscreen-mode')){
+    document.body.classList.remove('fullscreen-mode');
+  }
+});
 document.addEventListener('keydown',(e)=>{if(e.key==='Escape' && document.body.classList.contains('fullscreen-mode')) toggleFullscreen();});
 
 // ===== FAVORITES (localStorage) =====
