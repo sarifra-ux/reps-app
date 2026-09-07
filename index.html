@@ -2010,6 +2010,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 <!-- ===== ÉCRAN DE PAUSE ENTRE DEUX WOD ===== -->
 <div id="pauseWodScreen" class="mode-choice" style="display:none">
   <div class="mode-choice-content">
+    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" style="display:none">←</button>
     <h2 class="wizard-title" id="pauseWodTitle">Repos avant le WOD suivant</h2>
     <div class="sq-pause-reglage">
       <button type="button" class="sq-pas" onclick="pauseWodPas(-30)" aria-label="Moins 30 secondes">−</button>
@@ -2056,7 +2057,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
         <span class="mode-tile-name">TABATA</span>
       </button>
     </div>
-    <div class="wizard-hint" id="modeChoiceHint">Glisse vers la gauche pour continuer</div>
+    <div class="wizard-hint" id="modeChoiceHint" data-wiz-indice="1">Glisse vers la gauche pour continuer</div>
   </div>
 </div>
 
@@ -2071,7 +2072,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     <div class="timing-choice-buttons" id="timingChoiceButtons">
       <!-- Boutons remplis dynamiquement selon le mode -->
     </div>
-    <div class="wizard-hint" id="timingChoiceHint">Glisse vers la gauche pour continuer</div>
+    <div class="wizard-hint" id="timingChoiceHint" data-wiz-indice="0"></div>
   </div>
 </div>
 
@@ -8186,22 +8187,53 @@ function _wizEmpiler(cible){
 function _wizMajFleches(){
   const visible=_WIZ_PILE.length>0;
   document.querySelectorAll('.wiz-back').forEach(b=>{ b.style.display=visible?'flex':'none'; });
+  // Les indices annoncent le retour SEULEMENT quand il y a quelque part ou revenir.
+  try{
+    document.querySelectorAll('.wizard-hint[data-wiz-indice]').forEach(function(h){
+      h.textContent=_wizIndice(h.getAttribute('data-wiz-indice')==='1');
+    });
+  }catch(e){}
 }
+// Le texte sous les tuiles. Il decrit ce que le doigt fait VRAIMENT sur cet ecran :
+// « avance » n'est vrai que la ou un glissement suffit a passer a la suite.
+function _wizIndice(avance){
+  const retour=_WIZ_PILE.length>0;
+  if(avance && retour) return L3('Glisse à gauche pour continuer, à droite pour revenir',
+                                 'Swipe left to continue, right to go back',
+                                 'Deslize à esquerda para continuar, à direita para voltar');
+  if(avance)           return L3('Glisse vers la gauche pour continuer',
+                                 'Swipe left to continue','Deslize para a esquerda');
+  if(retour)           return L3('Glisse vers la droite pour revenir',
+                                 'Swipe right to go back','Deslize para a direita para voltar');
+  return '';
+}
+const _WIZ_TOUS=['nbWodScreen','pauseWodScreen','modeChoiceScreen','timingChoiceScreen','musicChoiceScreen','customScreen'];
 function wizRetour(){
   const id=_WIZ_PILE.pop();
   if(!id){ _wizMajFleches(); return; }
+  // ===== DEUX DEFAUTS CORRIGES LE 07/09/2026 =====
+  // Ils existaient avant, mais la fleche seule les rendait rares. Le glissement les
+  // a mis en pleine lumiere des le premier essai.
+  //
+  // 1. UN SEUL ECRAN masquait celui qu'on quitte : le retour vers « un seul WOD ».
+  //    Les quatre autres laissaient l'ancien affiche dessous, et comme les ecrans du
+  //    wizard ne couvrent pas tout le viewport iOS, on voyait les deux se superposer
+  //    par les bords. On masque donc les six, toujours, avant d'en rouvrir un.
+  const pile=_WIZ_PILE.slice();
   _wizDernier=null;                 // pour que le show ci-dessous ne re-empile rien
+  _WIZ_TOUS.forEach(function(x){ var e=document.getElementById(x); if(e) e.style.display='none'; });
   try{
-    if(id==='nbWodScreen'){
-      ['modeChoiceScreen','timingChoiceScreen','musicChoiceScreen','customScreen']
-        .forEach(function(x){ var e=document.getElementById(x); if(e) e.style.display='none'; });
-      montrerNbWod();
-    }
+    if(id==='nbWodScreen') montrerNbWod();
     else if(id==='modeChoiceScreen') showModeChoice();
     else if(id==='timingChoiceScreen') showTimingChoice(S.mode);
     else if(id==='customScreen') showCustomChoice(S.mode);
     else if(id==='musicChoiceScreen') showMusicChoice();
-  }catch(e){}
+  }catch(e){ try{ DBG('wizRetour KO '+((e&&e.name)||e)); }catch(_){} }
+  // 2. showModeChoice() remet la pile a plat quand on arrive « de nulle part »
+  //    (_wizDernier a null), ce qui est exactement le cas en retour arriere. La pile
+  //    etait donc effacee au premier retour, et un deuxieme retour ne ramenait plus a
+  //    « un seul WOD / plusieurs ». On la met de cote et on la restaure.
+  _WIZ_PILE.length=0; pile.forEach(function(x){ _WIZ_PILE.push(x); });
   _wizDernier=id;
   _wizMajFleches();
 }
@@ -8230,7 +8262,7 @@ function showModeChoice(){
   const title=document.getElementById('modeChoiceTitle');
   const hint=document.getElementById('modeChoiceHint');
   if(title) title.textContent=L3('Mode d\'entraînement','Training mode','Modo de treino');
-  if(hint) hint.textContent=L3('Glisse vers la gauche pour continuer','Swipe left to continue','Deslize para a esquerda');
+  if(hint) hint.textContent=_wizIndice(true);
   screen.style.display='flex';
   screen.style.opacity='1';
 }
@@ -8286,7 +8318,7 @@ function showTimingChoice(mode){
   }
   if(title) title.textContent=titleText;
   _wizPoseIco('timingChoiceIco',mode,'i-chrono');
-  if(hint) hint.textContent=L3('Glisse vers la gauche pour continuer','Swipe left to continue','Deslize para a esquerda');
+  if(hint) hint.textContent=_wizIndice(false);
   
   // Construire les boutons selon le mode
   btns.innerHTML='';
@@ -8722,24 +8754,75 @@ function applyTrack(chosen,category){
   }
 }
 
-// Swipe pour fermer l'écran mode et accéder à l'app
-function setupModeSwipe(){
-  const screen=document.getElementById('modeChoiceScreen');
-  if(!screen) return;
-  let touchStartX=0;
-  screen.addEventListener('touchstart',e=>{
-    touchStartX=e.changedTouches[0].screenX;
-  },{passive:true});
-  screen.addEventListener('touchend',e=>{
-    const touchEndX=e.changedTouches[0].screenX;
-    const diff=touchStartX-touchEndX;
-    if(diff>80){
-      // Swipe gauche : on accepte le mode actuel (pré-sélectionné via choix précédent ou défaut)
-      const savedMode=localStorage.getItem('reps_mode')||S.mode||'wod';
-      chooseMode(savedMode);
+// ===== NAVIGATION AU DOIGT DANS TOUT LE WIZARD (07/09/2026) =====
+//
+// Retour de Cristina, la coach : « si glisser d'un cote me permet de continuer,
+// pourquoi glisser de l'autre ne me ramene pas en arriere ? »
+//
+// Elle avait raison, et le code lui donnait raison deux fois :
+//   1. il n'existait qu'UN gestionnaire de glissement dans toute l'app, sur le seul
+//      ecran MODE, et dans une seule direction. Le retour au doigt n'existait nulle
+//      part ;
+//   2. DEUX ecrans affichaient pourtant « Glisse vers la gauche pour continuer »,
+//      dont l'ecran DUREE ou le geste n'etait branche sur rien. Le texte mentait.
+//
+// Desormais les six ecrans du wizard ecoutent, dans les deux sens :
+//   glissement vers la GAUCHE  -> l'action « continuer » PROPRE A L'ECRAN, quand il
+//                                 y en a une qui ne demande pas de choix explicite ;
+//   glissement vers la DROITE  -> wizRetour(), exactement le meme chemin que la fleche.
+//
+// Trois garde-fous, sinon on navigue sur des gestes qui n'en sont pas :
+//   - le geste doit etre franchement horizontal (|dx| > 1,5 x |dy|) ;
+//   - il doit depasser 80 px, le seuil d'origine ;
+//   - il ne compte pas s'il PART d'un controle. Sur l'ecran CUSTOM on regle une duree
+//     au doigt : ce glissement-la appartient au reglage, pas a la navigation.
+const _WIZ_SWIPE=['nbWodScreen','pauseWodScreen','modeChoiceScreen','timingChoiceScreen','customScreen','musicChoiceScreen'];
+
+// Ce que « continuer » veut dire sur chaque ecran. Rien ailleurs : sur DUREE ou
+// MUSIQUE, avancer suppose un choix, et on ne va pas en inventer un a sa place.
+function _wizAvancer(id){
+  try{
+    if(id==='modeChoiceScreen'){
+      chooseMode(localStorage.getItem('reps_mode')||S.mode||'wod');
+      return true;
     }
-  },{passive:true});
+    if(id==='customScreen'){
+      const b=document.querySelector('#customScreen .cs-continue-btn');
+      if(b){ b.click(); return true; }
+    }
+  }catch(e){ DBG('wiz swipe avancer KO '+((e&&e.name)||e)); }
+  return false;
 }
+
+function setupWizardSwipe(){
+  _WIZ_SWIPE.forEach(function(id){
+    const ecran=document.getElementById(id);
+    if(!ecran || ecran._repsSwipe) return;
+    ecran._repsSwipe=true;
+    let x0=0, y0=0, prend=false;
+    ecran.addEventListener('touchstart',function(e){
+      const t=e.changedTouches[0];
+      x0=t.screenX; y0=t.screenY;
+      prend=true;
+      try{
+        if(e.target && e.target.closest &&
+           e.target.closest('input,select,textarea,button,a,.mode-tile,.timing-btn,.sq-pas,.cs-continue-btn')) prend=false;
+      }catch(err){}
+    },{passive:true});
+    ecran.addEventListener('touchend',function(e){
+      if(!prend) return;
+      prend=false;
+      const t=e.changedTouches[0];
+      const dx=t.screenX-x0, dy=t.screenY-y0;
+      if(Math.abs(dx)<80) return;
+      if(Math.abs(dx)<Math.abs(dy)*1.5) return;   // geste vertical : c'est du defilement
+      if(dx>0){ try{ wizRetour(); }catch(err){} }
+      else { _wizAvancer(id); }
+    },{passive:true});
+  });
+}
+// Ancien nom, garde : il est appele au demarrage et ailleurs.
+function setupModeSwipe(){ setupWizardSwipe(); }
 
 // Lancer le wizard après le splash
 function showWelcomeThenWizard(){
