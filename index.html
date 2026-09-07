@@ -4909,16 +4909,35 @@ function playAnnounceEl(src, onFail){
     // « MUET currentTime=0 » sans la moindre erreur. Silencieuses et satisfaites.
     // On mesure donc l'effet : 130 ms apres, si la tete de lecture n'a pas bouge,
     // l'element n'a rien joue. On le coupe et on passe par les buffers decodes.
-    let secouru=false;
+    let secouru=false, parti=false;
     const secours=()=>{
-      if(done||secouru) return;
+      if(done||secouru||parti) return;
       secouru=true;
       try{ a.pause(); a.currentTime=0; }catch(e){}
       DBG('  -> '+src+' rien sorti, bascule Web Audio');
       finish();
       if(onFail) onFail(); else jouerAnnonceWA(src);
     };
-    setTimeout(()=>{ try{ if(!done && a.currentTime<=0.005) secours(); }catch(e){} },130);
+    // ===== CORRECTION DU FILET, 07/09/2026 au soir =====
+    // Premiere version : un simple minuteur a 130 ms qui basculait si currentTime
+    // valait encore 0. Mesure sur l'iPhone de Francois : il se declenchait sur
+    // TOUTES les annonces d'un EMOM, y compris avec readyState=4 — le fichier etait
+    // charge, il n'avait juste pas encore demarre. Je coupais des sons qui allaient
+    // partir, et mon propre a.pause() fabriquait les AbortError qu'on voyait ensuite
+    // dans le journal. Un filet qui se declenche a chaque fois n'est plus un filet.
+    //
+    // On n'attend plus un delai, on ecoute un EVENEMENT : 'playing' ne part que
+    // lorsque la lecture a reellement commence. Le minuteur ne sert plus que de
+    // butoir, et il ne coupe que si rien n'a demarre.
+    const _demarre=()=>{ parti=true; };
+    try{ a.addEventListener('playing',_demarre,{once:true}); }catch(e){}
+    try{ a.addEventListener('timeupdate',function _tu(){ if(a.currentTime>0.005){ parti=true; try{a.removeEventListener('timeupdate',_tu);}catch(e){} } }); }catch(e){}
+    // Butoir court quand l'element n'a MEME PAS de quoi jouer (readyState < 2) :
+    // la, c'est sur, il n'y a rien a attendre.
+    setTimeout(()=>{ try{ if(!done && !parti && a.readyState<2) secours(); }catch(e){} },140);
+    // Butoir long pour tout le reste. 400 ms : au-dela, sur un 3-2-1, le mot tomberait
+    // de toute facon a cote de la seconde, autant passer par les buffers decodes.
+    setTimeout(()=>{ try{ if(!done && !parti && a.currentTime<=0.005) secours(); }catch(e){} },400);
     try{a.currentTime=0;}catch(e){}
     const p=a.play();
     if(p&&p.then) p.catch(e=>{ DBG('REJETE '+src+' : '+e.name); finish(); if(onFail) onFail(); });
