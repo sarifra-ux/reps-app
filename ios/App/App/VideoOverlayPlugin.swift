@@ -22,7 +22,8 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "cancelRecording", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setAudioMixing", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openExternalApp", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "cameraState", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "cameraState", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "deleteFile", returnType: CAPPluginReturnPromise)
     ]
 
     private var pickCall: CAPPluginCall?
@@ -38,6 +39,76 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
     private let sessionQueue = DispatchQueue(label: "reps.camera.session")
     // Observateurs de reprise apres arriere-plan (cf. reprendreCamera, 05/09/2026).
     private var camObservers: [NSObjectProtocol] = []
+
+    // ===== MENAGE DES FICHIERS VIDEO (08/09/2026) =====
+    // Chaque WOD filme laissait un .mov brut dans Documents, jamais supprime : l'app est
+    // passee de 53 a 353 Mo en une journee pour trois videos, et Documents part dans la
+    // sauvegarde iCloud. Trois filets, du plus sur au plus tardif :
+    //   1. la source est supprimee des que Photos a confirme la copie
+    //   2. deleteFile est expose au JS, pour les cas ou le web sait qu'il n'en veut plus
+    //   3. un balayage au demarrage ramasse ce qui a echappe aux deux premiers
+    // Regle de securite : on ne supprime QUE des fichiers dont ce plugin est l'auteur,
+    // reconnus a leur prefixe ET a leur dossier. Une video de la pellicule n'est jamais
+    // touchee : pickVideo en fait d'abord une copie reps-src- dans Documents.
+
+    private static let prefixesDeTravail = ["reps-cam-", "reps-src-", "reps-export-"]
+
+    private func estFichierDeTravail(_ url: URL) -> Bool {
+        let nom = url.lastPathComponent
+        guard VideoOverlayPlugin.prefixesDeTravail.contains(where: { nom.hasPrefix($0) }) else { return false }
+        let fm = FileManager.default
+        let docs = fm.urls(for: .documentDirectory, in: .userDomainMask)[0].standardizedFileURL.path
+        let tmp = fm.temporaryDirectory.standardizedFileURL.path
+        let parent = url.standardizedFileURL.deletingLastPathComponent().path
+        return parent == docs || parent == tmp
+    }
+
+    @discardableResult
+    private func supprimerSiFichierDeTravail(_ url: URL) -> Bool {
+        guard estFichierDeTravail(url) else { return false }
+        do { try FileManager.default.removeItem(at: url); return true } catch { return false }
+    }
+
+    // Ces fichiers sont temporaires par nature : ils n'ont rien a faire dans iCloud.
+    private func exclureDeLaSauvegarde(_ url: URL) {
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        var u = url
+        var v = URLResourceValues()
+        v.isExcludedFromBackup = true
+        try? u.setResourceValues(v)
+    }
+
+    // Balayage au demarrage : tout fichier de travail de plus de 24 h degage.
+    private func menageFichiersAnciens() {
+        let fm = FileManager.default
+        let limite = Date().addingTimeInterval(-24 * 3600)
+        let dossiers = [fm.urls(for: .documentDirectory, in: .userDomainMask)[0], fm.temporaryDirectory]
+        for d in dossiers {
+            guard let contenu = try? fm.contentsOfDirectory(at: d,
+                        includingPropertiesForKeys: [.contentModificationDateKey],
+                        options: [.skipsHiddenFiles]) else { continue }
+            for u in contenu where estFichierDeTravail(u) {
+                let date = (try? u.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? Date.distantPast
+                if date < limite { try? fm.removeItem(at: u) }
+            }
+        }
+    }
+
+    override public func load() {
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            self?.menageFichiersAnciens()
+        }
+    }
+
+    // Supprime un fichier de travail sur demande du web. Renvoie toujours, sans jeter :
+    // un menage qui echoue ne doit pas casser le parcours de l'utilisateur.
+    @objc func deleteFile(_ call: CAPPluginCall) {
+        guard let p = call.getString("path"), !p.isEmpty else {
+            call.resolve(["deleted": false, "reason": "no-path"]); return
+        }
+        let ok = supprimerSiFichierDeTravail(URL(fileURLWithPath: p))
+        call.resolve(["deleted": ok])
+    }
 
     @objc func ping(_ call: CAPPluginCall) {
         call.resolve(["value": "pong from native", "echo": call.getString("msg") ?? ""])
@@ -661,14 +732,14 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         export.shouldOptimizeForNetworkUse = true
         export.exportAsynchronously {
             if export.status == .completed {
-                self.saveToPhotos(outURL, extra: ["goOffsetSec": goOffset, "auto": autoUsed], call: call)
+                self.saveToPhotos(outURL, source: srcURL, extra: ["goOffsetSec": goOffset, "auto": autoUsed], call: call)
             } else {
                 DispatchQueue.main.async { call.reject("Export KO: \(export.error?.localizedDescription ?? "inconnu")") }
             }
         }
     }
 
-    private func saveToPhotos(_ url: URL, extra: [String: Any], call: CAPPluginCall) {
+    private func saveToPhotos(_ url: URL, source: URL?, extra: [String: Any], call: CAPPluginCall) {
         PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
             guard status == .authorized || status == .limited else {
                 DispatchQueue.main.async { call.reject("Accès Photos refusé") }; return
@@ -678,6 +749,13 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
             }) { ok, err in
                 DispatchQueue.main.async {
                     if ok {
+                        // Photos a confirme : la video est en lieu sur, nos copies de
+                        // travail n'ont plus de raison d'exister. C'est ici, et nulle part
+                        // ailleurs, qu'on peut le savoir.
+                        if let src = source { self.supprimerSiFichierDeTravail(src) }
+                        self.supprimerSiFichierDeTravail(url)
+                        // `path` reste renvoye pour la trace : le fichier, lui, vient
+                        // d'etre supprime. La video vit desormais dans Photos.
                         var res: [String: Any] = ["success": true, "path": url.path]
                         res.merge(extra) { a, _ in a }
                         call.resolve(res)
@@ -694,6 +772,7 @@ extension VideoOverlayPlugin: AVCaptureFileOutputRecordingDelegate {
     public func fileOutput(_ output: AVCaptureFileOutput, didFinishRecordingTo outputFileURL: URL,
                            from connections: [AVCaptureConnection], error: Error?) {
         let dur = CMTimeGetSeconds(AVAsset(url: outputFileURL).duration)
+        self.exclureDeLaSauvegarde(outputFileURL)
         let call = self.recCall
         self.recCall = nil
         self.teardownCamera()
@@ -724,6 +803,7 @@ extension VideoOverlayPlugin: PHPickerViewControllerDelegate {
             try? FileManager.default.removeItem(at: dst)
             do {
                 try FileManager.default.copyItem(at: url, to: dst)
+                self.exclureDeLaSauvegarde(dst)
                 let dur = CMTimeGetSeconds(AVAsset(url: dst).duration)
                 self.resolvePick(["path": dst.path, "duration": dur])
             } catch {
