@@ -2010,12 +2010,12 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 <!-- ===== ÉCRAN DE PAUSE ENTRE DEUX WOD ===== -->
 <div id="pauseWodScreen" class="mode-choice" style="display:none">
   <div class="mode-choice-content">
-    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" style="display:none">←</button>
+    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" data-i18n-aria="a11y.back" style="display:none">←</button>
     <h2 class="wizard-title" id="pauseWodTitle">Repos avant le WOD suivant</h2>
     <div class="sq-pause-reglage">
-      <button type="button" class="sq-pas" onclick="pauseWodPas(-30)" aria-label="Moins 30 secondes">−</button>
+      <button type="button" class="sq-pas" onclick="pauseWodPas(-30)" aria-label="Moins 30 secondes" data-i18n-aria="a11y.minus30">−</button>
       <div class="sq-pause-valeur" id="pauseWodValeur">3:00</div>
-      <button type="button" class="sq-pas" onclick="pauseWodPas(30)" aria-label="Plus 30 secondes">+</button>
+      <button type="button" class="sq-pas" onclick="pauseWodPas(30)" aria-label="Plus 30 secondes" data-i18n-aria="a11y.plus30">+</button>
     </div>
     <div class="mode-choice-tiles">
       <button class="mode-tile mode-tile-amrap" onclick="pauseWodValider(true)">
@@ -2037,7 +2037,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 
 <div id="modeChoiceScreen" class="mode-choice" style="display:none">
   <div class="mode-choice-content">
-    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" style="display:none">←</button>
+    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" data-i18n-aria="a11y.back" style="display:none">←</button>
     <h2 class="wizard-title" id="modeChoiceTitle" data-i18n="cfg.mode">Mode d'entraînement</h2>
     <div class="mode-choice-tiles">
       <button class="mode-tile mode-tile-fortime" onclick="chooseMode('wod')">
@@ -2064,7 +2064,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 <!-- ===== ÉCRAN 3 : CHOIX DU TIMING ===== -->
 <div id="timingChoiceScreen" class="timing-choice" style="display:none">
   <div class="timing-choice-content">
-    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" style="display:none">←</button>
+    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" data-i18n-aria="a11y.back" style="display:none">←</button>
     <div class="wizard-title-row">
       <svg class="ico wiz-title-ico" id="timingChoiceIco" aria-hidden="true"><use href="#i-chrono"/></svg>
       <h2 class="wizard-title" id="timingChoiceTitle" data-i18n="timing.title">Durée</h2>
@@ -2079,7 +2079,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 <!-- ===== ÉCRAN 4 : CHOIX DE LA MUSIQUE ===== -->
 <div id="musicChoiceScreen" class="music-choice" style="display:none">
   <div class="music-choice-content">
-    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" style="display:none">←</button>
+    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" data-i18n-aria="a11y.back" style="display:none">←</button>
     <h2 class="wizard-title" id="musicChoiceTitle" data-i18n="music.title">Musique</h2>
     <div class="music-choice-tiles" id="musicCatTiles">
       <button class="music-tile music-tile-rap" onclick="chooseMusic('rap')">
@@ -2119,7 +2119,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 <!-- ===== ÉCRAN PERSONNALISÉ (par mode) ===== -->
 <div id="customScreen" class="timing-choice" style="display:none">
   <div class="timing-choice-content">
-    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" style="display:none">←</button>
+    <button type="button" class="wiz-back" onclick="wizRetour()" aria-label="Retour" data-i18n-aria="a11y.back" style="display:none">←</button>
     <div class="wizard-title-row">
       <svg class="ico wiz-title-ico" id="customScreenIco" aria-hidden="true"><use href="#i-reglages"/></svg>
       <h2 class="wizard-title" id="customScreenTitle" data-i18n="cfg.customized">Personnalisé</h2>
@@ -2166,14 +2166,14 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     <div class="logo-sub">Rhythm Engine Performance Sound</div>
   </div>
   <div class="header-right">
-    <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD"><svg class="ico" aria-hidden="true"><use href="#i-nouveau"/></svg> <span class="new-wod-label" data-i18n="nav.new">NOUVEAU</span></button>
-    <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)"><svg class="ico" aria-hidden="true"><use href="#i-perso"/></svg> <span class="new-wod-label" data-i18n="nav.custom">PERSO</span></button>
+    <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD" data-i18n-title="title.new"><svg class="ico" aria-hidden="true"><use href="#i-nouveau"/></svg> <span class="new-wod-label" data-i18n="nav.new">NOUVEAU</span></button>
+    <button class="new-wod-btn" id="customizeBtn" onclick="toggleConfigPanel()" title="Personnaliser (modes, durée, work/rest EMOM)" data-i18n-title="title.custom"><svg class="ico" aria-hidden="true"><use href="#i-perso"/></svg> <span class="new-wod-label" data-i18n="nav.custom">PERSO</span></button>
     <!-- Le bouton SCORES a quitte le bandeau le 05/09 : on ne saisit un score qu'APRES
          un WOD, et l'ecran de fin le propose tout seul a ce moment-la. Le bandeau passe
          de cinq a quatre boutons, qui respirent. La liste des adherents reste joignable
          par REGLAGES > Adherents & scores, et par le bouton de l'ecran de fin. -->
-    <button class="new-wod-btn" id="seancesBtn" onclick="ouvrirSeances()" title="Séances préparées"><svg class="ico" aria-hidden="true"><use href="#i-liste"/></svg> <span class="new-wod-label" data-i18n="nav.seances">SÉANCES</span></button>
-    <button class="new-wod-btn" id="reglagesBtn" onclick="openSettings()" title="Réglages"><svg class="ico" aria-hidden="true"><use href="#i-reglages"/></svg> <span class="new-wod-label" data-i18n="nav.reglages">RÉGLAGES</span></button>
+    <button class="new-wod-btn" id="seancesBtn" onclick="ouvrirSeances()" title="Séances préparées" data-i18n-title="title.seances"><svg class="ico" aria-hidden="true"><use href="#i-liste"/></svg> <span class="new-wod-label" data-i18n="nav.seances">SÉANCES</span></button>
+    <button class="new-wod-btn" id="reglagesBtn" onclick="openSettings()" title="Réglages" data-i18n-title="title.reglages"><svg class="ico" aria-hidden="true"><use href="#i-reglages"/></svg> <span class="new-wod-label" data-i18n="nav.reglages">RÉGLAGES</span></button>
     <div class="status-pill" id="statusPill"><div class="dot"></div><span id="statusText" data-i18n="status.ready">READY</span></div>
   </div>
 </header>
@@ -2188,18 +2188,18 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 <div id="seancesModal" class="settings-modal" style="display:none" onclick="fermerSeancesFond(event)">
   <div class="settings-modal-content" onclick="event.stopPropagation()">
     <div class="settings-modal-header">
-      <h3 class="settings-modal-title">Séances</h3>
+      <h3 class="settings-modal-title" data-i18n="seances.title">Séances</h3>
       <button class="settings-modal-close" onclick="fermerSeances()">✕</button>
     </div>
     <div class="settings-modal-body">
       <div class="sq-biblio" id="sqBiblio"></div>
-      <button type="button" class="sq-action sq-neuve" onclick="sqNouvelleSeance()">+ Nouvelle séance</button>
+      <button type="button" class="sq-action sq-neuve" onclick="sqNouvelleSeance()" data-i18n="seances.new">+ Nouvelle séance</button>
       <div class="sq-sep"></div>
       <div class="sq-barre">
-        <input class="sq-nom" id="sqNom" value="" aria-label="Nom de la séance">
-        <div class="sq-bascule" role="group" aria-label="Enchaînement">
-          <button type="button" id="sqManuel" aria-pressed="true">Un par un</button>
-          <button type="button" id="sqAuto" aria-pressed="false">Enchaîné</button>
+        <input class="sq-nom" id="sqNom" value="" aria-label="Nom de la séance" data-i18n-aria="seances.nameAria">
+        <div class="sq-bascule" role="group" aria-label="Enchaînement" data-i18n-aria="seances.chainAria">
+          <button type="button" id="sqManuel" aria-pressed="true" data-i18n="seances.oneByOne">Un par un</button>
+          <button type="button" id="sqAuto" aria-pressed="false" data-i18n="seances.chained">Enchaîné</button>
         </div>
       </div>
       <p class="sq-aide" id="sqAide"></p>
@@ -2672,7 +2672,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
       <div class="round-badge" id="roundBadge"></div>
       <div class="cd-overlay" id="cdOverlay">
         <div class="cd-num" id="cdNum">10</div>
-        <div class="cd-sub" id="cdSub">DÉCOMPTE</div>
+        <div class="cd-sub" id="cdSub" data-i18n="cd.sub">DÉCOMPTE</div>
       </div>
       <div class="now-playing-bar">
         <div class="np-badge" id="npBadge">🎵 POGO DANS LA NUIT</div>
@@ -3199,6 +3199,27 @@ function _updateDiag(){}
 
 // ===== I18N : traductions des libellés statiques =====
 const I18N={
+  // Ajouts 08/09/2026 : libelles qui restaient en francais quand l'app est en EN/PT.
+  'seances.title':['Séances','Sessions','Sessões'],
+  'seances.new':['+ Nouvelle séance','+ New session','+ Nova sessão'],
+  'seances.oneByOne':['Un par un','One by one','Um por um'],
+  'seances.chained':['Enchaîné','Chained','Encadeado'],
+  'seances.nameAria':['Nom de la séance','Session name','Nome da sessão'],
+  'seances.chainAria':['Enchaînement','Chaining','Encadeamento'],
+  'seances.del':['Supprimer la séance','Delete session','Apagar sessão'],
+  'cd.sub':['DÉCOMPTE','COUNTDOWN','CONTAGEM'],
+  'cap.hint':['Cale ton téléphone, cadre la scène, puis ▶ pour lancer le WOD','Prop your phone, frame the scene, then ▶ to start the WOD','Apoie o celular, enquadre a cena e ▶ para iniciar o WOD'],
+  'cap.silent':['🔊 Désactive le mode silencieux pour capturer le son','🔊 Turn off silent mode to record sound','🔊 Desative o modo silencioso para gravar o som'],
+  'cap.stop':['⏹ Terminer','⏹ Finish','⏹ Terminar'],
+  'cap.save':['⬇︎ Enregistrer / Partager','⬇︎ Save / Share','⬇︎ Salvar / Compartilhar'],
+  'cap.close':['Fermer','Close','Fechar'],
+  'a11y.back':['Retour','Back','Voltar'],
+  'a11y.minus30':['Moins 30 secondes','Minus 30 seconds','Menos 30 segundos'],
+  'a11y.plus30':['Plus 30 secondes','Plus 30 seconds','Mais 30 segundos'],
+  'title.new':['Nouveau WOD','New WOD','Novo WOD'],
+  'title.custom':['Personnaliser (modes, durée, work/rest EMOM)','Customize (modes, duration, EMOM work/rest)','Personalizar (modos, duração, work/rest EMOM)'],
+  'title.seances':['Séances préparées','Prepared sessions','Sessões preparadas'],
+  'title.reglages':['Réglages','Settings','Ajustes'],
   'nav.new':['NOUVEAU','NEW','NOVO'],
   'nav.custom':['MODIFIER','EDIT','EDITAR'],
   'nav.done':['TERMINÉ','DONE','CONCLUÍDO'],
@@ -3300,6 +3321,22 @@ function applyI18n(){
   document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
     const v=I18Nget(el.getAttribute('data-i18n-ph')); if(v!=null) el.setAttribute('placeholder',v);
   });
+  // 08/09/2026 : les libelles lus par VoiceOver et les infobulles suivaient la langue
+  // de personne. Meme mecanique que data-i18n, sur aria-label et title.
+  document.querySelectorAll('[data-i18n-aria]').forEach(el=>{
+    const v=I18Nget(el.getAttribute('data-i18n-aria')); if(v!=null) el.setAttribute('aria-label',v);
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(el=>{
+    const v=I18Nget(el.getAttribute('data-i18n-title')); if(v!=null) el.setAttribute('title',v);
+  });
+  // 08/09/2026 : les listes construites en JS gardaient la langue du premier rendu.
+  // Elles passent toutes par L3, il suffisait de les redessiner apres un changement.
+  [ 'renderFavs','renderFavsModal','renderMembers','refreshScoreMemberSelect',
+    'renderPersoModalList' ].forEach(function(f){
+    try{ if(typeof window[f]==='function') window[f](); }catch(e){}
+  });
+  // L'ecran Seances ne se redessine que s'il a deja quelque chose a montrer.
+  try{ if(typeof SQ!=='undefined' && SQ && typeof sqTout==='function') sqTout(); }catch(e){}
   refreshModeLabels();
   // Statut chrono au repos
   const st=document.getElementById('timerStatus');
@@ -5944,7 +5981,7 @@ function sqRendreBiblio(){
     f.addEventListener('click',function(){ sqOuvrirSeance(i); });
     var sup=document.createElement('button');
     sup.type='button'; sup.className='sq-outil'; sup.textContent='✕';
-    sup.setAttribute('aria-label','Supprimer la séance');
+    sup.setAttribute('aria-label',L3('Supprimer la séance','Delete session','Apagar sessão'));
     sup.addEventListener('click',function(ev){ ev.stopPropagation(); sqSupprimerSeance(i); });
     f.appendChild(sup);
     z.appendChild(f);
@@ -9356,19 +9393,19 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
 
 <div id="capStage">
   <canvas id="capCanvas"></canvas>
-  <div id="capHint">Cale ton téléphone, cadre la scène, puis ▶ pour lancer le WOD<br><span style="opacity:.85;font-weight:500">🔊 Désactive le mode silencieux pour capturer le son</span></div>
+  <div id="capHint"><span data-i18n="cap.hint">Cale ton téléphone, cadre la scène, puis ▶ pour lancer le WOD</span><br><span style="opacity:.85;font-weight:500" data-i18n="cap.silent">🔊 Désactive le mode silencieux pour capturer le son</span></div>
   <div id="capBar">
     <button id="capClose" onclick="REC.cancel()">✕</button>
     <button id="capPlay" onclick="togglePlay()">▶</button>
-    <button id="capStop" onclick="resetTimer()">⏹ Terminer</button>
+    <button id="capStop" onclick="resetTimer()" data-i18n="cap.stop">⏹ Terminer</button>
   </div>
 </div>
 <div id="capResult">
   <video id="capResultVid" playsinline controls></video>
   <pre id="capDiag" style="max-width:100%;max-height:26vh;overflow:auto;margin:0;padding:10px;background:rgba(0,0,0,.5);border-radius:8px;color:#8fe;font:11px/1.4 ui-monospace,Menlo,monospace;white-space:pre-wrap;word-break:break-word;"></pre>
   <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center">
-    <button id="capDownload" onclick="REC.shareFile()">⬇︎ Enregistrer / Partager</button>
-    <button onclick="document.getElementById('capResult').classList.remove('on')">Fermer</button>
+    <button id="capDownload" onclick="REC.shareFile()" data-i18n="cap.save">⬇︎ Enregistrer / Partager</button>
+    <button onclick="document.getElementById('capResult').classList.remove('on')" data-i18n="cap.close">Fermer</button>
   </div>
 </div>
 <video id="capCamSrc" playsinline muted style="display:none"></video>
@@ -9682,6 +9719,63 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
 (function (global) {
   "use strict";
 
+  // 08/09/2026 : le formulaire etait entierement en francais, quelle que soit la langue
+  // de l'app. Tous ses libelles passent maintenant par TEXTES, comme les deux boutons.
+  var TEXTES = {
+    fr: { coach: "Je suis coach", supprimer: "Supprimer mes données", confirme: "Supprimer définitivement tes informations ?", fait: "C'est supprimé.",
+          aria: "Inscription REPS", fermer: "Fermer", profil: "Mon profil",
+          chapo: "Pour te prévenir des nouveautés et suivre les salles où REPS tourne. Rien n'est envoyé sur tes adhérents.",
+          prenom: "Prénom", nom: "Nom", email: "Email", telephone: "Téléphone", salle: "Salle où tu t'entraînes", ville: "Ville",
+          facultatif: "(facultatif)",
+          consent: "J'accepte que REPS conserve ces informations pour me contacter au sujet de l'app. ",
+          confidentialite: "Politique de confidentialité",
+          envoyer: "Envoyer", envoi: "Envoi…", envoye: "C'est fait", plustard: "Plus tard",
+          errPrenom: "Il manque ton prénom.", errNom: "Il manque ton nom.",
+          errEmail: "Cet email ne ressemble pas à un email.", errSalle: "Il manque le nom de ta salle.",
+          errVille: "Il manque la ville.", errConsent: "Coche la case pour qu'on puisse enregistrer tes informations.",
+          errCle: "L'app n'arrive pas à s'authentifier. Réessaie après une mise à jour.",
+          errEnvoi: "L'envoi a échoué. Réessaie dans un instant." },
+    en: { coach: "I'm a coach", supprimer: "Delete my data", confirme: "Permanently delete your information?", fait: "Deleted.",
+          aria: "REPS sign-up", fermer: "Close", profil: "My profile",
+          chapo: "So we can tell you about what's new and know which gyms run REPS. Nothing about your members is sent.",
+          prenom: "First name", nom: "Last name", email: "Email", telephone: "Phone", salle: "Gym you train at", ville: "City",
+          facultatif: "(optional)",
+          consent: "I agree that REPS keeps this information to contact me about the app. ",
+          confidentialite: "Privacy policy",
+          envoyer: "Send", envoi: "Sending…", envoye: "Done", plustard: "Later",
+          errPrenom: "Your first name is missing.", errNom: "Your last name is missing.",
+          errEmail: "That doesn't look like an email address.", errSalle: "Your gym's name is missing.",
+          errVille: "The city is missing.", errConsent: "Tick the box so we can store your information.",
+          errCle: "The app can't authenticate. Try again after an update.",
+          errEnvoi: "Sending failed. Try again in a moment." },
+    pt: { coach: "Sou treinador", supprimer: "Apagar meus dados", confirme: "Apagar definitivamente suas informações?", fait: "Apagado.",
+          aria: "Cadastro REPS", fermer: "Fechar", profil: "Meu perfil",
+          chapo: "Para avisar você das novidades e saber em quais boxes o REPS roda. Nada sobre seus alunos é enviado.",
+          prenom: "Nome", nom: "Sobrenome", email: "Email", telephone: "Telefone", salle: "Box onde você treina", ville: "Cidade",
+          facultatif: "(opcional)",
+          consent: "Aceito que o REPS guarde estas informações para me contatar sobre o app. ",
+          confidentialite: "Política de privacidade",
+          envoyer: "Enviar", envoi: "Enviando…", envoye: "Pronto", plustard: "Mais tarde",
+          errPrenom: "Falta o seu nome.", errNom: "Falta o seu sobrenome.",
+          errEmail: "Isso não parece um email.", errSalle: "Falta o nome do seu box.",
+          errVille: "Falta a cidade.", errConsent: "Marque a caixa para podermos guardar suas informações.",
+          errCle: "O app não consegue se autenticar. Tente de novo após uma atualização.",
+          errEnvoi: "O envio falhou. Tente de novo em um instante." },
+  };
+
+  function langue() {
+    try {
+      if (typeof S !== "undefined" && S && S.lang) return S.lang;
+      return localStorage.getItem("reps_lang") || "fr";
+    } catch (e) {
+      return "fr";
+    }
+  }
+
+  function textes() {
+    return TEXTES[langue()] || TEXTES.fr;
+  }
+
   var CLE_PROFIL = "reps.inscription.profil";
   var CLE_FILE = "reps.inscription.file";
 
@@ -9850,40 +9944,41 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
   function ouvrir(options) {
     options = options || {};
     var role = options.role || "Coach";
+    var t = textes();
     var p = profil() || {};
 
     var fond = document.createElement("div");
     fond.className = "reps-insc-fond";
     fond.setAttribute("role", "dialog");
     fond.setAttribute("aria-modal", "true");
-    fond.setAttribute("aria-label", "Inscription REPS");
+    fond.setAttribute("aria-label", t.aria);
 
     fond.innerHTML =
       '<div class="reps-insc-carte">' +
-      '<button type="button" class="reps-insc-fermer" aria-label="Fermer">✕</button>' +
+      '<button type="button" class="reps-insc-fermer" aria-label="' + t.fermer + '">✕</button>' +
       '<h2 class="reps-insc-titre">' +
-      (role === "Coach" ? "Je suis coach" : "Mon profil") +
+      (role === "Coach" ? t.coach : t.profil) +
       "</h2>" +
-      '<p class="reps-insc-chapo">Pour te prévenir des nouveautés et suivre les salles où REPS tourne. Rien n\'est envoyé sur tes adhérents.</p>' +
+      '<p class="reps-insc-chapo">' + t.chapo + '</p>' +
       '<form class="reps-insc-form" novalidate>' +
-      champ("prenom", "Prénom", "text", p.prenom, true) +
-      champ("nom", "Nom", "text", p.nom, true) +
-      champ("email", "Email", "email", p.email, true) +
-      champ("telephone", "Téléphone", "tel", "", false) +
-      champ("salle", "Salle où tu t'entraînes", "text", p.salle, true) +
-      champ("ville", "Ville", "text", p.ville, true) +
+      champ("prenom", t.prenom, "text", p.prenom, true) +
+      champ("nom", t.nom, "text", p.nom, true) +
+      champ("email", t.email, "email", p.email, true) +
+      champ("telephone", t.telephone, "tel", "", false) +
+      champ("salle", t.salle, "text", p.salle, true) +
+      champ("ville", t.ville, "text", p.ville, true) +
       '<label class="reps-insc-consent">' +
       '<input type="checkbox" name="consentement"> ' +
-      "<span>J'accepte que REPS conserve ces informations pour me contacter au sujet de l'app. " +
+      "<span>" + t.consent +
       (config.urlConfidentialite
         ? '<a href="' +
           config.urlConfidentialite +
-          '" target="_blank" rel="noopener">Politique de confidentialité</a>.'
+          '" target="_blank" rel="noopener">' + t.confidentialite + '</a>.'
         : "") +
       "</span></label>" +
       '<p class="reps-insc-erreur" hidden></p>' +
-      '<button type="submit" class="reps-insc-valider">Envoyer</button>' +
-      '<button type="button" class="reps-insc-plustard">Plus tard</button>' +
+      '<button type="submit" class="reps-insc-valider">' + t.envoyer + '</button>' +
+      '<button type="button" class="reps-insc-plustard">' + t.plustard + '</button>' +
       "</form></div>";
 
     document.body.appendChild(fond);
@@ -9922,11 +10017,11 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
       }
 
       valider.disabled = true;
-      valider.textContent = "Envoi…";
+      valider.textContent = t.envoi;
 
       inscrire(d)
         .then(function () {
-          valider.textContent = "C'est fait";
+          valider.textContent = t.envoye;
           setTimeout(fermer, 700);
         })
         .catch(function (e) {
@@ -9934,10 +10029,10 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
             erreur.textContent = messageErreur(e.message);
             erreur.hidden = false;
             valider.disabled = false;
-            valider.textContent = "Envoyer";
+            valider.textContent = t.envoyer;
           } else {
             // Mis en file : pour l'utilisateur, c'est envoyé. Ça repartira tout seul.
-            valider.textContent = "C'est fait";
+            valider.textContent = t.envoye;
             setTimeout(fermer, 700);
           }
         });
@@ -9948,7 +10043,7 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
     return (
       '<label class="reps-insc-champ"><span>' +
       libelle +
-      (requis ? "" : " <em>(facultatif)</em>") +
+      (requis ? "" : " <em>" + textes().facultatif + "</em>") +
       "</span>" +
       '<input name="' +
       nom +
@@ -9976,22 +10071,24 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
   }
 
   function valider3(d) {
-    if (!d.prenom) return "Il manque ton prénom.";
-    if (!d.nom) return "Il manque ton nom.";
-    if (!/^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(d.email)) return "Cet email ne ressemble pas à un email.";
-    if (!d.salle) return "Il manque le nom de ta salle.";
-    if (!d.ville) return "Il manque la ville.";
-    if (!d.consentement) return "Coche la case pour qu'on puisse enregistrer tes informations.";
+    var t = textes();
+    if (!d.prenom) return t.errPrenom;
+    if (!d.nom) return t.errNom;
+    if (!/^[^\s@]+@[^\s@.]+\.[^\s@]{2,}$/.test(d.email)) return t.errEmail;
+    if (!d.salle) return t.errSalle;
+    if (!d.ville) return t.errVille;
+    if (!d.consentement) return t.errConsent;
     return null;
   }
 
   function messageErreur(code) {
+    var t = textes();
     return (
       {
-        email_invalide: "Cet email ne ressemble pas à un email.",
-        consentement_requis: "Coche la case pour qu'on puisse enregistrer tes informations.",
-        cle_invalide: "L'app n'arrive pas à s'authentifier. Réessaie après une mise à jour.",
-      }[code] || "L'envoi a échoué. Réessaie dans un instant."
+        email_invalide: t.errEmail,
+        consentement_requis: t.errConsent,
+        cle_invalide: t.errCle,
+      }[code] || t.errEnvoi
     );
   }
 
@@ -10030,6 +10127,7 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
   global.REPSInscription = {
     init: init,
     ouvrir: ouvrir,
+    textes: textes,
     inscrire: inscrire,
     profil: profil,
     estInscrit: estInscrit,
@@ -10054,6 +10152,8 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
   // une app qui collecte des données personnelles.
   var URL_CONFIDENTIALITE = "https://reps-app.vercel.app/confidentialite.html";
 
+  // Les libelles du formulaire vivent dans le module REPSInscription (un seul
+  // dictionnaire pour les deux modules). Repli en francais si l'autre n'a pas charge.
   var TEXTES = {
     fr: { coach: "Je suis coach", supprimer: "Supprimer mes données", confirme: "Supprimer définitivement tes informations ?", fait: "C'est supprimé." },
     en: { coach: "I'm a coach", supprimer: "Delete my data", confirme: "Permanently delete your information?", fait: "Deleted." },
@@ -10070,6 +10170,9 @@ window.addEventListener('DOMContentLoaded',()=>{ try{ majBadgeVoix(); }catch(e){
   }
 
   function textes() {
+    try {
+      if (window.REPSInscription && window.REPSInscription.textes) return window.REPSInscription.textes();
+    } catch (e) {}
     return TEXTES[langue()] || TEXTES.fr;
   }
 
