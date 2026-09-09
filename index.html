@@ -2828,6 +2828,14 @@ const ROUND_AUDIO={
   }
 };
 
+// PREROLL DU DECOMPTE (08/09/2026, demande de Francois : « laisse le temps a la voix
+// d'etre sur le tempo »). Une seconde de battement entre l'appui sur play et le « 10 ».
+// Elle sert a deux choses : le decodage audio et le deverrouillage iOS ont le temps de
+// finir avant le premier mot, et le coach a le temps de poser son telephone.
+// La MEME valeur decale l'affichage ET l'audio sur les trois chemins de launch(), sinon
+// l'image et le son se separent. On n'annonce pas « onze » : aucun pack n'a ce fichier.
+const PREROLL_MS=1000;
+
 const CD_TIMINGS={
   fr:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
   en:[{n:'10',t:0},{n:'9',t:1000},{n:'8',t:2000},{n:'7',t:3000},{n:'6',t:4000},{n:'5',t:5000},{n:'4',t:6000},{n:'3',t:7000},{n:'2',t:8000},{n:'1',t:9000},{n:'GO',t:10000}],
@@ -2876,7 +2884,17 @@ const VOIX_PACKS={
   // voixDisponible() qui le fait disparaitre du selecteur hors de ['en','pt'].
   // Il reste intact en anglais et en portugais, ou il est la voix par defaut.
   max :{dossier:'',           nom:'MUTANT', langues:['en','pt'], desc:['la voix de monstre (annonce en anglais)','the monster voice','a voz de monstro']},
-  nina:{dossier:'voix/nina/', nom:'MIKE',   langues:['en','pt'], repli:'en', desc:['le coach americain (annonce en anglais)','the american coach','o coach americano']},
+  // 09/09/2026, demande de Francois : MIKE disparait en francais, exactement comme
+  // MUTANT deux jours plus tot. Il etait declare ['en','pt'] depuis le 02/09, mais son
+  // `repli:'en'` le laissait quand meme apparaitre dans le selecteur en francais, ou il
+  // annoncait en anglais. On retire le repli : voixDisponible() le fait disparaitre hors
+  // de ['en','pt'], et un utilisateur qui l'avait en memoire bascule sur SAM (le premier
+  // pack de voixParDefaut() qui parle vraiment francais).
+  //
+  // A SAVOIR SI ON REVIENT DESSUS : voix/nina/ contient 38 fichiers FRANCAIS, jamais
+  // utilises. Pour le faire parler francais au lieu de le cacher, il suffit d'enlever
+  // `langues` — mais il faut les ecouter avant, ils n'ont jamais ete valides.
+  nina:{dossier:'voix/nina/', nom:'MIKE',   langues:['en','pt'], desc:['le coach americain (annonce en anglais)','the american coach','o coach americano']},
   sam :{dossier:'voix/sam/',  nom:'SAM',  desc:['le pote qui encourage','the mate who cheers','o parceiro que anima']},
   // EVA RETIREE LE 31/08/2026, decision de Francois.
   //
@@ -3968,15 +3986,42 @@ function _byoOff(){ // repasse en musique REPS quand l'utilisateur choisit un mi
 // (setActive(false, .notifyOthersOnDeactivation) cote Swift), mais la coupure initiale
 // existe. Pour la supprimer il faudrait que le natif lise la preference au demarrage.
 // A faire quand le reste sera valide sur iPhone, pas avant.
-function appliquerMixageAudio(){
+// ===== 09/09/2026 : ON NE RECONFIGURE PLUS LA SESSION AUDIO POUR RIEN =====
+//
+// Mesure, journal de l'iPhone de Francois, DEUXIEME wod, trois lignes de suite :
+//   25:27.740  launch(decompte horloge audio)        <- on arme onze sons
+//   25:27.765  session audio: mixage={"mix":false}
+//   25:28.096  AudioContext -> suspended             <- 330 ms plus tard
+// Puis count-en-10, arme pour 25:28,7, joue a 25:32,9. Quatre secondes de retard,
+// et un decompte qui part en marche d'escalier.
+//
+// C'EST L'APP QUI SE COUPE L'HERBE SOUS LE PIED. setAudioMixing reconfigure
+// AVAudioSession cote natif, et WebKit suspend l'AudioContext derriere. launch()
+// l'appelle a CHAQUE lancement, alors que la valeur envoyee ne change presque
+// jamais : `false` en musique REPS, `true` en « Ma musique ». On reconfigurait une
+// session audio pour la remettre dans l'etat ou elle etait deja.
+//
+// Desormais on n'appelle le natif que si la valeur CHANGE vraiment. Premier
+// lancement de la session : elle change (rien -> false), donc l'appel a lieu.
+// Wods suivants : plus rien, et l'horloge reste debout.
+//
+// Le memo est remis a zero au retour d'arriere-plan : la session audio a pu etre
+// reprise par une autre app entre-temps, on ne fait pas confiance a notre memoire
+// dans ce cas-la.
+let _mixApplique=null;   // dernier mix reellement envoye au natif, null = inconnu
+function appliquerMixageAudio(force){
   try{
     const VO=_videoOverlayPlugin();
     if(!VO || typeof VO.setAudioMixing!=='function') return;
-    VO.setAudioMixing({mix: !!byoMusic})
+    const veut = !!byoMusic;
+    if(!force && _mixApplique===veut){ DBG('session audio: deja en mix='+veut+', on ne touche pas'); return; }
+    _mixApplique=veut;
+    VO.setAudioMixing({mix: veut})
       .then(r=>DBG('session audio: mixage='+JSON.stringify(r)))
-      .catch(e=>DBG('session audio: bascule refusee : '+((e&&e.message)||e)));
-  }catch(e){ DBG('session audio: '+((e&&e.message)||e)); }
+      .catch(e=>{ _mixApplique=null; DBG('session audio: bascule refusee : '+((e&&e.message)||e)); });
+  }catch(e){ _mixApplique=null; DBG('session audio: '+((e&&e.message)||e)); }
 }
+try{ document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) _mixApplique=null; }); }catch(e){}
 // Tuile "MA MUSIQUE" de l'écran wizard : active le mode BYO et ferme le wizard, comme
 // une tuile catégorie. REPS ne jouera aucun morceau, le client met sa propre musique.
 function chooseByoMusic(){
@@ -4453,12 +4498,32 @@ function ensureAudioCtx(){
   if(!audioCtx){
     const Ctx=window.AudioContext||window.webkitAudioContext;
     if(Ctx) audioCtx=new Ctx();
+    // Trace des bascules. Sans elle, un contexte qui se suspend entre deux wod est
+    // invisible : c'est ce qui a coute plusieurs semaines sur le « pas de son au
+    // deuxieme EMOM ». Une ligne par changement, ca ne coute rien.
+    try{ audioCtx.onstatechange=()=>{ try{ DBG('AudioContext -> '+audioCtx.state); }catch(e){} }; }catch(e){}
   }
   if(audioCtx && audioCtx.state==='suspended'){
     audioCtx.resume().catch(()=>{});
   }
   return audioCtx;
 }
+
+// ===== RELANCE DE L'HORLOGE A CHAQUE GESTE (09/09/2026) =====
+// iOS suspend l'AudioContext des que la session audio bouge (changement de sortie,
+// interruption, retour d'arriere-plan) et ne le relance QUE dans un geste utilisateur.
+// resume() appele ailleurs reste en attente — mesure : vingt secondes d'attente sur
+// l'iPhone de Francois, jusqu'au geste suivant, qui etait un appui sur le logo.
+// On raccroche donc la relance a tout appui, en capture pour passer avant les
+// handlers de l'app. C'est un no-op quand le contexte tourne deja.
+try{
+  const _relance=()=>{ try{ if(audioCtx && audioCtx.state==='suspended') audioCtx.resume().catch(()=>{}); }catch(e){} };
+  document.addEventListener('pointerdown', _relance, {capture:true, passive:true});
+  document.addEventListener('touchstart',  _relance, {capture:true, passive:true});
+  // Retour au premier plan : meme cas, mais ce n'est pas un geste. On tente quand
+  // meme, et le prochain appui finira le travail si iOS refuse.
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) _relance(); });
+}catch(e){}
 
 // ===== BUS AUDIO ENREGISTRABLE (pour la capture vidéo AVEC le son) =====
 // Objectif : capturer la musique + les voix DANS la vidéo, sans micro.
@@ -4918,6 +4983,52 @@ function playAnnounceEl(src, onFail){
     if(_naLoaded[VPid(src)]) nativeVoicePlay(src);
     else nativeVoicePreload(src).then(()=>nativeVoicePlay(src));
     return true;
+  }
+
+  // ===== 09/09/2026 : LES ANNONCES DU WOD PASSENT PAR LA WEB AUDIO =====
+  //
+  // Mesure, journal de l'iPhone de Francois, EMOM 10 s / 10 s, 2 rounds :
+  //   08:55  en-3    SON  t=0.05s rs=4
+  //   08:56  en-2    MUET currentTime=0 rs=4
+  //   09:05  en-3    rien sorti, rs=0
+  //   09:08  round-2 rien sorti, rs=0
+  // rs=0 = HAVE_NOTHING : l'element a un src et AUCUNE donnee. A partir de la
+  // trentieme seconde, plus une seule annonce ne sort.
+  //
+  // LA CAUSE, et elle est deja ecrite dans ce fichier. Le pool _elRing fait SIX
+  // elements recycles, et son commentaire dit qu'il suffit « parce qu'une annonce
+  // dure moins d'une seconde et qu'il n'y en a jamais six a la fois ». C'est vrai
+  // pour un AMRAP. C'est faux pour un EMOM court : 3, 2, 1, REST, puis 3, 2, 1,
+  // ROUND, soit quatre annonces toutes les dix secondes. Le pool boucle en quinze
+  // secondes et chaque element est reaffecte avant d'avoir fini de charger. C'est
+  // MOT POUR MOT le bug du decompte de depart du 27/08, corrige a l'epoque en
+  // donnant au decompte ses onze elements dedies. Les annonces sont restees sur le
+  // pool tournant, et personne n'y est revenu.
+  //
+  // On ne rallonge pas le pool : ce serait repousser le meme mur. On prend le chemin
+  // qui n'a pas ce defaut et qui existe deja ici comme secours — des buffers decodes
+  // joues par la Web Audio. Pas de src a recharger, pas d'element a recycler, pas de
+  // filet a 140 ms, donc l'annonce tombe sur la seconde au lieu d'arriver en retard
+  // ou pas du tout. Les buffers sont deja prechargees par launch()
+  // (preloadCountBuffers, preloadRoundBuffers qui charge aussi le REST) et
+  // jouerAnnonceWA garde son propre cache pour tout le reste.
+  //
+  // Le pool <audio> reste en place et redevient le secours : si l'AudioContext n'est
+  // pas 'running' (iOS l'a suspendu), on retombe sur l'ancien chemin, inchange.
+  if(!_busActive){
+    try{
+      const _ctx=ensureAudioCtx();
+      if(_ctx && _ctx.state==='running'){
+        // onFail EST le chemin Web Audio du son concerne : playCountWA(n),
+        // playRestWA(), playRoundWA(n). Quand il existe, il est meilleur que le
+        // generique, car son buffer est prechargee sous sa propre cle.
+        if(onFail){ DBG('annonce WA '+src); onFail(); return true; }
+        DBG('annonce WA '+src+' (generique)');
+        jouerAnnonceWA(src);
+        return true;
+      }
+      DBG('annonce '+src+' : AudioContext '+(_ctx?_ctx.state:'absent')+', repli <audio>');
+    }catch(e){ DBG('annonce WA KO '+((e&&e.name)||e)+', repli <audio>'); }
   }
   try{
     const a=_elFor(src);
@@ -5558,8 +5669,13 @@ function startVisualCountdown(){
   const numEl=document.getElementById('cdNum');
   const subEl=document.getElementById('cdSub');
   overlay.classList.add('show');
+  // Pendant la seconde de battement, l'ecran ne montre pas encore de chiffre : il garderait
+  // sinon celui du WOD precedent. Le cercle et le mot DECOMPTE sont deja la, l'utilisateur
+  // voit que ca demarre.
+  numEl.textContent=''; numEl.className='cd-num';
+  subEl.textContent=I18Nget('cd.sub')||'';
   S.cdTimers=[];
-  const visSteps=timings.map(step=>({t:step.t,fn:()=>{
+  const visSteps=timings.map(step=>({t:PREROLL_MS+step.t,fn:()=>{
       const isGo=step.n==='GO';
       numEl.textContent=isGo?'GO !':step.n;
       numEl.className='cd-num'+(isGo?' go':'');
@@ -6961,7 +7077,7 @@ function launch(){
     // Web Audio (`source.start(when)`), précise à l'échantillon et indépendante du thread.
     // Buffers déjà préchargés par preloadRecCountdown() à l'armement de la caméra.
     const ctx=ensureAudioCtx();
-    const lead=0.12;                              // petite marge pour armer les sources
+    const lead=PREROLL_MS/1000;                   // preroll commun aux trois chemins (08/09/2026)
     const anchor=ctx?ctx.currentTime+lead:0;
     const gainVol=Math.min(vol*2.0,1.0);
     S.cdWA=[];
@@ -7007,9 +7123,32 @@ function launch(){
   // natif, par-dessus Spotify). Sinon on retombe sur le chemin <audio> d'origine,
   // inchange, juste en dessous.
   const _listeAvecSignal=SIGNAL_DEPART_REMPLACE_VOIX?countAudioList:countAudioList.concat([START_AUDIO]);
-  if(!nativeVoiceOn() && ensureAudioCtx() && decompteBuffersPrets(_listeAvecSignal)){
+  // ===== 09/09/2026 : ON N'ARME PLUS RIEN SUR UNE HORLOGE A L'ARRET =====
+  //
+  // Mesure, journal de l'iPhone de Francois, DEUXIEME wod de la session :
+  //   13:12  count-en-10.mp3 JAMAIS JOUE (arme a +0.00s, ctx=suspended)
+  //   ...  les onze fichiers, tous suspended ...
+  //   13:30  count-en-10.mp3 JOUE        <- vingt secondes plus tard, en rafale
+  // C'est le « pas de son sauf au bout de 20 secondes ». Le chiffre n'est pas une
+  // coincidence : c'est le temps qu'iOS a mis a relancer l'AudioContext.
+  //
+  // POURQUOI SEULEMENT AU DEUXIEME WOD. Au premier, les buffers ne sont pas encore
+  // decodes, donc decompteBuffersPrets() repond non et on prend le chemin <audio>,
+  // qui marche. Le premier wod les precharge. Au second, la condition passe, le code
+  // bascule sur l'horloge Web Audio, et tombe sur un contexte suspendu.
+  //
+  // ensureAudioCtx() appelle bien resume(), mais resume() est ASYNCHRONE : il rend la
+  // main immediatement, le contexte est encore 'suspended', et on arme onze sons sur
+  // une horloge dont currentTime n'avance pas. Ils partent tous quand elle repart.
+  //
+  // On exige donc l'etat 'running' AVANT de choisir ce chemin. Suspendu, on prend le
+  // chemin <audio> — celui du premier wod, celui qui marche — et le resume() lance en
+  // arriere-plan aura fini pour le wod suivant.
+  const _ctxOk = (function(){ const c=ensureAudioCtx(); const ok=!!(c && c.state==='running');
+    if(c && !ok) DBG('decompte: AudioContext '+c.state+' -> chemin <audio>'); return ok; })();
+  if(!nativeVoiceOn() && _ctxOk && decompteBuffersPrets(_listeAvecSignal)){
     const ctx=audioCtx;
-    const lead=0.12;                       // marge pour armer les sources
+    const lead=PREROLL_MS/1000;            // preroll commun aux trois chemins (08/09/2026)
     const anchor=ctx.currentTime+lead;
     const gainVol=Math.min(vol*2.0,1.0);
     S.cdWA=[];
@@ -7108,9 +7247,12 @@ function launch(){
   }
   cdSteps.push({t:10500+_onset0,fn:()=>startChrono()});
   cdSteps.push({t:10800+_onset0,fn:()=>{ duckEnd(_duckDepart); }});
+  // Preroll : ce chemin planifie a partir de Date.now(), on decale donc tout le programme
+  // d'un bloc. Les deux autres chemins le font par leur `lead`.
+  cdSteps.forEach(function(st){ st.t+=PREROLL_MS; });
   cdSteps.sort((a,b)=>a.t-b.t);
   DBG('launch: mode='+S.mode+' total='+S.total+'s work='+(S.emomIntervalSec||0)+' rest='+(S.emomRestSec||0)+' rounds='+(S.emomRounds||0));
-  S.cdT0=Date.now(); // top réel du décompte, pour caler l'overlay vidéo dessus
+  S.cdT0=Date.now()+PREROLL_MS; // top réel du décompte, pour caler l'overlay vidéo dessus
   S.cdSched=runAbsSchedule(cdSteps,10);
 }
 
@@ -7217,7 +7359,22 @@ function startChrono(){
       if(S.mode==='tabata'){ tabataPhaseEnd(); S.t0=Date.now(); S.startRemain=S.remain; }
       else end();
     }
-  },200);
+  // CADENCE DU CHRONO — 200 ms jusqu'au 08/09/2026, 20 ms depuis. C'est LA cause du
+  // « 3-2-1 souvent trop rapide ».
+  // Cette boucle est calee sur l'horloge reelle, donc elle ne DERIVE pas : le probleme
+  // n'etait pas la. Mais une annonce ne part qu'au premier reveil qui suit le passage de
+  // la seconde, avec un retard aleatoire de 0 a la periode. A 200 ms, deux annonces
+  // consecutives pouvaient donc etre espacees de 800 a 1200 ms, au hasard : d'ou le
+  // « souvent », et d'ou l'impression que le 3-2-1 accelere.
+  // Le decompte de DEPART avait deja ete passe a 10 ms le 31/08 pour cette raison exacte,
+  // avec ce commentaire : « a 50 ms, deux chiffres pouvaient etre espaces de 950 a
+  // 1050 ms [...] 100 ms d'ecart s'entendent ». Le chrono du WOD, lui, etait reste a
+  // 200 ms, soit quatre fois le cas juge deja audible. A 20 ms l'ecart maximal tombe a
+  // 20 ms, sous le seuil de perception.
+  // Cout : 50 reveils par seconde au lieu de 5, et 49 fois sur 50 la fonction sort a la
+  // premiere ligne (`if(target>=S.remain) return`). Le decompte de depart tourne deja a
+  // 10 ms sans probleme.
+  },20);
   S.iv=myIv;
 }
 
