@@ -1,5 +1,23 @@
 // R.E.P.S Service Worker — mode hors-ligne
-const CACHE_NAME = 'reps-v211';
+// ===== 09/09/2026 : v212, ET POURQUOI CE NUMERO DOIT BOUGER =====
+// Le commentaire du gestionnaire fetch, plus bas, affirmait que « les mp3 et les
+// images ne changent pas en place ». C'est faux, et ca a coute une soiree.
+// Le 09/09 a 12h30 voix/sam/time.mp3 a ete remplace (le TIME anglais avait perdu son
+// attaque). Le nom du cache, lui, datait du commit precedent. Resultat : le telephone
+// a continue de servir l'ANCIEN mp3 depuis reps-v211, build apres build, et le
+// correctif n'est jamais arrive. On a cherche le bug dans le son alors qu'il etait
+// dans le cache.
+// REGLE : tout changement d'un fichier audio ou d'une image OBLIGE a incrementer ce
+// numero. C'est la seule chose qui purge le cache du telephone.
+// 10/09/2026 : v213. TIME en anglais pour toutes les voix et toutes les langues
+// (demande de Francois) : voix/sam/time.mp3 et time-pt.mp3 <- time-fr.mp3 de SAM,
+// time-pt.mp3 (MUTANT) <- time.mp3, voix/nina/time-pt.mp3 (MIKE) <- time.mp3.
+// 10/09/2026 : v214. voix/leo/time-fr.mp3 regenere : LEO dit TIME au lieu de « Temps ».
+// 10/09/2026 : v215. voix/nina/count-pt-1.mp3 (MIKE « Um ») remplace par le mot
+// genere seul, valide a l'oreille par Francois (variante B).
+// 10/09/2026 : v216. enc-1..4.mp3 (MUTANT anglais) ajoutes, voix/sam/enc-3-fr.mp3 refait.
+// 10/09/2026 : v217. enc-1..4-pt.mp3 (MUTANT portugais) ajoutes.
+const CACHE_NAME = 'reps-v217';
 const ASSETS = [
   '/',
   '/index.html',
@@ -95,7 +113,9 @@ self.addEventListener('fetch', (event) => {
   // Le cache-first servait l'ancien index.html au lancement suivant un deploiement :
   // la nouvelle version n'apparaissait qu'au DEUXIEME lancement. Pour la page elle-meme
   // on interroge donc le reseau d'abord, avec repli sur le cache si on est hors ligne.
-  // Les mp3 et les images restent en cache-first, ils ne changent pas en place.
+  // Les mp3 et les images restent en cache-first. ATTENTION : ils PEUVENT changer en
+  // place (mesure le 09/09 sur voix/sam/time.mp3). Le cache-first ne se corrige alors
+  // que par un CACHE_NAME neuf. Cf. le bloc en tete de ce fichier.
   const _estPage = event.request.mode === 'navigate'
     || (event.request.destination === 'document')
     || /\/(index\.html)?$/.test(new URL(event.request.url).pathname);

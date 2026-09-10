@@ -4354,7 +4354,16 @@ let _duckCount=0; // nombre de ducks ouverts (miroir de _ducks.size, lu ailleurs
 // 0.10) et pendant le 3-2-1 d'un round (0.05 -> 0.10). C'est voulu, c'est le meme
 // niveau partout. Les trois noms restent : ils disent OU le duck s'applique, plus a
 // quelle profondeur.
-const DUCK_VOIX     = 0.10;  // toutes les annonces        (-20 dB)
+// 09/09/2026 au soir : 0.10 (-20 dB) etait trop profond. Il n'avait jamais ete
+// entendu correctement : le premier wod n'etait pas ducke du tout (musique non
+// routee en Web Audio, et el.volume ne fait rien sur iPhone), donc Francois
+// comparait un wod sans ducking a un wod avec. Une fois le routage repare, il a
+// regle a l'oreille avec le bouton DUCK et s'est arrete a 0.60.
+// RESERVE ASSUMEE : le reglage a ete fait sur le haut-parleur d'un iPhone, pas sur
+// une sono de box. En salle c'est la voix qui se fait ecraser, pas l'inverse
+// (Francois, 07/09 : « les voix ne sont pas assez fortes en salle »). A REVERIFIER
+// SUR UNE VRAIE SONO, et c'est ici que ca se change, nulle part ailleurs.
+const DUCK_VOIX     = 0.60;  // toutes les annonces        (-4,4 dB)
 const DUCK_ANNONCE  = DUCK_VOIX;  // ROUND / REST / TIME
 const DUCK_CRUNCH   = DUCK_VOIX;  // decompte 3-2-1 d'un round EMOM
 const DUCK_DECOMPTE = DUCK_VOIX;  // decompte 10 -> GO du depart
@@ -4375,6 +4384,31 @@ function niveauVoix(){
   const v=el?parseInt(el.value):100;
   return isFinite(v)?Math.max(0,Math.min(1,v/100)):1;
 }
+
+// ===== UN SEUL GAIN POUR TOUTES LES VOIX, 09/09/2026 =====
+//
+// Il y en avait DEUX, et ils ne se connaissaient pas :
+//   - Math.min(vol*2.0, 1.0)  -> decompte de depart (launch) et playVoiceFile
+//                                (TIME, 10 SECONDES, mi-parcours)
+//   - niveauVoix()            -> playBufferNow (le 3-2-1 d'un round EMOM),
+//                                playRestBufferNow, playRoundBufferNow,
+//                                jouerAnnonceWA, playAnnounceEl
+//
+// Consequence, decrite par Francois le 09/09 : « sur le decompte le son est la,
+// mais apres le REST le 3/2/1 baisse, ca n'a aucune logique ». Il y en avait une :
+// des que le curseur Voix descend sous 100 %, le decompte reste sature a 1.0 grace
+// au x2 plafonne, tandis que les annonces suivent le curseur. A 60 % l'ecart fait
+// 4,4 dB ; a 50 %, 6 dB, soit la moitie du volume percu.
+//
+// C'est aussi la vraie moitie de la remarque du 07/09, « time et 10 secondes
+// s'entendaient, mais pas ROUND / REST / le decompte » : on l'avait entierement
+// mise sur le compte du pool <audio>, alors que TIME passe par playVoiceFile, donc
+// par le chemin fort, et ROUND/REST par le chemin faible.
+//
+// Desormais toutes les voix passent ici. Le plafond a 1.0 est conserve : le gain ne
+// peut jamais depasser le niveau du fichier, donc aucun risque de saturation.
+// Le bip et le tick restent sur niveauVoix() : ce ne sont pas des voix.
+function gainVoix(){ return Math.min(niveauVoix()*2.0, 1.0); }
 // REGISTRE DES DUCKS (refonte du 22/08/2026)
 //
 // Avant, il y avait DEUX mecanismes concurrents pour baisser la musique :
@@ -4390,6 +4424,40 @@ function niveauVoix(){
 // Desormais un seul registre. Chaque annonce ouvre un duck et le referme par son id.
 // Tant qu'il reste un duck ouvert la musique reste baissee, et c'est le PLUS PROFOND
 // qui commande.
+// ===== PROFONDEUR DU DUCK, REGLABLE A CHAUD (09/09/2026) =====
+// 0.10 (-20 dB) est le dosage aligne le 07/09. Mesure a l'usage : en AMRAP il passe,
+// les annonces sont rares. En EMOM 10/10 il y a quatre annonces toutes les dix
+// secondes, la musique passe donc la majorite du wod a 10 % et Francois l'entend
+// comme « la musique disparait puis revient plus faible ». Ce n'est pas une panne,
+// c'est le reglage.
+//
+// Le probleme n'etait pas la valeur, c'etait qu'il fallait un build par valeur
+// essayee. On la rend donc reglable depuis le panneau de debug, bouton DUCK, et on
+// la retient. Le panneau n'existe qu'en build Debug : rien de tout ceci n'atteint un
+// client. Quand la valeur sera validee a l'oreille sur une sono, elle redevient la
+// constante DUCK_VOIX et ce bloc peut sauter.
+let _duckNiveau=DUCK_VOIX;
+// L'override n'existe qu'en build Debug : en Release le bouton DUCK n'existe pas,
+// donc la constante ci-dessus est la seule verite pour un utilisateur.
+try{ if(dbgAutorise()){ const _v=parseFloat(localStorage.getItem('reps_duck')); if(isFinite(_v)&&_v>0&&_v<=1) _duckNiveau=_v; } }catch(e){}
+const DUCK_PALIERS=[0.10,0.20,0.30,0.45,0.60,0.75,1.00];  // 1.00 = plus de ducking du tout
+function duckNiveauCourant(){ return _duckNiveau; }
+function duckReglerNiveau(v){
+  if(!(isFinite(v)&&v>0&&v<=1)) return;
+  _duckNiveau=v;
+  try{ localStorage.setItem('reps_duck', String(v)); }catch(e){}
+  // Les ducks deja ouverts adoptent la nouvelle profondeur : le reglage s'entend
+  // immediatement, sans attendre l'annonce suivante.
+  try{ for(const k of _ducks.keys()) _ducks.set(k, _duckNiveau); }catch(e){}
+  appliquerNiveauMusique();
+  DBG('duck: profondeur -> '+Math.round(_duckNiveau*100)+'% ('+(20*Math.log10(_duckNiveau)).toFixed(0)+' dB)');
+}
+function duckPalierSuivant(){
+  let i=DUCK_PALIERS.indexOf(_duckNiveau);
+  if(i<0){ i=0; for(let j=0;j<DUCK_PALIERS.length;j++) if(Math.abs(DUCK_PALIERS[j]-_duckNiveau)<0.001) i=j; }
+  duckReglerNiveau(DUCK_PALIERS[(i+1)%DUCK_PALIERS.length]);
+}
+
 const _ducks=new Map();  // id -> niveau (0..1)
 let _duckSeq=0;
 function niveauMusique(){
@@ -4401,7 +4469,10 @@ function niveauMusique(){
 function appliquerNiveauMusique(){ if(musicAudio) setElVolume(musicAudio, niveauMusique()); }
 function duckStart(niveau){
   const id=++_duckSeq;
-  _ducks.set(id, (isFinite(niveau)&&niveau>0&&niveau<=1)?niveau:DUCK_ANNONCE);
+  // Tous les appelants passent aujourd'hui la meme valeur (DUCK_VOIX). On honore donc
+  // le reglage a chaud, sauf si un appelant demande explicitement AUTRE chose.
+  const _demande=(isFinite(niveau)&&niveau>0&&niveau<=1)?niveau:DUCK_ANNONCE;
+  _ducks.set(id, (Math.abs(_demande-DUCK_VOIX)<0.0001)?_duckNiveau:_demande);
   _duckCount=_ducks.size;
   appliquerNiveauMusique();
   return id;
@@ -4416,6 +4487,44 @@ function duckEnd(id){
 }
 // Remise a plat : fin de WOD, reset, coupure de toutes les annonces.
 function duckResetAll(){ _ducks.clear(); _duckCount=0; appliquerNiveauMusique(); }
+
+// ===== SONDE MUSIQUE, 09/09/2026 =====
+// POURQUOI. _watchMusic n'ecoute que des evenements de PANNE (error, stalled, waiting,
+// suspend...). Une musique qui joue trop fort, trop bas, ou pas du tout n'en emet
+// aucun : entre 'suspend' et la fin du wod le journal est vide, et on a passe trois
+// tours a corriger des mecanismes lus dans le code sans jamais mesurer l'effet. C'est
+// exactement la faute corrigee sur les voix le 07/09, refaite sur la musique.
+//
+// Une ligne par seconde, seulement pendant un wod. Elle dit ce qu'on n'avait jamais :
+//   t      = la tete de lecture avance-t-elle VRAIMENT (pas juste « play() a reussi »)
+//   gain   = la valeur REELLE du GainNode, seul volume qui compte sur iPhone
+//   voulu  = ce que niveauMusique() demande. gain != voulu => le duck ne s'applique pas
+//   ducks  = combien sont ouverts, et le plus profond (un duck reste ouvert = musique
+//            baissee pour toujours, invisible autrement)
+//   route  = false => pas de GainNode, el.volume pilote, et el.volume NE FAIT RIEN
+//            sur iPhone : le ducking est alors totalement inerte.
+// A retirer quand le son sera valide a l'oreille.
+let _sondeMusiqueId=null;
+function sondeMusique(){
+  try{
+    if(!(S.state==='playing'||S.state==='launching')) return;
+    const el=musicAudio;
+    if(!el){ DBG('sonde: musicAudio ABSENT'); return; }
+    let gain='n/a', route=false;
+    try{ const g=_gainParEl.get(el); if(g){ gain=g.gain.value.toFixed(3); route=true; } }catch(e){}
+    let profond=1; try{ for(const v of _ducks.values()) if(v<profond) profond=v; }catch(e){}
+    DBG('sonde: t='+(el.currentTime||0).toFixed(2)+'s'
+      +' pause='+el.paused+' rs='+el.readyState
+      +' route='+route+' gain='+gain
+      +' voulu='+niveauMusique().toFixed(3)
+      +' elVolume='+(el.volume!==undefined?el.volume.toFixed(2):'?')
+      +' ducks='+_ducks.size+(_ducks.size?(' profond='+profond.toFixed(2)):''));
+  }catch(e){}
+}
+// Echafaudage de diagnostic : ne tourne qu'en build Debug. Un utilisateur n'a
+// aucune raison de payer une minuterie par seconde pour un journal qu'il ne verra
+// jamais. A retirer completement quand le son sera fige.
+try{ if(dbgAutorise()) _sondeMusiqueId=setInterval(sondeMusique,1000); }catch(e){}
 
 function playBeep(){
   if(nativeVoiceOn()){ nativeVoicePlay(BEEP_AUDIO); return; }
@@ -4501,7 +4610,32 @@ function ensureAudioCtx(){
     // Trace des bascules. Sans elle, un contexte qui se suspend entre deux wod est
     // invisible : c'est ce qui a coute plusieurs semaines sur le « pas de son au
     // deuxieme EMOM ». Une ligne par changement, ca ne coute rien.
-    try{ audioCtx.onstatechange=()=>{ try{ DBG('AudioContext -> '+audioCtx.state); }catch(e){} }; }catch(e){}
+    try{ audioCtx.onstatechange=()=>{
+      try{ DBG('AudioContext -> '+audioCtx.state); }catch(e){}
+      // ===== RATTRAPAGE DU ROUTAGE, 09/09/2026 =====
+      // Mesure, journal de l'iPhone de Francois, PREMIER wod apres ouverture de l'app :
+      //   30:44.370  session audio: mixage={"mix":false}   <- l'appel natif suspend le contexte
+      //   30:44.379  AudioContext -> running               <- il repart, mais 9 ms trop tard
+      //   (aucune ligne « musique routee en Web Audio »)
+      // startMusic() est passe entre les deux, sur un contexte suspendu, et
+      // mixAttachMusic a refuse de router — a raison, router dans un contexte suspendu
+      // rendrait la musique muette. Mais sans GainNode le volume retombe sur el.volume,
+      // qui NE FAIT RIEN sur iPhone : le ducking etait donc totalement inerte pendant
+      // tout le premier wod, musique a 100 %. Au deuxieme wod le natif n'est plus
+      // appele, le contexte reste debout, le routage passe, et le ducking se met a
+      // marcher. C'est ce que Francois entend comme « le son baisse au deuxieme wod ».
+      // Il ne baisse pas : il est enfin regle.
+      //
+      // Le contexte repartait deja tout seul (relance au geste). Ce qui manquait, c'est
+      // que personne ne revenait rattacher la musique. On le fait ici.
+      try{
+        if(audioCtx.state==='running' && musicAudio && !_busRouted.has(musicAudio)){
+          mixAttachMusic(musicAudio);
+          appliquerNiveauMusique();
+          DBG('musique: rattrapage du routage apres reprise du contexte');
+        }
+      }catch(e){}
+    }; }catch(e){}
   }
   if(audioCtx && audioCtx.state==='suspended'){
     audioCtx.resume().catch(()=>{});
@@ -4554,7 +4688,10 @@ const _gainParEl=new WeakMap(); // element -> GainNode qui porte reellement son 
 function mixAttachMusic(el){
   if(!el || _busRouted.has(el)) return;
   const ctx=ensureAudioCtx();
-  if(!ctx || ctx.state!=='running') return;   // on reessaiera au morceau suivant
+  // Un refus silencieux ici a coute une soiree le 09/09 : la musique jouait, personne
+  // ne voyait qu'elle jouait SANS gain node, donc sans ducking possible. On le dit.
+  // Le rattrapage se fait sur onstatechange (cf. ensureAudioCtx).
+  if(!ctx || ctx.state!=='running'){ try{DBG('mix: musique NON routee, AudioContext '+(ctx?ctx.state:'absent')+' -> ducking inerte, rattrapage a la reprise');}catch(_){} return; }
   try{
     const node=ctx.createMediaElementSource(el);
     const g=ctx.createGain();
@@ -4966,7 +5103,7 @@ function jouerAnnonceWA(src){
     if(!buf) return;
     try{
       const s=ctx.createBufferSource(); s.buffer=buf;
-      const g=ctx.createGain(); g.gain.value=niveauVoix();
+      const g=ctx.createGain(); g.gain.value=gainVoix();
       s.connect(g); g.connect(ctx.destination); busAttachGain(g);
       const id=duckStart();
       s.onended=()=>duckEnd(id);
@@ -5022,8 +5159,8 @@ function playAnnounceEl(src, onFail){
         // onFail EST le chemin Web Audio du son concerne : playCountWA(n),
         // playRestWA(), playRoundWA(n). Quand il existe, il est meilleur que le
         // generique, car son buffer est prechargee sous sa propre cle.
-        if(onFail){ DBG('annonce WA '+src); onFail(); return true; }
-        DBG('annonce WA '+src+' (generique)');
+        if(onFail){ DBG('annonce WA '+src+' gain='+gainVoix().toFixed(2)); onFail(); return true; }
+        DBG('annonce WA '+src+' (generique) gain='+gainVoix().toFixed(2));
         jouerAnnonceWA(src);
         return true;
       }
@@ -5035,7 +5172,7 @@ function playAnnounceEl(src, onFail){
     try{a.muted=false;}catch(e){} // garantir non-muet malgré un déverrouillage async en cours
     mixAttachVoix(a);              // le gain porte le volume ; sur iPhone el.volume ne fait rien
     busAttachEl(a);
-    setElVolume(a, niveauVoix());
+    setElVolume(a, gainVoix());
     DBG('play <audio> '+src);
     // Meme mesure d'effet que sur le decompte de depart : c'est ce chemin qui porte
     // le 3-2-1 de fin de round en EMOM, et lui non plus ne disait rien quand un
@@ -5124,7 +5261,7 @@ function playBufferNow(buf, num){
   const source=ctx.createBufferSource();
   source.buffer=buf;
   const gain=ctx.createGain();
-  gain.gain.value=niveauVoix(); // etait fige a 1.0 : le curseur Voix n'avait aucun effet
+  gain.gain.value=gainVoix(); // etait fige a 1.0, puis au curseur brut : cf. gainVoix()
   source.connect(gain);
   gain.connect(ctx.destination);
   busAttachGain(gain);
@@ -5201,7 +5338,7 @@ function playRestBufferNow(buf){
   const source=ctx.createBufferSource();
   source.buffer=buf;
   const gain=ctx.createGain();
-  gain.gain.value=niveauVoix();
+  gain.gain.value=gainVoix();
   source.connect(gain);
   gain.connect(ctx.destination);
   busAttachGain(gain);
@@ -5238,7 +5375,7 @@ function playRoundBufferNow(buf){
   const source=ctx.createBufferSource();
   source.buffer=buf;
   const gain=ctx.createGain();
-  gain.gain.value=niveauVoix();
+  gain.gain.value=gainVoix();
   source.connect(gain);
   gain.connect(ctx.destination);
   busAttachGain(gain);
@@ -5374,7 +5511,10 @@ const ENCOURAGEMENTS_ACTIFS = true;
 // (MUTANT, MIKE) tomberait sur le repli anglais de VP() — 'enc-1.mp3' a la racine —
 // qui n'existe pas : silence et 404 pour rien. Les encouragements n'existent qu'en
 // francais, donc que chez les packs francophones.
-const ENCOURAGEMENTS_PACKS = {sam:1, leo:1};
+// 10/09/2026 : la valeur est maintenant la LISTE DES LANGUES ou le pack a ses fichiers.
+// MUTANT a ses 4 encouragements en anglais (enc-1..4.mp3 a la racine), valides a
+// l'oreille par Francois. Portugais ajoute le meme jour (enc-1..4-pt.mp3, valides).
+const ENCOURAGEMENTS_PACKS = {sam:['fr'], leo:['fr'], max:['en','pt']};
 // Un encouragement du sac general par tranche de N secondes utiles.
 // Baisser = parler plus souvent. C'est LE reglage a bouger si Francois trouve que
 // ca ne parle toujours pas assez, ou au contraire que ca jacasse.
@@ -5388,6 +5528,14 @@ const ENCOURAGEMENTS_PACKS = {sam:1, leo:1};
 // Pas descendu a 120 : sur un 30 min ca ferait 14 sorties pour un sac de 3 phrases,
 // soit 4 a 5 fois la meme, avec la meme intonation figee. Le sac general doit
 // grossir (2 ou 3 phrases de plus) avant que l'intervalle descende encore.
+// 180 -> 120 le 10/09/2026, DECISION DE FRANCOIS : « une phrase toutes les 2 min sur
+// un wod long » pour le niveau GRATUIT. Le niveau payant (plus tard) parlera toutes
+// les minutes avec des phrases par phase du wod. La reserve ci-dessus tient
+// toujours : le sac general n'a que 3 phrases, il doit grossir.
+// 120 -> 180 le 10/09/2026 dans la journee, DECISION DE FRANCOIS : a 120 s le gratuit
+// parlait trop (≈ 15 sorties sur 30 min pour 4 phrases) et ecrasait l'ecart avec le
+// payant. Gratuit = « le coach », 1 phrase / 3 min, rien dans la derniere minute.
+// Payant (1.1) = « mode compet » : 1 / min, phrases par phase, public, fin de wod.
 const ENCOURAGEMENTS_INTERVALLE = 180;
 const ENCOURAGEMENT_GARDE  = 10;   // distance minimale a un repere existant, en secondes
 const ENCOURAGEMENT_FIN    = 60;   // rien sous une minute restante
@@ -5431,8 +5579,8 @@ function encSecondeLibre(r, occ, deja, plancher){
 function planifierEncouragements(total, mode, lang){
   _encPlanning=[];
   if(!ENCOURAGEMENTS_ACTIFS) return _encPlanning;
-  if(!ENCOURAGEMENTS_PACKS[S_voix]) return _encPlanning;   // rien a planifier
-  if(lang!=='fr') return _encPlanning;   // les 4 phrases n'existent qu'en francais
+  const _encL=ENCOURAGEMENTS_PACKS[S_voix];
+  if(!_encL || _encL.indexOf(lang)<0) return _encPlanning;   // pas de fichiers pour ce pack dans cette langue
   if(mode!=='wod' && mode!=='amrap') return _encPlanning;
   if(!total || total<=0) return _encPlanning;
   const occ=encReperesOccupes(total, mode, lang);
@@ -6622,6 +6770,18 @@ function confirmSync(){ cancelSync(); }
 //
 // Le journal tourne en permanence, panneau ouvert ou non. C'est le point important :
 // on ouvre toujours le panneau APRES le bug, jamais avant.
+// ===== EMPREINTE DU BUNDLE JS, 09/09/2026 =====
+// Le panneau CONTEXTE crachait la langue, la voix, les buffers, le mode et la
+// plateforme, mais PAS quel code tournait. Consequence, mesuree le 09/09 au soir :
+// impossible de dire si un bug reproduit sur l'iPhone venait du code du jour ou d'un
+// build de la semaine d'avant, et donc impossible de savoir s'il y avait quelque chose
+// a corriger. Une soiree perdue sur une question a trois lignes.
+//
+// A BUMPER A CHAQUE LIVRAISON. La liste des correctifs sert de controle croise : si
+// une ligne attendue manque dans le journal, le telephone tourne sur du vieux code.
+const REPS_JS_BUILD='2026-09-10-voix-encouragements';
+const REPS_JS_CORRECTIFS='mixage-si-change, decompte-ctx-running, annonces-WA, relance-au-geste, rattrapage-routage, sonde-musique, cache-v212, gain-voix-unifie, cache-v216, time-partout, leo-time, enc-180s, mike-pt-1, enc-mutant-en, sam-enc-3, enc-mutant-pt, cache-v217';
+
 const DBG_MAX=400;              // ~un WOD entier, cout memoire negligeable
 const _dbgBuf=[];
 let DEBUG_ON=/[?&]debug=1/.test(location.search);
@@ -6684,6 +6844,7 @@ function dbgOuvrir(){
   barre.appendChild(dbgBouton('COPIER',dbgCopier));
   barre.appendChild(dbgBouton('CONTEXTE',dbgContexte));
   barre.appendChild(dbgBouton('SON',testSonOuvrir));
+  barre.appendChild(dbgBouton('DUCK',duckPalierSuivant));
   barre.appendChild(dbgBouton('VIDER',function(){ _dbgBuf.length=0; _dbgCorps.textContent=''; dbgTitre(); }));
   barre.appendChild(dbgBouton('✕',dbgFermer));
   _dbgEl.appendChild(barre);
@@ -6727,7 +6888,15 @@ function dbgContexte(){
   try{ o.vol=document.getElementById('volVoice').value; }catch(e){}
   try{ o.mode=S.mode; o.filming=!!S.filming; o.bus=!!_busActive; }catch(e){}
   try{ o.plateforme=(window.Capacitor&&Capacitor.getPlatform)?Capacitor.getPlatform():'web'; }catch(e){}
+  try{ o.js=REPS_JS_BUILD; }catch(e){}
+  try{ o.debugNatif=!!(window.Capacitor&&window.Capacitor.DEBUG===true); }catch(e){}
+  try{ o.duck=Math.round(_duckNiveau*100)+'%'; o.ducksOuverts=_ducks.size; }catch(e){}
+  try{ o.volMusique=Math.round(musicTargetVolume()*100)+'%'; }catch(e){}
   DBG('CONTEXTE '+JSON.stringify(o));
+  try{ DBG('CONTEXTE correctifs='+REPS_JS_CORRECTIFS); }catch(e){}
+  // Nom du cache du service worker : dit quel bundle web est REELLEMENT servi, meme
+  // quand l'index.html du telephone vient d'un cache et pas du build.
+  try{ if(window.caches&&caches.keys) caches.keys().then(function(k){ DBG('CONTEXTE caches='+k.join(',')); }); }catch(e){}
 }
 
 function dbgCopier(){
@@ -6914,7 +7083,7 @@ function testSonLancer(chemin){
       a._repsPris=true;
       try{ a.muted=false; }catch(e){}
       try{ const vrai=VP(f); if(!a.src||a.src.indexOf(vrai)<0){ a.src=vrai; if(a.load) a.load(); } }catch(e){}
-      try{ a.volume=Math.min(niveauVoix()*2.0,1.0); }catch(e){}
+      try{ a.volume=gainVoix(); }catch(e){}
       try{ a.currentTime=0; }catch(e){}
       const pr=a.play();
       const mesurer=()=>setTimeout(()=>{ try{
@@ -6944,7 +7113,7 @@ function testSonLancer(chemin){
       if(!b){ _ts.mesure[k]='BUFFER ABSENT'; i++; setTimeout(pas,1500); return; }
       try{
         const src=ctx.createBufferSource(); src.buffer=b;
-        const g=ctx.createGain(); g.gain.value=Math.min(niveauVoix()*2.0,1.0);
+        const g=ctx.createGain(); g.gain.value=gainVoix();
         src.connect(g); g.connect(ctx.destination);
         let ok=false;
         src.onended=()=>{ ok=true; _ts.mesure[k]='joue dur='+b.duration.toFixed(2)+'s'; };
