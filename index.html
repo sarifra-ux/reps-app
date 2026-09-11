@@ -2915,8 +2915,23 @@ const VOIX_PACKS={
   // eva :{dossier:'voix/eva/',  nom:'EVA',  desc:['la voix posee','the calm voice','a voz calma']},
   leo :{dossier:'voix/leo/',  nom:'LEO',  langues:['fr'], desc:['le coach francais','the French coach','o coach frances']}
 };
-let S_voix='max';
+// ===== GRATUIT / PAYANT (11/09/2026, decision de Francois) =====
+// v1 : SAM est la seule voix gratuite, dans les trois langues. MUTANT, MIKE, LEO et la
+// camera iront dans l'abonnement « REPS Pro ». Tant que l'achat n'existe pas, REPS_PRO
+// reste a false : ces fonctions sont MASQUEES, pas grisees.
+// REGLE : ce qui sort gratuit reste gratuit. Ne jamais passer REPS_PRO a true, ni
+// ajouter une voix a VOIX_GRATUITES « pour voir », dans un build envoye a Apple.
+// Pour tester le payant sur ton iPhone : REPS_PRO=true, build local, puis remettre false.
+const REPS_PRO=false;
+const VOIX_GRATUITES={sam:true};
+function proActif(){ return REPS_PRO; }
+function voixPayante(cle){ return !VOIX_GRATUITES[cle]; }
+
+let S_voix='sam';
 try{ const _v=localStorage.getItem('reps_voix'); if(_v&&VOIX_PACKS[_v]) S_voix=_v; }catch(e){}
+// Un coach qui avait MUTANT, MIKE ou LEO en memoire retombe sur SAM. On ne reecrit pas
+// localStorage : le jour ou il prend l'abonnement, il retrouve sa voix.
+if(!proActif() && voixPayante(S_voix)) S_voix='sam';
 
 // ===== PLUS AUCUNE VOIX DE TELEPHONE (24/08/2026, build 4) =====
 // Jusqu'au build 3, toute phrase sans fichier mp3 partait dans speechSynthesis,
@@ -2957,6 +2972,7 @@ function _packReplie(){
 // Un pack est proposable dans la langue courante s'il la parle, ou s'il a un
 // repli. LEO n'a que du francais et aucun repli : hors francais, il n'existe pas.
 function voixDisponible(cle){
+  if(!proActif() && voixPayante(cle)) return false;   // 11/09/2026 : voix payante, masquee
   const p=VOIX_PACKS[cle]||{};
   if(!p.langues) return true;                       // SAM, EVA : les trois langues
   if(p.langues.indexOf(S.lang)>=0) return true;
@@ -3054,6 +3070,7 @@ function onsetsDecompte(){
 // continuerait de sortir du pool natif et des buffers deja decodes.
 function choisirVoix(cle){
   if(!VOIX_PACKS[cle]||cle===S_voix) return;
+  if(!proActif() && voixPayante(cle)) return;          // 11/09/2026 : voix payante
   S_voix=cle;
   try{ localStorage.setItem('reps_voix',cle); }catch(e){}
   // NE PAS appeler stopAllAnnounces() ici : il se termine par stopAllAudio(), qui
@@ -6394,6 +6411,7 @@ function _sampleWodFrames(){
 }
 let _syncCtx=null;
 async function startVideoOverlayFlow(){
+  if(!proActif()) return;                 // 11/09/2026 : camera payante
   const VO=_videoOverlayPlugin();
   if(!VO){ DBG('overlay: plugin introuvable'); return; }
   const real=!!(S.wodFrames&&S.wodFrames.length);
@@ -6417,7 +6435,7 @@ function offerVideoOverlay(){
   if(!btn) return;
   const hasWod=!!(S.wodFrames&&S.wodFrames.length>3);
   const native=!!_videoOverlayPlugin();
-  if(hasWod&&native){
+  if(hasWod&&native&&proActif()){   // 11/09/2026 : camera payante
     btn.textContent=L3('🎬 Ajouter ta vidéo au chrono','🎬 Add your video to the timer','🎬 Adicionar teu vídeo ao cronômetro');
     btn.style.display='block';
   } else {
@@ -7102,6 +7120,7 @@ document.addEventListener('visibilitychange',()=>{
   }
 });
 async function toggleFilm(){
+  if(!proActif() && !S.filming) return;   // 11/09/2026 : camera payante
   const VO=_videoOverlayPlugin();
   if(!VO){ DBG('film: plugin natif absent (web ?)'); return; }
   if(S.filming){
@@ -7230,7 +7249,8 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   }catch(e){ try{ S.filmCam='back'; }catch(_){} }
   try{ setFilmCamBtn(); }catch(e){}
-  const show=()=>{ if(!_videoOverlayPlugin()) return; ['btnFilm','btnFilmAudio','btnFilmCam'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display=''; }); };
+  // 11/09/2026 : la camera est payante (REPS Pro). Sans abonnement, pas de bouton.
+  const show=()=>{ if(!_videoOverlayPlugin() || !proActif()) return; ['btnFilm','btnFilmAudio','btnFilmCam'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display=''; }); };
   show(); setTimeout(show,800);
 });
 // Écran de calage manuel : gardé comme repli si le calage auto échoue (non utilisé par défaut).
@@ -7263,7 +7283,7 @@ function confirmSync(){ cancelSync(); }
 //
 // A BUMPER A CHAQUE LIVRAISON. La liste des correctifs sert de controle croise : si
 // une ligne attendue manque dans le journal, le telephone tourne sur du vieux code.
-const REPS_JS_BUILD='2026-09-11-decompte-repos-break';
+const REPS_JS_BUILD='2026-09-11-build12-sam-gratuit';
 const REPS_JS_CORRECTIFS='mixage-si-change, decompte-ctx-running, annonces-WA, relance-au-geste, rattrapage-routage, sonde-musique, cache-v212, gain-voix-unifie, cache-v216, time-partout, leo-time, enc-180s, mike-pt-1, enc-mutant-en, sam-enc-3, enc-mutant-pt, cache-v217';
 
 const DBG_MAX=400;              // ~un WOD entier, cout memoire negligeable
