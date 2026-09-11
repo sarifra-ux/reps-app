@@ -305,18 +305,15 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .actus-titre{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:8px;line-height:1;
     background:linear-gradient(120deg,#9b30ff,#e63fff,#00d4ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
   .actus-sous{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:3px;color:var(--muted);margin-top:4px;}
-  .actus-liste{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px;padding:2px 2px 12px;}
-  .actus-carte{display:flex;gap:12px;align-items:stretch;text-decoration:none;color:var(--text);background:var(--surface);
-    border:1px solid var(--border);border-radius:14px;overflow:hidden;min-height:84px;}
-  .actus-img{flex:0 0 96px;background:#15131f center/cover no-repeat;}
-  .actus-img-vide{display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#2a2840;}
-  .actus-txt{flex:1;padding:10px 12px 10px 0;display:flex;flex-direction:column;justify-content:space-between;gap:6px;min-width:0;}
-  .actus-t{font:700 .9rem/1.3 -apple-system,system-ui,sans-serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
-  .actus-m{font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
-  .actus-carte.une{flex-direction:column;min-height:0;border:1px solid rgba(230,63,255,.35);}
-  .actus-carte.une .actus-img{flex:0 0 auto;height:170px;width:100%;}
-  .actus-carte.une .actus-txt{padding:12px 14px 14px;}
-  .actus-carte.une .actus-t{font-size:1.08rem;-webkit-line-clamp:4;}
+  .actus-liste{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 4px 18px;}
+  .actus-art{padding:22px 0 24px;border-bottom:1px solid rgba(255,255,255,.08);}
+  .actus-art:first-child{padding-top:6px;}
+  .actus-art:last-child{border-bottom:0;}
+  .actus-une{width:100%;height:190px;border-radius:16px;background:#15131f center/cover no-repeat;margin-bottom:16px;}
+  .actus-m{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
+  .actus-t{margin:0 0 10px;font:800 1.32rem/1.28 -apple-system,system-ui,sans-serif;color:var(--text);letter-spacing:-.2px;}
+  .actus-e{margin:0 0 12px;font:400 1.02rem/1.55 -apple-system,system-ui,sans-serif;color:#cfcbe0;}
+  .actus-lien{display:inline-block;font:700 .95rem/1 -apple-system,system-ui,sans-serif;color:#e63fff;text-decoration:none;padding:6px 0;}
   .actus-pied{display:flex;flex-direction:column;gap:8px;padding-top:6px;}
   .actus-note{font-size:.62rem;color:var(--muted);text-align:center;}
   .actus-note:empty{display:none;}
@@ -7571,6 +7568,7 @@ function majProUI(){
 // dernieres actus gardees (ou « chargement »), et se met a jour quand le reseau repond.
 // Plus de page sautee : sans reseau ni cache, un message, et le bouton pour s'entrainer.
 const ACTUS_URL='https://reps-inscription.reps-francois.workers.dev/actus';
+const ACTUS_NB=8;   // assez pour remplir la page, pas au point de noyer le coach
 let _actusPromesse=null, _actusLang=null, _actusSuite=null;
 function _actusCache(l){ try{ return JSON.parse(localStorage.getItem('reps_actus_'+l)||'null'); }catch(e){ return null; } }
 function actusCharger(){
@@ -7621,15 +7619,21 @@ function afficherActus(j, suite, attente){
     j={items:[]};
   }
   const esc=(t)=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  if(j.items.length) L.innerHTML=j.items.map((x,i)=>{
-    const img=x.image?'<div class="actus-img" style="background-image:url(&quot;'+esc(x.image)+'&quot;)"></div>':'<div class="actus-img actus-img-vide">R</div>';
-    return '<a class="actus-carte'+(i===0?' une':'')+'" href="'+esc(x.lien)+'" target="_blank" rel="noopener">'+img
-      +'<div class="actus-txt"><div class="actus-t">'+esc(x.titre)+'</div>'
-      +'<div class="actus-m">'+esc(x.source)+(x.date?' · '+esc(_actusQuand(x.date)):'')+'</div></div></a>';
+  // 11/09/2026 (soir), Francois : « plus epure, plus lisible, plus gros, un petit morceau de
+  // texte, et le lien si on veut en savoir plus ». Plus de cartes ni de vignettes : une seule
+  // image (l'article du haut), puis titre en gros, l'extrait publie par le site, et le lien.
+  const lire=L3("Lire l'article","Read the article","Ler o artigo");
+  if(j.items.length) L.innerHTML=j.items.slice(0,ACTUS_NB).map((x,i)=>{
+    const img=(i===0 && x.image)?'<div class="actus-une" style="background-image:url(&quot;'+esc(x.image)+'&quot;)"></div>':'';
+    return '<article class="actus-art">'+img
+      +'<div class="actus-m">'+esc(x.source)+(x.date?' · '+esc(_actusQuand(x.date)):'')+'</div>'
+      +'<h3 class="actus-t">'+esc(x.titre)+'</h3>'
+      +(x.extrait?'<p class="actus-e">'+esc(x.extrait)+'</p>':'')
+      +'<a class="actus-lien" href="'+esc(x.lien)+'" target="_blank" rel="noopener">'+lire+' →</a></article>';
   }).join('');
   const so=document.getElementById('actusSous'); if(so) so.textContent='CrossFit · HYROX';
   const n=document.getElementById('actusNote');
-  if(n) n.textContent=(S.lang==='en')?'':L3('Titres traduits automatiquement. Articles en anglais.','','Títulos traduzidos automaticamente. Artigos em inglês.');
+  if(n) n.textContent=(S.lang==='en')?'':L3('Traduit automatiquement. Articles complets en anglais.','','Tradução automática. Artigos completos em inglês.');
   const g=document.getElementById('actusGo'); if(g) g.textContent=_actusSuite?L3('ENTRAÎNEMENT','TRAINING','TREINO'):L3('FERMER','CLOSE','FECHAR');
   const e=document.getElementById('actusScreen');
   if(e){ const dejaOuvert=(e.style.display==='flex'); e.style.display='flex'; if(!dejaOuvert){ e.scrollTop=0; L.scrollTop=0; } }
