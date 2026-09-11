@@ -298,6 +298,24 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .voix-chip{flex:1 1 0;min-width:46px;padding:8px 3px;font-size:.66rem;letter-spacing:.3px;
     -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
   .voix-chip.on{border-color:#e63fff !important;color:#e63fff !important;box-shadow:0 0 0 1px #e63fff inset;}
+  /* Abonnement REPS Pro (11/09/2026) : badge sur ce qui est reserve aux abonnes. */
+  .pro-verrou{position:relative;opacity:.6;}
+  .pro-verrou::after{content:'PRO';position:absolute;top:-7px;right:-5px;font:700 8px/1 'DM Mono',monospace;letter-spacing:1px;
+    padding:2px 4px;border-radius:4px;background:linear-gradient(135deg,#e63fff,#00d4ff);color:#fff;pointer-events:none;}
+  .pro-content{max-height:90vh;overflow-y:auto;}
+  .pro-atouts{display:flex;flex-direction:column;gap:10px;font-size:.92rem;line-height:1.4;color:var(--text);}
+  .pro-plans{display:flex;flex-direction:column;gap:10px;}
+  .pro-plan{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border:1px solid var(--border);
+    border-radius:14px;background:var(--surface);color:var(--text);font:600 .95rem/1.2 -apple-system,system-ui,sans-serif;cursor:pointer;text-align:left;}
+  .pro-plan.on{border-color:#e63fff;box-shadow:0 0 0 1px #e63fff inset;}
+  .pro-prix{font-weight:800;white-space:nowrap;}
+  .pro-cta{width:100%;padding:16px;border:0;border-radius:14px;background:linear-gradient(135deg,#9b30ff,#e63fff);color:#fff;
+    font:800 1rem/1 -apple-system,system-ui,sans-serif;letter-spacing:.5px;cursor:pointer;}
+  .pro-cta[disabled]{opacity:.45;}
+  .pro-liens{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 18px;}
+  .pro-liens a,.pro-lien{color:var(--muted);background:none;border:0;padding:0;text-decoration:underline;font-size:.78rem;cursor:pointer;}
+  .pro-legal{font-size:.68rem;line-height:1.45;color:var(--muted);}
+  .pro-msg{font-size:.82rem;color:var(--text);text-align:center;}
   /* Sens du chrono AMRAP (build 4). Classe distincte de .voix-chip : majBadgeVoix()
      balaie .voix-chip et eteindrait ces boutons-la a chaque changement de langue. */
   .sens-chip{flex:1 1 0;min-width:46px;padding:8px 3px;font-size:.66rem;letter-spacing:.3px;
@@ -2273,12 +2291,24 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <button class="lang-btn" id="btnPT" onclick="setLang('pt')">🇧🇷 PT</button>
         </div>
       </div>
+      <button class="settings-action-btn" id="btnReglagesPro" style="display:none" onclick="ouvrirPro('reglages');"><span class="settings-icon">⚡</span><span id="btnReglagesProLabel">REPS Pro</span></button>
       <button class="settings-action-btn" onclick="closeSettings();openMembers();"><svg class="ico settings-icon" aria-hidden="true"><use href="#i-membres"/></svg><span data-i18n="nav.scores">Adhérents &amp; scores</span></button>
       <button class="settings-action-btn" onclick="closeSettings();openFavorites();"><span class="settings-icon">⭐</span><span data-i18n="fav.modalTitle">Favoris</span></button>
       <button class="settings-action-btn" onclick="closeSettings();toggleFullscreen();"><span class="settings-icon">⛶</span><span data-i18n="nav.fullscreen">Plein écran</span></button>
       <button class="settings-action-btn" onclick="repsInscOuvrir();"><span class="settings-icon">📋</span><span id="repsInscLabelCoach">Je suis coach</span></button>
       <button class="settings-action-btn" id="repsInscBtnSupprimer" style="display:none" onclick="repsInscSupprimer();"><span class="settings-icon">🗑️</span><span id="repsInscLabelSupprimer">Supprimer mes données</span></button>
     </div>
+  </div>
+</div>
+
+<!-- ===== ECRAN REPS PRO (abonnement, 11/09/2026) : contenu ecrit par majProUI() ===== -->
+<div id="proModal" class="settings-modal" style="display:none" onclick="if(event.target.id==='proModal')fermerPro()">
+  <div class="settings-modal-content pro-content" onclick="event.stopPropagation()">
+    <div class="settings-modal-header">
+      <h3 class="settings-modal-title">REPS PRO</h3>
+      <button class="settings-modal-close" onclick="fermerPro()">✕</button>
+    </div>
+    <div class="settings-modal-body" id="proCorps"></div>
   </div>
 </div>
 
@@ -2922,9 +2952,17 @@ const VOIX_PACKS={
 // REGLE : ce qui sort gratuit reste gratuit. Ne jamais passer REPS_PRO a true, ni
 // ajouter une voix a VOIX_GRATUITES « pour voir », dans un build envoye a Apple.
 // Pour tester le payant sur ton iPhone : REPS_PRO=true, build local, puis remettre false.
+// Depuis le 11/09 (abonnement) : l'acces Pro vient de StoreKit (_proAchete), cf. le bloc
+// « ABONNEMENT REPS PRO ». REPS_PRO ne sert plus qu'a forcer, en developpement.
 const REPS_PRO=false;
 const VOIX_GRATUITES={sam:true};
-function proActif(){ return REPS_PRO; }
+// Cache du dernier etat connu, pour demarrer juste hors connexion. StoreKit a toujours le
+// dernier mot (proVerifier, au lancement et a chaque transaction). Un abonnement dont la
+// periode est passee ne compte plus, meme en cache.
+let _proAchete=false;
+try{ const _c=JSON.parse(localStorage.getItem('reps_pro')||'null');
+     if(_c && _c.actif && (!_c.expire || _c.expire>Date.now())) _proAchete=true; }catch(e){}
+function proActif(){ return REPS_PRO || _proAchete; }
 function voixPayante(cle){ return !VOIX_GRATUITES[cle]; }
 
 let S_voix='sam';
@@ -2972,7 +3010,11 @@ function _packReplie(){
 // Un pack est proposable dans la langue courante s'il la parle, ou s'il a un
 // repli. LEO n'a que du francais et aucun repli : hors francais, il n'existe pas.
 function voixDisponible(cle){
-  if(!proActif() && voixPayante(cle)) return false;   // 11/09/2026 : voix payante, masquee
+  if(!proActif() && voixPayante(cle)) return false;   // 11/09/2026 : voix payante
+  return voixParleLangue(cle);
+}
+// La seule question de la langue, sans l'abonnement : sert a montrer une voix verrouillee.
+function voixParleLangue(cle){
   const p=VOIX_PACKS[cle]||{};
   if(!p.langues) return true;                       // SAM, EVA : les trois langues
   if(p.langues.indexOf(S.lang)>=0) return true;
@@ -3070,7 +3112,10 @@ function onsetsDecompte(){
 // continuerait de sortir du pool natif et des buffers deja decodes.
 function choisirVoix(cle){
   if(!VOIX_PACKS[cle]||cle===S_voix) return;
-  if(!proActif() && voixPayante(cle)) return;          // 11/09/2026 : voix payante
+  if(!proActif() && voixPayante(cle)){                 // 11/09/2026 : voix payante
+    try{ if(_proPlugin()) ouvrirPro('voix'); }catch(e){}
+    return;
+  }
   S_voix=cle;
   try{ localStorage.setItem('reps_voix',cle); }catch(e){}
   // NE PAS appeler stopAllAnnounces() ici : il se termine par stopAllAudio(), qui
@@ -3099,8 +3144,13 @@ function majBadgeVoix(){
   document.querySelectorAll('.voix-chip').forEach(b=>{
     // Masquer plutot que griser : un bouton mort dans une interface lue a bout de
     // bras au milieu d'un cours, ca ne sert personne.
-    b.style.display = voixDisponible(b.dataset.voix) ? '' : 'none';
-    b.classList.toggle('on', b.dataset.voix===S_voix);
+    // 11/09/2026 : dans l'app iOS, une voix payante reste visible, avec un badge PRO, et
+    // ouvre l'ecran d'abonnement. Hors app (web), on la masque : rien a y acheter.
+    const cle=b.dataset.voix, libre=voixDisponible(cle);
+    const verrou=!libre && voixParleLangue(cle) && !!_proPlugin();
+    b.style.display = (libre||verrou) ? '' : 'none';
+    b.classList.toggle('pro-verrou', verrou);
+    b.classList.toggle('on', cle===S_voix);
   });
   const d=document.getElementById('voixDesc');
   if(d){ const i=(S.lang==='en')?1:((S.lang==='pt')?2:0); d.textContent=v.desc[i]||v.desc[0]; }
@@ -7122,7 +7172,7 @@ document.addEventListener('visibilitychange',()=>{
   }
 });
 async function toggleFilm(){
-  if(!proActif() && !S.filming) return;   // 11/09/2026 : camera payante
+  if(!proActif() && !S.filming){ try{ ouvrirPro('camera'); }catch(e){} return; }   // 11/09/2026 : camera payante
   const VO=_videoOverlayPlugin();
   if(!VO){ DBG('film: plugin natif absent (web ?)'); return; }
   if(S.filming){
@@ -7251,13 +7301,170 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   }catch(e){ try{ S.filmCam='back'; }catch(_){} }
   try{ setFilmCamBtn(); }catch(e){}
-  // 11/09/2026 : la camera est payante (REPS Pro). Sans abonnement, pas de bouton.
-  const show=()=>{ if(!_videoOverlayPlugin() || !proActif()) return; ['btnFilm','btnFilmAudio','btnFilmCam'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display=''; }); };
+  // 11/09/2026 : la camera est payante (REPS Pro), cf. majCameraPro.
+  const show=()=>{ try{ majCameraPro(); }catch(e){} };
   show(); setTimeout(show,800);
 });
 // Écran de calage manuel : gardé comme repli si le calage auto échoue (non utilisé par défaut).
 function cancelSync(){ const el=document.getElementById('syncOverlay'); if(el) el.style.display='none'; _syncCtx=null; }
 function confirmSync(){ cancelSync(); }
+
+// =====================================================================
+// ===== ABONNEMENT REPS PRO (11/09/2026) =====
+// =====================================================================
+// Decisions de Francois : 3,99 EUR/mois ou 29,99 EUR/an, pas d'essai gratuit (la version
+// gratuite sert d'essai). Pro = MUTANT, MIKE, LEO + camera. Les prix affiches viennent de
+// l'App Store (localises), jamais du code. Cote natif : VideoOverlayPlugin.swift, StoreKit 2.
+// Exigences Apple respectees ici (3.1.2) : prix et duree visibles avant l'achat, bouton
+// « Restaurer », liens conditions d'utilisation + confidentialite, texte du renouvellement.
+const PRO_IDS={mensuel:'pro.repsapp.app.pro.mensuel', annuel:'pro.repsapp.app.pro.annuel'};
+const URL_EULA='https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+const URL_CONFID_PRO='https://reps-app.vercel.app/confidentialite.html';
+let _proProduits=null, _proErreur=false, _proChoix='annuel', _proOccupe=false, _proMsg='';
+function _proPlugin(){ const VO=_videoOverlayPlugin(); return (VO && typeof VO.proDroits==='function')?VO:null; }
+function _proEsc(t){ return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function proAppliquer(actif, droits, source){
+  const avant=_proAchete;
+  _proAchete=!!actif;
+  try{
+    let exp=0; (droits||[]).forEach(d=>{ if(d && d.expire && d.expire>exp) exp=d.expire; });
+    localStorage.setItem('reps_pro', JSON.stringify({actif:_proAchete, expire:exp||null, verifie:Date.now()}));
+  }catch(e){}
+  if(avant!==_proAchete){
+    DBG('pro : '+(_proAchete?'ACTIF':'inactif')+' ('+source+')');
+    if(_proAchete){
+      // On rend au coach la voix qu'il avait choisie avant (localStorage l'a gardee).
+      try{ const v=localStorage.getItem('reps_voix'); if(v && VOIX_PACKS[v] && voixDisponible(v)) choisirVoix(v); }catch(e){}
+    } else {
+      try{ if(!voixDisponible(S_voix)) choisirVoix(voixParDefaut()); }catch(e){}
+    }
+  }
+  try{ majBadgeVoix(); }catch(e){}
+  try{ majCameraPro(); }catch(e){}
+  try{ majProUI(); }catch(e){}
+}
+async function proVerifier(){
+  const P=_proPlugin();
+  if(!P){ try{ majProUI(); }catch(e){} return; }   // web : pas d'abonnement
+  try{ if(P.addListener) P.addListener('proDroits', r=>proAppliquer(r&&r.actif, r&&r.droits, 'transaction')); }catch(e){}
+  try{ const r=await P.proDroits(); proAppliquer(r&&r.actif, r&&r.droits, 'lancement'); }
+  catch(e){ DBG('pro : droits KO '+((e&&e.message)||e)); }
+}
+try{ window.addEventListener('load', ()=>setTimeout(proVerifier, 300)); }catch(e){}
+
+function majCameraPro(){
+  if(!_videoOverlayPlugin()) return;
+  const pro=proActif();
+  const bf=document.getElementById('btnFilm');
+  if(bf){ bf.style.display=''; bf.classList.toggle('pro-verrou', !pro && !S.filming); }
+  ['btnFilmAudio','btnFilmCam'].forEach(id=>{ const b=document.getElementById(id); if(b) b.style.display=pro?'':'none'; });
+}
+
+async function proChargerProduits(){
+  const P=_proPlugin(); if(!P) return;
+  _proErreur=false;
+  try{
+    const r=await P.proProduits();
+    const l=(r&&r.produits)||[];
+    _proProduits={};
+    l.forEach(x=>{ if(x.id===PRO_IDS.mensuel) _proProduits.mensuel=x; if(x.id===PRO_IDS.annuel) _proProduits.annuel=x; });
+    if(!_proProduits.mensuel && !_proProduits.annuel){ _proProduits=null; _proErreur=true; }
+    else if(!_proProduits[_proChoix]) _proChoix=_proProduits.annuel?'annuel':'mensuel';
+  }catch(e){ _proErreur=true; DBG('pro : produits KO '+((e&&e.message)||e)); }
+  majProUI();
+}
+function ouvrirPro(raison){
+  if(!_proPlugin()) return;
+  try{ closeSettings(); }catch(e){}
+  _proMsg='';
+  const m=document.getElementById('proModal'); if(m) m.style.display='flex';
+  DBG('pro : ecran ouvert ('+(raison||'?')+')');
+  majProUI();
+  if(!_proProduits) proChargerProduits();
+}
+function fermerPro(){ const m=document.getElementById('proModal'); if(m) m.style.display='none'; }
+function proChoisir(k){ _proChoix=k; _proMsg=''; majProUI(); }
+
+async function proAcheter(){
+  const P=_proPlugin(); if(!P || _proOccupe || !_proProduits || !_proProduits[_proChoix]) return;
+  _proOccupe=true; _proMsg=''; majProUI();
+  try{
+    const r=await P.proAcheter({id:PRO_IDS[_proChoix]});
+    DBG('pro : achat '+_proChoix+' -> '+(r&&r.etat));
+    if(r && r.etat==='achete'){
+      proAppliquer(r.actif, r.droits, 'achat');
+      if(r.actif){ _proOccupe=false; fermerPro(); showAnnounce(L3('BIENVENUE DANS PRO','WELCOME TO PRO','BEM-VINDO AO PRO')); return; }
+    } else if(r && r.etat==='en_attente'){
+      _proMsg=L3("Achat en attente de validation. Il s'activera tout seul.","Purchase pending approval. It will activate on its own.","Compra aguardando aprovação. Ela vai ativar sozinha.");
+    }
+  }catch(e){
+    _proMsg=L3("L'achat n'a pas abouti. Aucun débit.","The purchase didn't go through. You weren't charged.","A compra não foi concluída. Nada foi cobrado.");
+    DBG('pro : achat KO '+((e&&e.message)||e));
+  }
+  _proOccupe=false; majProUI();
+}
+async function proRestaurer(){
+  const P=_proPlugin(); if(!P || _proOccupe) return;
+  _proOccupe=true; _proMsg=''; majProUI();
+  try{
+    const r=await P.proRestaurer();
+    proAppliquer(r&&r.actif, r&&r.droits, 'restauration');
+    _proMsg=(r&&r.actif)?L3('Abonnement retrouvé.','Subscription restored.','Assinatura restaurada.')
+                        :L3('Aucun abonnement actif sur ce compte Apple.','No active subscription on this Apple account.','Nenhuma assinatura ativa nesta conta Apple.');
+  }catch(e){ _proMsg=L3('Restauration impossible pour le moment.','Restore failed, try again later.','Não foi possível restaurar agora.'); }
+  _proOccupe=false; majProUI();
+}
+function proCode(){ const P=_proPlugin(); if(P) P.proCodeOffre().catch(()=>{}); }
+function proGerer(){ const P=_proPlugin(); if(P) P.proGererAbonnement().catch(()=>{}); }
+
+function majProUI(){
+  // Bouton des reglages : seulement dans l'app iOS.
+  const bs=document.getElementById('btnReglagesPro');
+  if(bs){
+    bs.style.display=_proPlugin()?'':'none';
+    const l=document.getElementById('btnReglagesProLabel');
+    if(l) l.textContent=proActif()?L3('REPS Pro · actif','REPS Pro · active','REPS Pro · ativo'):'REPS Pro';
+  }
+  const c=document.getElementById('proCorps');
+  const m=document.getElementById('proModal');
+  if(!c || !m || m.style.display==='none') return;
+  const msg=_proMsg?'<div class="pro-msg">'+_proEsc(_proMsg)+'</div>':'';
+  const liens='<div class="pro-liens">'
+    +'<a href="'+URL_EULA+'" target="_blank" rel="noopener">'+L3("Conditions d'utilisation",'Terms of Use','Termos de uso')+'</a>'
+    +'<a href="'+URL_CONFID_PRO+'" target="_blank" rel="noopener">'+L3('Confidentialité','Privacy','Privacidade')+'</a></div>';
+  if(proActif()){
+    c.innerHTML='<div class="pro-atouts"><div>'+L3('Tu es Pro. Toutes les voix et la caméra sont débloquées.','You are Pro. All voices and the camera are unlocked.','Você é Pro. Todas as vozes e a câmera estão liberadas.')+'</div></div>'
+      +'<button class="pro-cta" onclick="proGerer()">'+L3('Gérer mon abonnement','Manage my subscription','Gerenciar minha assinatura')+'</button>'
+      +msg+liens;
+    return;
+  }
+  const atouts='<div class="pro-atouts">'
+    +'<div>🎙️ '+L3('Toutes les voix en plus de SAM : LEO en français, MUTANT et MIKE en anglais et en portugais.','Every voice on top of SAM: MUTANT and MIKE in English and Portuguese, LEO in French.','Todas as vozes além do SAM: MUTANT e MIKE em inglês e português, LEO em francês.')+'</div>'
+    +'<div>🎥 '+L3("La caméra : filme ton WOD, le chrono s'incruste dans la vidéo.",'The camera: film your WOD, the timer is burned into the video.','A câmera: filme teu WOD, o cronômetro aparece no vídeo.')+'</div></div>';
+  let plans;
+  if(_proErreur) plans='<div class="pro-msg">'+L3("L'App Store ne répond pas. Réessaie dans un moment.",'The App Store is not responding. Try again in a moment.','A App Store não responde. Tenta de novo daqui a pouco.')+'</div>'
+    +'<button class="pro-lien" onclick="proChargerProduits()">'+L3('Réessayer','Retry','Tentar de novo')+'</button>';
+  else if(!_proProduits) plans='<div class="pro-msg">'+L3('Chargement des prix…','Loading prices…','Carregando preços…')+'</div>';
+  else {
+    const ligne=(k,lib,per)=>{ const x=_proProduits[k]; if(!x) return '';
+      return '<button class="pro-plan'+(_proChoix===k?' on':'')+'" onclick="proChoisir(\''+k+'\')"><span>'+lib+'</span><span class="pro-prix">'+_proEsc(x.prix)+' / '+per+'</span></button>'; };
+    plans='<div class="pro-plans">'
+      +ligne('annuel',L3('Annuel','Yearly','Anual'),L3('an','year','ano'))
+      +ligne('mensuel',L3('Mensuel','Monthly','Mensal'),L3('mois','month','mês'))+'</div>';
+  }
+  const pret=!!(_proProduits && _proProduits[_proChoix]) && !_proOccupe;
+  const cta='<button class="pro-cta" '+(pret?'':'disabled ')+'onclick="proAcheter()">'
+    +(_proOccupe?L3('Un instant…','One moment…','Um instante…'):L3("S'abonner","Subscribe","Assinar"))+'</button>';
+  const actions='<div class="pro-liens">'
+    +'<button class="pro-lien" onclick="proRestaurer()">'+L3('Restaurer mes achats','Restore purchases','Restaurar compras')+'</button>'
+    +'<button class="pro-lien" onclick="proCode()">'+L3("J'ai un code",'I have a code','Tenho um código')+'</button></div>';
+  const legal='<div class="pro-legal">'+L3(
+    "Abonnement à renouvellement automatique. Le paiement est débité sur ton compte Apple à la confirmation de l'achat. L'abonnement se renouvelle automatiquement au même prix, sauf résiliation au moins 24 heures avant la fin de la période en cours. Tu peux gérer ou résilier ton abonnement dans les réglages de ton compte Apple.",
+    "Auto-renewable subscription. Payment is charged to your Apple Account at confirmation of purchase. The subscription renews automatically at the same price unless cancelled at least 24 hours before the end of the current period. You can manage or cancel it in your Apple Account settings.",
+    "Assinatura com renovação automática. O pagamento é cobrado na tua conta Apple na confirmação da compra. A assinatura se renova automaticamente pelo mesmo preço, a menos que seja cancelada pelo menos 24 horas antes do fim do período atual. Você pode gerenciar ou cancelar nos ajustes da tua conta Apple.")+'</div>';
+  c.innerHTML=atouts+plans+cta+msg+actions+legal+liens;
+}
 
 // ===== PANNEAU DE DEBUG =====
 //
@@ -7285,7 +7492,7 @@ function confirmSync(){ cancelSync(); }
 //
 // A BUMPER A CHAQUE LIVRAISON. La liste des correctifs sert de controle croise : si
 // une ligne attendue manque dans le journal, le telephone tourne sur du vieux code.
-const REPS_JS_BUILD='2026-09-11-build12-sam-gratuit';
+const REPS_JS_BUILD='2026-09-11-build12-abonnement';
 const REPS_JS_CORRECTIFS='mixage-si-change, decompte-ctx-running, annonces-WA, relance-au-geste, rattrapage-routage, sonde-musique, cache-v212, gain-voix-unifie, cache-v216, time-partout, leo-time, enc-180s, mike-pt-1, enc-mutant-en, sam-enc-3, enc-mutant-pt, cache-v217';
 
 const DBG_MAX=400;              // ~un WOD entier, cout memoire negligeable

@@ -1,0 +1,84 @@
+{
+  "identifier" : "4F2A9C1E",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "fr_FR",
+    "_storefront" : "FRA",
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21540001",
+      "localizations" : [
+
+      ],
+      "name" : "REPS Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6754000001",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Toutes les voix et la caméra",
+              "displayName" : "REPS Pro mensuel",
+              "locale" : "fr"
+            }
+          ],
+          "productID" : "pro.repsapp.app.pro.mensuel",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "REPS Pro mensuel",
+          "subscriptionGroupID" : "21540001",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "29.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6754000002",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Toutes les voix et la caméra",
+              "displayName" : "REPS Pro annuel",
+              "locale" : "fr"
+            }
+          ],
+          "productID" : "pro.repsapp.app.pro.annuel",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "REPS Pro annuel",
+          "subscriptionGroupID" : "21540001",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

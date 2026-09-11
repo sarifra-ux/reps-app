@@ -5,6 +5,7 @@ import Photos
 import PhotosUI
 import UIKit
 import UniformTypeIdentifiers
+import StoreKit
 
 // Plugin natif d'incrustation du chrono REPS dans une vidéo filmée avec la Caméra iOS.
 // pickVideo : choisir une vidéo -> la copier dans Documents -> renvoyer chemin + durée.
@@ -25,10 +26,19 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "cameraState", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "deleteFile", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "planifierVoix", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "annulerVoix", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "annulerVoix", returnType: CAPPluginReturnPromise),
+        // Abonnement REPS Pro (11/09/2026), cf. le bloc du meme nom en fin de fichier
+        CAPPluginMethod(name: "proProduits", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "proAcheter", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "proDroits", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "proRestaurer", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "proCodeOffre", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "proGererAbonnement", returnType: CAPPluginReturnPromise)
     ]
 
     private var pickCall: CAPPluginCall?
+    // Abonnement REPS Pro : ecoute des transactions (renouvellement, code d'offre, resiliation).
+    private var proEcoute: Task<Void, Never>?
 
     // ===== Enregistrement caméra natif (vidéo propre, timestamps corrects) =====
     private var captureSession: AVCaptureSession?
@@ -123,6 +133,7 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
             self?.menageFichiersAnciens()
         }
         voixInstallerObservateurs()   // voix en arriere-plan, cf. plus bas (10/09/2026)
+        proDemarrerEcoute()           // abonnement REPS Pro, cf. fin de fichier (11/09/2026)
     }
 
     // Supprime un fichier de travail sur demande du web. Renvoie toujours, sans jeter :
@@ -1204,5 +1215,148 @@ extension VideoOverlayPlugin: PHPickerViewControllerDelegate {
         }
         voixBuffers[f] = sortie
         return sortie
+    }
+}
+
+
+// =====================================================================
+// ===== ABONNEMENT REPS PRO (StoreKit 2, 11/09/2026) =====
+// =====================================================================
+// Deux produits dans un seul groupe d'abonnement « REPS Pro » (App Store Connect) :
+//   pro.repsapp.app.pro.mensuel   3,99 EUR / mois
+//   pro.repsapp.app.pro.annuel    29,99 EUR / an
+// Pas d'essai gratuit (decision de Francois) : la version gratuite sert d'essai.
+// Le JS ne decide jamais seul : il demande proDroits au lancement et ecoute
+// l'evenement « proDroits », envoye a chaque transaction (achat, renouvellement,
+// code d'offre, remboursement). La verification des signatures est celle de StoreKit 2.
+//
+// /!\ ECRIT SANS COMPILATEUR. A construire dans Xcode.
+extension VideoOverlayPlugin {
+    static let proIds: Set<String> = ["pro.repsapp.app.pro.mensuel", "pro.repsapp.app.pro.annuel"]
+
+    func proDemarrerEcoute() {
+        guard proEcoute == nil else { return }
+        proEcoute = Task.detached { [weak self] in
+            for await resultat in Transaction.updates {
+                if case .verified(let t) = resultat { await t.finish() }
+                await self?.proNotifierDroits()
+            }
+        }
+    }
+
+    func proDroitsActuels() async -> [[String: Any]] {
+        var out: [[String: Any]] = []
+        for await resultat in Transaction.currentEntitlements {
+            guard case .verified(let t) = resultat else { continue }
+            guard VideoOverlayPlugin.proIds.contains(t.productID) else { continue }
+            if t.revocationDate != nil { continue }
+            if let exp = t.expirationDate, exp < Date() { continue }
+            var d: [String: Any] = ["produit": t.productID,
+                                    "achat": t.purchaseDate.timeIntervalSince1970 * 1000]
+            if let exp = t.expirationDate { d["expire"] = exp.timeIntervalSince1970 * 1000 }
+            out.append(d)
+        }
+        return out
+    }
+
+    func proNotifierDroits() async {
+        let d = await proDroitsActuels()
+        notifyListeners("proDroits", data: ["actif": !d.isEmpty, "droits": d])
+    }
+
+    // Prix localises par l'App Store (« 3,99 € », « R$ 19,90 »...) : le JS ne code aucun prix en dur.
+    @objc func proProduits(_ call: CAPPluginCall) {
+        Task {
+            do {
+                let produits = try await Product.products(for: VideoOverlayPlugin.proIds)
+                let liste: [[String: Any]] = produits.map { (p: Product) -> [String: Any] in
+                    var d: [String: Any] = ["id": p.id, "prix": p.displayPrice,
+                                            "nom": p.displayName, "description": p.description]
+                    if let sub = p.subscription {
+                        let u = sub.subscriptionPeriod.unit
+                        d["periode"] = (u == .year) ? "an" : ((u == .month) ? "mois" : "autre")
+                        d["valeur"] = sub.subscriptionPeriod.value
+                    }
+                    return d
+                }
+                call.resolve(["produits": liste])
+            } catch {
+                call.reject("produits KO : \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @objc func proAcheter(_ call: CAPPluginCall) {
+        guard let id = call.getString("id"), !id.isEmpty else { call.reject("id manquant"); return }
+        Task {
+            do {
+                let produits = try await Product.products(for: [id])
+                guard let p = produits.first else { call.reject("produit introuvable : \(id)"); return }
+                let r = try await p.purchase()
+                switch r {
+                case .success(let v):
+                    if case .verified(let t) = v {
+                        await t.finish()
+                        let d = await self.proDroitsActuels()
+                        call.resolve(["etat": "achete", "actif": !d.isEmpty, "droits": d])
+                    } else {
+                        call.resolve(["etat": "non_verifie", "actif": false])
+                    }
+                case .userCancelled:
+                    call.resolve(["etat": "annule", "actif": false])
+                case .pending:
+                    // Achat a approuver (partage familial, contrôle parental) : il arrivera par Transaction.updates.
+                    call.resolve(["etat": "en_attente", "actif": false])
+                @unknown default:
+                    call.resolve(["etat": "inconnu", "actif": false])
+                }
+            } catch {
+                call.reject("achat KO : \(error.localizedDescription)")
+            }
+        }
+    }
+
+    @objc func proDroits(_ call: CAPPluginCall) {
+        proDemarrerEcoute()
+        Task {
+            let d = await self.proDroitsActuels()
+            call.resolve(["actif": !d.isEmpty, "droits": d])
+        }
+    }
+
+    // « Restaurer mes achats » : exige par Apple. AppStore.sync() peut demander le mot de passe.
+    @objc func proRestaurer(_ call: CAPPluginCall) {
+        Task {
+            do { try await AppStore.sync() } catch { NSLog("REPS pro: sync \(error.localizedDescription)") }
+            let d = await self.proDroitsActuels()
+            call.resolve(["actif": !d.isEmpty, "droits": d])
+        }
+    }
+
+    // Codes d'offre (les coachs qui ont aide a batir l'app). Le code valide arrive par Transaction.updates.
+    @objc func proCodeOffre(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            SKPaymentQueue.default().presentCodeRedemptionSheet()
+            call.resolve(["ok": true])
+        }
+    }
+
+    @objc func proGererAbonnement(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+            if let scene = scene {
+                Task {
+                    do { try await AppStore.showManageSubscriptions(in: scene) }
+                    catch { NSLog("REPS pro: gerer \(error.localizedDescription)") }
+                    call.resolve(["ok": true])
+                }
+            } else if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+                UIApplication.shared.open(url)
+                call.resolve(["ok": true])
+            } else {
+                call.resolve(["ok": false])
+            }
+        }
     }
 }
