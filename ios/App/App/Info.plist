@@ -70,5 +70,15 @@
 	<string>REPS enregistre ta vidéo de WOD avec le chrono incrusté dans ta photothèque.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<!-- 10/09/2026 : audio en arriere-plan.
+	     Retour d'un coach : en mode « Ma musique », il passe sur Spotify pendant le
+	     WOD pour changer de morceau, et REPS se tait. Sans cette cle, iOS gele l'app
+	     quelques secondes apres qu'on l'a quittee : plus de chrono, plus de voix.
+	     Usage legitime aux yeux d'Apple (regle 2.5.4) : REPS joue des annonces
+	     vocales pendant la seance, comme une app de course. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>

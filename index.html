@@ -3458,7 +3458,8 @@ function updateTotalFromMode(){
     S.emomCurrentRound=1;
     S.emomCurrentCycle=1;
   } else {
-    S.total=S.dur*60;
+    // En seance, la duree exacte du bloc (cf. chargerBlocDansEtat), pas la minute arrondie.
+    S.total=(S.seance && S._blocSec) ? S._blocSec : S.dur*60;
     S.remain=S.total;
   }
 }
@@ -3924,6 +3925,7 @@ function setByoMusic(){
   if(btn) btn.classList.toggle('on', byoMusic);
   document.body.classList.toggle('byo-music', byoMusic);
   appliquerMixageAudio();   // la session audio doit suivre le mode, tout de suite
+  if(S.state==='playing'){ if(byoMusic) envoyerPlanVoixNatif('bascule'); else annulerPlanVoixNatif(); }
   if(byoMusic){
     // On coupe tout mix REPS : c'est la musique du client qui joue
     mixMode=null; manualPicks=[]; window._mixCategory=null;
@@ -5684,6 +5686,12 @@ function voiceFileForText(text){
 
 // Joue un fichier voix avec ducking musique ; onFail si le fichier est absent
 function playVoiceFile(file, onFail){
+  // 10/09/2026 : en « Ma musique », TOUTES les voix passent par le lecteur natif, qui se
+  // melange a Spotify. Jusqu'ici seuls le decompte et les bips y passaient : les 10 s,
+  // les reperes AMRAP, la mi-parcours, les encouragements et le TIME prenaient un
+  // <audio> WebKit, celui-la meme que playAnnounceEl s'interdit (« jamais de <audio>
+  // WebKit » en Ma musique) parce qu'il peut couper la musique du client.
+  if(!_busActive && nativeVoiceOn()){ if(playAnnounceEl(file, onFail)) return; }
   try{
     _couperVoixEnCours();   // une annonce ne doit jamais jouer par-dessus la precedente
     const volEl=document.getElementById('volVoice');
@@ -5880,6 +5888,11 @@ async function nativeVoicePreload(file){
 }
 function nativeVoicePlay(file){
   if(!_NA) return false;
+  // 10/09/2026 (soir) : des qu'un plan est chez le natif, c'est LUI qui joue toutes les
+  // voix, premier plan compris. Avant, le natif ne jouait qu'en arriere-plan et rendait
+  // la main au retour dans REPS, en plein decompte : Francois entendait le decompte
+  // « destabilise » a chaque changement d'app. Un seul lecteur, plus de passage de relais.
+  if(_planNatifActif) return true;
   try{ _NA.play({ assetId:VPid(file) }); return true; }
   catch(e){ DBG('NA play KO '+file+' '+((e&&e.message)||e)); return false; }
 }
@@ -5900,6 +5913,7 @@ function _announceFilesForLang(){
   // du pool natif pour un son qui ne peut pas partir (meme piege que halfway, ci-dessous).
   const vf=VOICE_FILES[L]||{}; Object.keys(vf).forEach(k=>{ if(VOICE_FILES_PRESENTS[k]) out.push(vf[k]); });
   out.push(BEEP_AUDIO, TICK_AUDIO, START_AUDIO);
+  if(BREAK_LETSGO_PRESENTS) out.push(BREAK_AUDIO, LETSGO_AUDIO);   // 11/09/2026, seances
   // NOTE (10/08/2026) : le prechargement de halfway-*.mp3 a ete retire. Il n'existe
   // AUCUNE annonce « a la moitie » dans l'app : pas de cle dans TXT, pas de mapping
   // dans voiceFileForText(). Les fichiers etaient donc charges dans le pool audio
@@ -5911,6 +5925,424 @@ async function nativePreloadAnnounces(){
   if(!(await nativeVoiceInit())) return;
   for(const f of _announceFilesForLang()){ await nativeVoicePreload(f); }
 }
+
+// =====================================================================
+// ===== VOIX EN ARRIERE-PLAN, mode « Ma musique » (10/09/2026) =====
+// =====================================================================
+// Retour d'un coach : en « Ma musique », il passe sur Spotify pendant le WOD pour
+// changer de morceau, et REPS se tait. En arriere-plan iOS suspend la page : les
+// minuteurs qui declenchent les annonces s'arretent, donc plus rien ne sort.
+//
+// Remede : on donne au natif la liste des sons a venir, avec leur heure exacte, et
+// c'est lui qui les joue tant que l'app est en arriere-plan (cf.
+// VideoOverlayPlugin.swift, « VOIX EN ARRIERE-PLAN »). Le plan part a chaque GO, puis
+// a chaque passage en arriere-plan (plan a jour : skip, tabata, etc.).
+//
+// SEANCES EN ENCHAINEMENT AUTO (10/09/2026, soir). Les coachs sont TOUJOURS sur
+// Spotify et enchainent les blocs en automatique. Le plan couvre donc la seance
+// entiere : fin du bloc, 2,6 s d'attente (seanceApresBloc), decompte 10 -> GO du bloc
+// suivant, ses annonces, et ainsi de suite jusqu'au dernier bloc. Au retour dans REPS,
+// seanceRattraper() recale l'app sur le bloc et la seconde ou en est vraiment la salle.
+//
+// EN PREMIER PLAN, RIEN NE CHANGE : le natif ne joue rien, le JS reste seul maitre.
+// En arriere-plan, le JS se tait (garde dans nativeVoicePlay) : sinon, si iOS le
+// laissait tourner au ralenti, chaque annonce sortirait deux fois.
+//
+// Le plan est calcule en REJOUANT A BLANC le vrai code (checkAnnounce, tabataPhaseEnd,
+// chargerBlocDansEtat...), seconde par seconde, avec les fonctions de son remplacees
+// par des enregistreurs. On ne reecrit pas la logique des annonces : c'est la meme,
+// elle ne peut pas diverger. Tout l'etat touche est sauvegarde avant et remis apres.
+var _planNatifActif=false;
+var _planGen=0;          // generation du plan : un minuteur d'un ancien plan ne touche pas au nouveau
+var _planSeance=null;   // {segments:[{index,tLaunch,tGo,fin}], items:[{t,f,r}]}, seance auto seulement
+function _pluginVoixArrierePlan(){
+  const VO=_videoOverlayPlugin();
+  return (VO && typeof VO.planifierVoix==='function') ? VO : null;
+}
+function _seanceAutoAvecSuite(){
+  try{
+    if(!S.seance) return false;
+    sqCharger();
+    return !!(SQ && SQ.enchainement==='auto' && SQ.blocs && SQ.blocs.length>S.seance.index+1);
+  }catch(e){ return false; }
+}
+function simulerAnnoncesRestantes(){
+  const out=[], segs=[];
+  if(S.state!=='playing' || !isFinite(S.t0) || !isFinite(S.startRemain) || !isFinite(S.remain)) return {items:out, segments:segs};
+  // Heure reelle de la seconde en cours, meme arithmetique que la boucle de startChrono.
+  let base=S.t0+(S.startRemain-S.remain)*1000;
+  let k=0, fini=false;
+  const note=(f)=>{ if(f) out.push({t:base+k*1000, f:VP(f), r:f}); };
+  const enSeance=_seanceAutoAvecSuite();
+  const idx=S.seance?S.seance.index:-1;
+  const snapS=Object.assign({},S);
+  const snapEnc=_encPlanning.map(o=>Object.assign({},o));
+  const snapSacG=_encSacGeneral.slice(), snapSacF=_encSacFinale.slice();
+  const snapBus=_busActive;
+  const o={nativeVoicePlay, playAnnounceEl, playVoiceFile, showAnnounce, updateClock,
+           recordWodFrame, _updateDiag, end, duckStart, duckEnd, playCountWA, playRestWA,
+           playRoundWA, DBG, resetTimer};
+  const derouler=()=>{
+    fini=false;
+    if(S.seance && S.estRepos){
+      // Repos : pas d'annonce, seulement le decompte du bloc suivant, qui part a la fin.
+      // 11/09/2026 : plus le BREAK du debut de repos (cf. _itemsRepos).
+      const tFin=base+S.remain*1000, maintenant=Date.now();
+      _itemsRepos(tFin, S.total).forEach(it=>{ if(it.t>=maintenant-150) out.push({t:it.t, f:VP(it.f), r:it.f}); });
+      k=S.remain; S.remain=0; fini=true;
+      return;
+    }
+    let garde=0;
+    while(!fini && garde++<7200){
+      k++;
+      S.remain--;
+      checkAnnounce();
+      if(S.remain<=0){
+        if(S.mode==='tabata') tabataPhaseEnd();
+        else end();
+      }
+    }
+  };
+  try{
+    _busActive=false;
+    nativeVoicePlay=function(f){ note(f); return true; };
+    playAnnounceEl=function(f){ note(f); return !!f; };
+    playVoiceFile=function(f){ note(f); };
+    showAnnounce=function(){}; updateClock=function(){}; recordWodFrame=function(){};
+    _updateDiag=function(){}; duckStart=function(){ return null; }; duckEnd=function(){};
+    playCountWA=function(){}; playRestWA=function(){}; playRoundWA=function(){};
+    DBG=function(){};
+    resetTimer=function(){};   // filet : setMode() ne doit jamais arreter le vrai WOD
+    end=function(){ fini=true; try{ speak(TXT[S.lang].time); }catch(e){} };
+    let precRepos=!!(S.seance && S.estRepos);
+    // 11/09/2026 : bloc parti d'un repos a l'instant (finDuRepos) : son LET'S GO est a venir.
+    if(!precRepos && BREAK_LETSGO_PRESENTS && S._letsGoA && S._letsGoA>=Date.now()-150)
+      out.push({t:S._letsGoA, f:VP(LETSGO_AUDIO), r:LETSGO_AUDIO});
+    derouler();
+    segs.push({index:idx, fin:base+k*1000});
+    if(enSeance){
+      for(let j=idx+1; j<SQ.blocs.length; j++){
+        const b=SQ.blocs[j], finPrec=base+k*1000;
+        let L=null, tGo;
+        if(precRepos) tGo=finPrec;                         // apres un repos : depart direct (finDuRepos)
+        else if(b.type==='repos') tGo=finPrec+50;          // le repos part tout de suite (seanceApresBloc)
+        else {
+          // seanceApresBloc() attend 2,6 s apres le TIME, puis togglePlay() -> launch() :
+          // decompte 10 -> GO, et startChrono a PREROLL + 10,5 s (+ silence de tete du « 10 »).
+          L=finPrec+2600;
+          const on0=(onsetsDecompte()[0]||0);
+          tGo=L+PREROLL_MS+10500+on0;
+          _itemsDecompteBloc(tGo).forEach(it=>{ out.push({t:it.t, f:VP(it.f), r:it.f}); });
+        }
+        if(precRepos && BREAK_LETSGO_PRESENTS && b.type!=='repos')
+          out.push({t:tGo+LETSGO_APRES_MS, f:VP(LETSGO_AUDIO), r:LETSGO_AUDIO});
+        S.state='idle';
+        chargerBlocDansEtat(b);                          // le vrai code, comme en salle
+        S.miDit=false;
+        updateTotalFromMode();
+        planifierEncouragements(S.total, S.mode, S.lang);
+        S.state='playing';
+        base=tGo; k=0;
+        derouler();
+        const seg={index:j, tGo:tGo, fin:base+k*1000};
+        if(L!==null) seg.tLaunch=L;
+        segs.push(seg);
+        precRepos=(b.type==='repos');
+      }
+    }
+  }catch(e){
+    try{ o.DBG('voix arriere-plan : simulation KO '+((e&&e.message)||e)); }catch(_){}
+  }finally{
+    nativeVoicePlay=o.nativeVoicePlay; playAnnounceEl=o.playAnnounceEl; playVoiceFile=o.playVoiceFile;
+    showAnnounce=o.showAnnounce; updateClock=o.updateClock; recordWodFrame=o.recordWodFrame;
+    _updateDiag=o._updateDiag; end=o.end; duckStart=o.duckStart; duckEnd=o.duckEnd;
+    playCountWA=o.playCountWA; playRestWA=o.playRestWA; playRoundWA=o.playRoundWA; DBG=o.DBG;
+    resetTimer=o.resetTimer;
+    _busActive=snapBus;
+    const remettre=()=>{
+      Object.keys(S).forEach(key=>{ if(!(key in snapS)) delete S[key]; });
+      Object.assign(S, snapS);
+    };
+    remettre();
+    if(enSeance && idx>=0){
+      // L'ecran a suivi les blocs simules (onglet de mode, reglages) : on le remet sur
+      // le bloc en cours. setMode() ne fait rien de dangereux quand l'etat est « idle ».
+      try{ S.state='idle'; chargerBlocDansEtat(SQ.blocs[idx]); }catch(e){}
+      remettre();
+      try{ updateClock(); renderSched(); }catch(e){}
+    }
+    _encPlanning=snapEnc; _encSacGeneral=snapSacG; _encSacFinale=snapSacF;
+  }
+  return {items:out, segments:segs};
+}
+function envoyerPlanVoixNatif(motif){
+  try{
+    if(!byoMusic || S.state!=='playing') return;
+    const VO=_pluginVoixArrierePlan();
+    if(!VO) return;   // navigateur, PWA, ou build sans le Swift du 10/09 : comportement d'avant
+    const plan=simulerAnnoncesRestantes();
+    const items=plan.items.map(x=>({t:x.t, f:x.f}));
+    _planSeance=(plan.segments.length>1)?plan:null;
+    _planGen++;
+    _planNatifActif=true;
+    VO.planifierVoix({items:items})
+      .then(r=>{
+        const m=(r&&r.manquants&&r.manquants.length)?(' ; ILLISIBLES : '+r.manquants.join(' ')):'';
+        DBG('voix arriere-plan ('+motif+') : '+items.length+' sons, '+plan.segments.length+' bloc(s)'+m);
+      })
+      .catch(e=>{ _planNatifActif=false; _planSeance=null; DBG('voix arriere-plan KO : '+((e&&e.message)||e)); });
+  }catch(e){ DBG('voix arriere-plan : '+((e&&e.message)||e)); }
+}
+function annulerPlanVoixNatif(){
+  _planGen++;
+  _planSeance=null;
+  if(!_planNatifActif) return;
+  _planNatifActif=false;
+  try{
+    const VO=_pluginVoixArrierePlan();
+    if(VO && typeof VO.annulerVoix==='function') VO.annulerVoix().catch(()=>{});
+  }catch(e){}
+}
+// Fin d'un bloc : on garde le plan natif s'il reste des blocs a enchainer, sinon le
+// coach qui file sur Spotify pendant le repos ou le decompte tomberait dans le silence.
+function _planGardePourLaSuite(){
+  return !!(_planSeance && S.seance && _planSeance.segments.some(s=>s.index>S.seance.index));
+}
+
+// Sons du decompte 10 -> GO, cales pour que le chrono du bloc parte a tChrono.
+// Meme arithmetique que launch() (silence de tete de chaque fichier compense), pour que
+// le decompte de fin de repos sonne exactement comme celui du depart.
+function _itemsDecompteBloc(tChrono){
+  const liste=listeDecompte(), ons=onsetsDecompte(), on0=ons[0]||0, out=[];
+  const t0=tChrono-10500-on0;
+  liste.forEach((f,i)=>{ out.push({t:t0+Math.max(0, i*1000-(ons[i]||0)+on0), f:f}); });
+  if(!SIGNAL_DEPART_REMPLACE_VOIX) out.push({t:t0+Math.max(0, 10*1000-(ons[10]||0)+on0), f:START_AUDIO});
+  return out;
+}
+// ===== BREAK ET LET'S GO (11/09/2026, demande de Francois) =====
+// Au debut d'un repos entre deux blocs : « BREAK ». Quand le bloc suivant repart :
+// « LET'S GO ». En anglais pour toutes les voix et toutes les langues, comme TIME.
+// Un fichier par pack (break.mp3, lets-go.mp3), resolu par VP() comme le reste.
+// Tant que BREAK_LETSGO_PRESENTS vaut false, rien n'est joue ni precharge : un son
+// absent ne doit ni faire de 404 dans le natif ni casser le cache du service worker.
+const BREAK_AUDIO='break.mp3';
+const LETSGO_AUDIO='lets-go.mp3';
+const BREAK_LETSGO_PRESENTS=false;
+// BREAK : 1,9 s apres le debut du repos. Le repos part 50 ms apres le TIME du bloc
+// precedent, et le TIME dure 1,67 s : sans ce delai, le BREAK lui couperait la parole.
+const BREAK_APRES_MS=1900;
+// LET'S GO : 0,4 s apres le depart du bloc. Le signal de depart part 0,5 s avant et
+// dure 0,84 s : il a fini de sonner.
+const LETSGO_APRES_MS=400;
+// Pas de BREAK sur un repos trop court : il tomberait dans le decompte du bloc suivant.
+const BREAK_REPOS_MIN_S=15;
+// Sons d'un repos qui finit a tFin : BREAK au debut, decompte du bloc suivant a la fin.
+function _itemsRepos(tFin, totalSec){
+  const out=_itemsDecompteBloc(tFin);
+  if(BREAK_LETSGO_PRESENTS && totalSec>=BREAK_REPOS_MIN_S)
+    out.unshift({t:tFin-totalSec*1000+BREAK_APRES_MS, f:BREAK_AUDIO});
+  return out;
+}
+
+// Repos de seance : a 12 s de la fin, on arme le decompte du bloc suivant.
+//
+// 11/09/2026, Francois : « le decompte du 10/9/8/7 est carrement decale sur le deuxieme
+// bloc ». Deux defauts sur ce chemin, corriges ici :
+//  1. Chaque chiffre partait d'un setTimeout vers playAnnounceEl(f, ()=>{}). Or quand
+//     l'AudioContext tourne, playAnnounceEl confie le son a onFail (« le chemin Web
+//     Audio du son concerne ») : avec un onFail vide, le chiffre ne sortait PAS. En
+//     musique REPS, le decompte d'apres repos etait donc muet ou en miettes.
+//  2. Meme quand il sortait, il dependait d'un minuteur JS par chiffre, alors que le
+//     decompte de depart (launch) est cale sur l'horloge Web Audio depuis le 02/09.
+// Maintenant, en musique REPS : horloge Web Audio, source.start(when), comme launch().
+// Repli (AudioContext suspendu, buffers pas prets, enregistrement) : l'ancien chemin,
+// mais sans l'onFail vide. En « Ma musique » avec le natif, ces sons sont deja dans
+// son plan : playAnnounceEl -> nativeVoicePlay se tait (garde), rien ne sort deux fois.
+function reposDecompte(){
+  if(S._reposCdArme || S.remain>12) return;
+  S._reposCdArme=true;
+  const tFin=S.t0+S.startRemain*1000, maintenant=Date.now();
+  const items=_itemsDecompteBloc(tFin).filter(it=>it.t>=maintenant-150);
+  let horloge=false;
+  try{
+    const ctx=(!byoMusic && !_busActive)?ensureAudioCtx():null;
+    if(ctx && ctx.state==='running' && decompteBuffersPrets(items.map(it=>it.f))){
+      const ancre=ctx.currentTime, t0=Date.now(), g=gainVoix();
+      if(!S.cdWA) S.cdWA=[];
+      items.forEach(it=>{
+        const src=ctx.createBufferSource(); src.buffer=_recBuf[it.f];
+        const gn=ctx.createGain(); gn.gain.value=g;
+        src.connect(gn); gn.connect(ctx.destination); busAttachGain(gn);
+        src.start(ancre+Math.max(0,(it.t-t0)/1000)); S.cdWA.push(src);
+      });
+      // Musique baissee sur tout le decompte, comme au depart. Minuteur hors cdTimers :
+      // une pause (clearCd) ne doit pas laisser la musique baissee.
+      const id=duckStart(DUCK_DECOMPTE);
+      setTimeout(()=>duckEnd(id), Math.max(0, tFin+300-Date.now()));
+      horloge=true;
+      DBG('repos : decompte du bloc suivant sur l\'horloge audio ('+items.length+' sons)');
+    }
+  }catch(e){ DBG('repos : horloge audio KO '+((e&&e.message)||e)+', repli'); }
+  if(!horloge){
+    items.forEach(it=>{
+      S.cdTimers.push(setTimeout(()=>{
+        if(S.state==='playing' && S.estRepos){ try{ playAnnounceEl(it.f); }catch(e){} }
+      }, Math.max(0, it.t-maintenant)));
+    });
+  }
+  try{ showAnnounce(L3('PRÊTS ?','READY?','PRONTOS?'),'chrono'); }catch(e){}
+}
+// Demarre le bloc deja charge dans S, tout de suite, sans le decompte de launch().
+function _demarrerBlocSansDecompte(){
+  S.miDit=false;
+  updateTotalFromMode();
+  planifierEncouragements(S.total, S.mode, S.lang);
+  try{ appliquerMixageAudio(); }catch(e){}
+  try{
+    if(byoMusic) nativePreloadAnnounces();
+    else { ensureAudioCtx(); preloadCountBuffers(); preloadRoundBuffers(); }
+  }catch(e){}
+  try{ wakeLockOn(); }catch(e){}
+  S.state='idle';
+  startChrono();
+}
+function _demarrerRepos(){
+  try{ if(!byoMusic) startMusic(); }catch(e){}   // la musique REPS continue pendant la recup
+  _demarrerBlocSansDecompte();
+  try{ showAnnounce(L3('REPOS','REST','DESCANSO'),'goutte'); }catch(e){}
+  // 11/09/2026 : BREAK. En « Ma musique » le natif l'a dans son plan et la garde de
+  // nativeVoicePlay fait taire ce minuteur-ci ; ailleurs, c'est lui qui le joue.
+  if(BREAK_LETSGO_PRESENTS && S.total>=BREAK_REPOS_MIN_S){
+    try{ if(!byoMusic && ensureAudioCtx()){ _loadRecBuf(BREAK_AUDIO); _loadRecBuf(LETSGO_AUDIO); } }catch(e){}
+    const iRepos=S.seance?S.seance.index:-1;
+    S.cdTimers.push(setTimeout(()=>{
+      if(S.state==='playing' && S.estRepos && S.seance && S.seance.index===iRepos){ try{ playAnnounceEl(BREAK_AUDIO); }catch(e){} }
+    }, BREAK_APRES_MS));
+  }
+  DBG('seance : repos de '+S.total+' s, decompte du bloc suivant sur ses 10 dernieres secondes');
+}
+// Fin d'un repos : pas de TIME, le bloc suivant part a la seconde (son decompte vient
+// d'etre joue par le repos lui-meme).
+function finDuRepos(){
+  clearInterval(S.iv); S.gen=(S.gen||0)+1;
+  S.state='idle';
+  sqCharger();
+  const i=S.seance.index+1;
+  if(i>=SQ.blocs.length){ S.estRepos=false; S.remain=0; end(); return; }   // repos en dernier : ne devrait pas arriver
+  S.seance.index=i;
+  chargerBlocDansEtat(SQ.blocs[i]);
+  majSeanceBandeau();
+  // 11/09/2026 : LET'S GO. L'heure est posee AVANT le depart, pour que le plan envoye
+  // au natif par startChrono l'inclue (cf. simulerAnnoncesRestantes).
+  S._letsGoA=Date.now()+LETSGO_APRES_MS;
+  _demarrerBlocSansDecompte();
+  if(BREAK_LETSGO_PRESENTS){
+    setTimeout(()=>{
+      if(S.state==='playing' && S.seance && S.seance.index===i){ try{ playAnnounceEl(LETSGO_AUDIO); }catch(e){} }
+    }, LETSGO_APRES_MS);
+  }
+  DBG('seance : fin du repos, bloc '+(i+1)+' parti sans decompte supplementaire');
+}
+
+// ----- RETOUR DANS REPS PENDANT UNE SEANCE -----
+// Pendant l'absence, le natif a enchaine les blocs ; le JS, lui, est reste fige. On le
+// recale sur la realite : bon bloc, bonne seconde, sans rien redire.
+//
+// Demarre le bloc courant (deja charge dans S) comme s'il avait commence a seg.tGo.
+function _blocEnCoursDepuis(seg, now){
+  S.miDit=false;
+  updateTotalFromMode();
+  planifierEncouragements(S.total, S.mode, S.lang);
+  try{ if(byoMusic) nativePreloadAnnounces(); }catch(e){}
+  const ecoule=Math.max(0, Math.floor((now-seg.tGo)/1000));
+  if(S.mode==='tabata'){
+    let t=ecoule, round=1, phase='work', len=S.tabWorkSec, fin=false;
+    for(let g=0; g<2000; g++){
+      len=(phase==='work')?S.tabWorkSec:S.tabRestSec;
+      if(t<len) break;
+      t-=len;
+      if(phase==='work'){ if(round>=S.tabTotalRounds){ fin=true; break; } phase='rest'; }
+      else { round++; phase='work'; }
+    }
+    if(fin) return false;
+    S.tabPhase=phase; S.tabRound=round; S.total=len; S.remain=Math.max(1,len-t);
+  } else {
+    S.remain=Math.max(1, S.total-ecoule);
+    if(S.mode==='emom'){
+      // Phase deja en cours : sans ca, emomPhaseCheck annoncerait un ROUND ou un REST
+      // au premier tick, alors que le natif l'a deja dit.
+      const P=emomPos(S.total-S.remain);
+      if(P){ S.emomPhase=P.phase; S.emomCurrentRound=P.round; S.emomCurrentCycle=P.cycle; }
+    }
+    if((S.mode==='wod'||S.mode==='amrap') && S.remain<=miParcoursSec()) S.miDit=true;
+  }
+  try{ wakeLockOn(); }catch(e){}
+  S.state='idle';
+  startChrono();
+  DBG('seance : reprise du bloc '+(seg.index+1)+' a '+S.remain+' s restantes');
+  return true;
+}
+function seanceRattraper(){
+  const P=_planSeance;
+  if(!P || !S.seance || !P.segments.length) return false;
+  const now=Date.now();
+  let seg=null;
+  for(let x=0; x<P.segments.length; x++){ if(now<P.segments[x].fin){ seg=P.segments[x]; break; } }
+  const courant=S.seance.index;
+  if(S.state==='playing'){
+    if(seg && seg.index===courant) return false;      // meme bloc : le rattrapage normal suffit
+  } else if(S.state==='idle' || S.state==='launching'){
+    if(seg && seg.index===courant && seg.tLaunch){
+      // Entre deux blocs, et le JS est dans les temps : on le laisse faire.
+      if(S.state==='idle' && now<seg.tLaunch+700) return false;
+      if(S.state==='launching' && isFinite(S.cdT0) && Math.abs(S.cdT0-(seg.tLaunch+PREROLL_MS))<700) return false;
+    }
+  } else return false;                                 // pause : rien a recaler
+  if(seg && !seg.tGo) return false;                    // ne peut pas arriver, garde
+  _planSeance=null;
+  const items=P.items;
+  DBG('seance : retour dans REPS, recalage '+(seg?('sur le bloc '+(seg.index+1)):'sur la fin de seance'));
+  // 1. On arrete proprement ce que le JS croyait etre en train de faire, sans rien dire.
+  clearCd();
+  if(S.state==='playing'){
+    S._timeDejaDit=true; S._sansAutoLancement=true;
+    S.seance.index=seg ? seg.index-1 : P.segments[P.segments.length-1].index;
+    end();                                              // -> seanceApresBloc charge le bon bloc
+  } else {
+    S.state='idle';
+    try{ wakeLockOff(); }catch(e){}
+    document.body.classList.remove('wod-live');
+    { const bp=document.getElementById('btnPlay'); if(bp) bp.textContent='▶'; }
+    S._sansAutoLancement=true;
+    S.seance.index=seg ? seg.index-1 : P.segments[P.segments.length-1].index;
+    seanceApresBloc();
+    if(!S.seance){ try{ setTimeout(function(){ try{ ouvrirFinScreen(); }catch(e){} }, 300); }catch(e){} }
+  }
+  if(!seg || !S.seance || S.seance.index!==seg.index) return true;
+  // 2. On reprend la ou en est la salle.
+  if(now>=seg.tGo){ _blocEnCoursDepuis(seg, now); return true; }
+  // Dans le decompte du bloc : on joue la fin du decompte et on part au GO prevu.
+  S.state='launching';
+  document.body.classList.add('wod-live');
+  try{ setStatus('launching','10·9·8…'); }catch(e){}
+  items.filter(it=>it.t>=now && it.t<seg.tGo).forEach(it=>{
+    S.cdTimers.push(setTimeout(()=>{ if(S.state==='launching') nativeVoicePlay(it.r); }, it.t-now));
+  });
+  S.cdTimers.push(setTimeout(()=>{ if(S.state==='launching') _blocEnCoursDepuis(seg, Date.now()); }, Math.max(0,seg.tGo-now)));
+  return true;
+}
+
+// Plan a jour a chaque depart en arriere-plan. Au retour : recalage de seance si besoin.
+// Sinon rien a faire : le natif ne joue plus, et le rattrapage « reveil » de startChrono
+// ne rejoue pas les annonces du passe.
+try{
+  document.addEventListener('visibilitychange', ()=>{
+    // Plus d'envoi au depart en arriere-plan : le natif a deja le plan (envoye au GO et a
+    // chaque changement) et joue deja tout. Le renvoyer ici re-armait ses minuteurs en
+    // plein decompte. Au retour : recalage de seance si besoin.
+    if(!document.hidden){ try{ seanceRattraper(); }catch(e){ DBG('seance : recalage KO '+((e&&e.message)||e)); } }
+  });
+}catch(e){}
 
 // ===== SEQUENCE =====
 function togglePlay(){
@@ -6072,6 +6504,8 @@ var SQ_CLE_LIB='reps_seances_lib';
 var SQ_LIB=null;
 var SQ=null;                 // {nom, enchainement, blocs:[]} : la seance courante
 function sqDureeBloc(b){
+  if(b.type==='intervalle' && b.mode!=='tabata' && (b.cycles||1)>1)
+    return b.cycles*b.tours*(b.work+b.rest)+(b.cycles-1)*(b.cycleRest||0);
   if(b.type==='intervalle') return b.tours*(b.work+b.rest);
   if(b.type==='repos') return b.duree;
   return b.cap;
@@ -6085,7 +6519,8 @@ function sqNomDuJour(){
   return 'SÉANCE DU '+d.getDate()+' '+mois[d.getMonth()];
 }
 function sqSeanceNeuve(){
-  return {id:sqIdNeuf(), nom:sqNomDuJour(), enchainement:'manuel', blocs:[], creeLe:Date.now()};
+  // 10/09/2026, Francois : « il faut que ca reste enchaine, il n'y a que cette option ».
+  return {id:sqIdNeuf(), nom:sqNomDuJour(), enchainement:'auto', blocs:[], creeLe:Date.now()};
 }
 function sqCharger(){
   if(SQ_LIB && SQ){ return; }                 // deja en memoire
@@ -6110,6 +6545,9 @@ function sqCharger(){
   if(SQ_LIB.courante>=SQ_LIB.seances.length) SQ_LIB.courante=SQ_LIB.seances.length-1;
   SQ=SQ_LIB.seances[SQ_LIB.courante];
   if(!SQ.blocs) SQ.blocs=[];
+  // 10/09/2026 : une seule facon d'enchainer, automatique. Les seances deja
+  // enregistrees en « un par un » passent en enchaine.
+  SQ_LIB.seances.forEach(function(se){ se.enchainement='auto'; });
 }
 function sqSauver(){
   try{ localStorage.setItem(SQ_CLE_LIB,JSON.stringify(SQ_LIB)); }catch(e){}
@@ -6343,6 +6781,9 @@ function blocDepuisEtat(){
     return {mode:'emom',type:'intervalle',titre:'EMOM',
             work:S.emomIntervalSec||60, rest:S.emomRestSec||0,
             tours:S.emomRounds||Math.max(1,Math.round((S.dur||10)*60/((S.emomIntervalSec||60)+(S.emomRestSec||0)))),
+            // 10/09/2026 : les cycles n'etaient pas gardes. Tous les EMOM d'une seance
+            // prenaient ceux du DERNIER EMOM regle.
+            cycles:Math.max(1,S.emomCycles||1), cycleRest:Math.max(0,S.emomCycleRestSec||0),
             notes:''};
   }
   if(m==='tabata'){
@@ -6417,8 +6858,30 @@ function chargerBlocDansEtat(b){
   } else {
     S.mode=(b.mode==='amrap')?'amrap':'wod'; S.dur=Math.max(1,Math.round(b.cap/60));
   }
+  // 10/09/2026 : le bloc doit tourner avec SES valeurs, a la seconde. Trois fuites :
+  //  - Tabata : updateTotalFromMode() relit les champs de l'ecran, pas S ;
+  //  - EMOM : setMode() recalcule les tours depuis S.dur, arrondi a la minute
+  //    (3 tours de 20/10 = 1 min 30 -> 2 min -> 4 tours) ; et les cycles etaient ceux
+  //    du dernier EMOM regle ;
+  //  - For Time, AMRAP, repos : S.dur est en minutes, un repos de 1 min 30 durait 2 min.
+  //    S._blocSec porte la duree exacte, lue par updateTotalFromMode() en seance.
+  S._blocSec=null;
+  S.estRepos=(b.type==='repos');   // 10/09/2026 : un repos n'annonce que le decompte du bloc suivant
+  S._reposCdArme=false;
+  if(b.type==='intervalle' && b.mode==='tabata'){
+    try{
+      var tw=document.getElementById('tabWork'), tr=document.getElementById('tabRest'), trd=document.getElementById('tabRounds');
+      if(tw) tw.value=b.work; if(tr) tr.value=b.rest; if(trd) trd.value=b.tours;
+    }catch(e){}
+  } else if(b.type==='repos'){ S._blocSec=b.duree; }
+  else if(b.type!=='intervalle'){ S._blocSec=b.cap; }
   var tab=document.querySelector('.mode-tab[onclick*="\''+S.mode+'\'"]');
   if(tab){ try{ setMode(tab,S.mode); }catch(e){} }
+  if(b.type==='intervalle' && b.mode!=='tabata'){
+    S.emomIntervalSec=b.work; S.emomRestSec=b.rest; S.emomRounds=b.tours;
+    S.emomCycles=Math.max(1,b.cycles||1); S.emomCycleRestSec=Math.max(0,b.cycleRest||0);
+    try{ var er=document.getElementById('emomRounds'); if(er) er.textContent=b.tours; }catch(e){}
+  }
   try{ updateTotalFromMode(); updateClock(); }catch(e){}
 }
 // ===== ENCHAINEMENT DES BLOCS D'UNE SEANCE (05/09/2026) =====
@@ -6447,6 +6910,8 @@ function seanceArmer(){
 }
 function seanceArreter(){
   S.seance=null;
+  S._blocSec=null;
+  S.estRepos=false;
   majSeanceBandeau();
 }
 function seanceApresBloc(){
@@ -6465,8 +6930,20 @@ function seanceApresBloc(){
   S.seance.index=i;
   chargerBlocDansEtat(SQ.blocs[i]);
   majSeanceBandeau();
-  var auto=(SQ.enchainement==='auto');
-  if(auto){
+  var auto=true;   // 10/09/2026 : toujours enchaine (demande de Francois)
+  // 10/09/2026 : au recalage apres un retour d'arriere-plan (seanceRattraper), c'est
+  // le recalage qui lance le bloc, a la bonne seconde. Pas de second lancement ici.
+  if(S._sansAutoLancement){ S._sansAutoLancement=false; auto=false; }
+  if(auto && SQ.blocs[i].type==='repos'){
+    // 10/09/2026 : LE REPOS PART TOUT DE SUITE. Avant, il etait lance comme un WOD :
+    // 2,6 s de silence, decompte 10 -> GO, et seulement ensuite les 30 s de repos.
+    // Francois : « ca devrait repartir pour 30 secondes de repos ». Le repos EST la
+    // transition : il demarre au TIME, et ses 10 dernieres secondes font le decompte
+    // du bloc suivant, qui part directement a la fin du repos (cf. finDuRepos).
+    setTimeout(function(){
+      if(S.seance && S.state==='idle' && S.seance.index===i){ try{ _demarrerRepos(); }catch(e){ DBG('repos: '+((e&&e.message)||e)); } }
+    }, 50);
+  } else if(auto){
     // On laisse l'annonce TIME finir de sonner avant d'enchainer : elle dure 1,67 s et
     // le decompte du bloc suivant lui passerait dessus.
     setTimeout(function(){
@@ -6538,8 +7015,9 @@ function ouvrirSeances(){
   var nom=document.getElementById('sqNom');
   if(nom){ nom.value=SQ.nom||''; nom.oninput=function(){ SQ.nom=nom.value; sqSauver(); }; }
   var bm=document.getElementById('sqManuel'), ba=document.getElementById('sqAuto');
-  if(bm) bm.onclick=function(){ SQ.enchainement='manuel'; sqEnTete(); sqSauver(); };
-  if(ba) ba.onclick=function(){ SQ.enchainement='auto'; sqEnTete(); sqSauver(); };
+  // 10/09/2026 : plus de choix, toujours enchaine. La bascule est masquee.
+  if(bm && bm.parentNode) bm.parentNode.style.display='none';
+  { var aide=document.getElementById('sqAide'); if(aide) aide.style.display='none'; }
   sqTout();
   var m=document.getElementById('seancesModal');
   if(m) m.style.display='flex';
@@ -6779,7 +7257,7 @@ function confirmSync(){ cancelSync(); }
 //
 // A BUMPER A CHAQUE LIVRAISON. La liste des correctifs sert de controle croise : si
 // une ligne attendue manque dans le journal, le telephone tourne sur du vieux code.
-const REPS_JS_BUILD='2026-09-10-voix-encouragements';
+const REPS_JS_BUILD='2026-09-11-decompte-repos-break';
 const REPS_JS_CORRECTIFS='mixage-si-change, decompte-ctx-running, annonces-WA, relance-au-geste, rattrapage-routage, sonde-musique, cache-v212, gain-voix-unifie, cache-v216, time-partout, leo-time, enc-180s, mike-pt-1, enc-mutant-en, sam-enc-3, enc-mutant-pt, cache-v217';
 
 const DBG_MAX=400;              // ~un WOD entier, cout memoire negligeable
@@ -7494,6 +7972,10 @@ function startChrono(){
   let myIv;
   myIv=setInterval(()=>{
     if(myGen!==(S.gen||0)){ clearInterval(myIv); return; } // intervalle orphelin d'un WOD périmé
+    // 10/09/2026 : seance enchainee en arriere-plan par le natif, bloc fini depuis plus
+    // de 1,5 s : on recale sur le bon bloc au lieu de rattraper seconde par seconde.
+    if(_planSeance && _planSeance.segments.length && Date.now()>_planSeance.segments[0].fin+1500
+       && seanceRattraper()) return;
     const target=S.startRemain-Math.floor((Date.now()-S.t0)/1000);
     if(target>=S.remain) return;
     // RATTRAPAGE COURT vs LONG (05/09/2026, retour d'une coach : « why if i'm out of
@@ -7526,7 +8008,13 @@ function startChrono(){
     _updateDiag();
     if(S.remain<=0){
       if(S.mode==='tabata'){ tabataPhaseEnd(); S.t0=Date.now(); S.startRemain=S.remain; }
-      else end();
+      else if(S.seance && S.estRepos){ finDuRepos(); }   // fin de repos : le bloc suivant part, sans TIME
+      else {
+        // 10/09/2026 : le WOD s'est fini pendant que l'app etait en arriere-plan et le
+        // natif a deja dit TIME. Au retour, on ne le redit pas avec plusieurs minutes de retard.
+        if(reveil && _planNatifActif) S._timeDejaDit=true;
+        end();
+      }
     }
   // CADENCE DU CHRONO — 200 ms jusqu'au 08/09/2026, 20 ms depuis. C'est LA cause du
   // « 3-2-1 souvent trop rapide ».
@@ -7545,6 +8033,7 @@ function startChrono(){
   // 10 ms sans probleme.
   },20);
   S.iv=myIv;
+  envoyerPlanVoixNatif('go');   // filet : le natif a deja le plan si l'app part en arriere-plan
 }
 
 function tabataPhaseEnd(){
@@ -7632,6 +8121,9 @@ function emomPhaseCheck(){
 }
 
 function checkAnnounce(){
+  // 10/09/2026 : pendant un repos de seance, rien que le decompte du bloc suivant.
+  // Plus de « moitie du captime », de « dix secondes » ni de TIME au milieu d'une recup.
+  if(S.seance && S.estRepos){ reposDecompte(); return; }
   const r=S.remain;const t=TXT[S.lang];
   if(S.mode==='emom' && emomPhaseCheck()) return;
 
@@ -7795,6 +8287,8 @@ document.addEventListener('visibilitychange',()=>{
 });
 
 function pause(){
+  annulerPlanVoixNatif();
+  if(S.estRepos){ clearCd(); S._reposCdArme=false; }   // le decompte de fin de repos se re-arme a la reprise
   S.state='paused';clearInterval(S.iv);pauseMusic();musicWasPlaying=true;
   wakeLockOff();
   document.getElementById('btnPlay').textContent='▶';
@@ -7814,6 +8308,7 @@ function resume(){
 }
 
 function resetTimer(){
+  annulerPlanVoixNatif();
   try{ if(window.REC) REC._onStop(); }catch(e){}
   try{ if(S.filming){ const _vo=_videoOverlayPlugin(); if(_vo) _vo.cancelRecording(); S.filming=false; setFilmBtn(false); } }catch(e){}
   clearInterval(S.iv);clearCd();stopMusic();stopAllAnnounces();musicWasPlaying=false;
@@ -7843,6 +8338,18 @@ function resetTimer(){
 }
 
 function end(){
+  // Fin NATURELLE (le chrono est arrive a zero) : le TIME est dans le plan du natif, a
+  // l'heure exacte. On le laisse le dire et on se tait, sinon il sortirait deux fois.
+  // Fin ANTICIPEE (FINI, skip, recalage) : le plan ne vaut plus rien, on l'annule et
+  // c'est le JS qui dit TIME.
+  const _finNaturelle=(S.remain<=0);
+  if(_finNaturelle && _planNatifActif){
+    S._timeDejaDit=true;
+    if(!_planGardePourLaSuite()){
+      const g=++_planGen;
+      setTimeout(function(){ if(g===_planGen){ _planSeance=null; _planNatifActif=false; } }, 2500);
+    }
+  } else if(!(_finNaturelle && _planGardePourLaSuite())) annulerPlanVoixNatif();
   clearInterval(S.iv);clearCd();stopMusic();stopAllAnnounces();
   S.gen=(S.gen||0)+1; // tue tout intervalle orphelin
   if(voiceAudio){try{voiceAudio.pause();}catch(e){}voiceAudio=null;}
@@ -7857,7 +8364,8 @@ function end(){
   { const _d=document.getElementById('btnDone'); if(_d) _d.style.display='none'; }
   document.getElementById('phaseIndicator').className='phase-indicator';
   showAnnounce('TIME !','drapeau');
-  speak(TXT[S.lang].time);
+  if(!S._timeDejaDit) speak(TXT[S.lang].time);
+  S._timeDejaDit=false;
   document.getElementById('timerStatus').textContent=L3('Entraînement terminé 💪','Workout complete 💪','Treino concluído 💪');
   // Ne pas laisser figé le dernier "REST — ROUND 3/3" du WOD
   const _eb=document.getElementById('timerEyebrow');
@@ -7912,7 +8420,12 @@ function finishNow(){
 //   EMOM   : va au bout de la phase en cours (work -> rest, ou tour suivant)
 //   TABATA : meme chose, la bascule de phase existait deja
 //   autres : inchange (for time, AMRAP), on saute a 3 minutes restantes
+// 10/09/2026 : le skip recale le chrono, le plan du natif doit suivre.
 function skipAhead(){
+  _skipAheadBrut();
+  try{ if(S.state==='playing') envoyerPlanVoixNatif('skip'); }catch(e){}
+}
+function _skipAheadBrut(){
   if(S.state!=='playing') return;
 
   if(S.mode==='tabata'){ tabataPhaseEnd(); return; }
@@ -9002,13 +9515,19 @@ function csContinue(){
   }
   if(typeof updateTotalFromMode==='function') updateTotalFromMode();
   if(typeof updateClock==='function') updateClock();
+  // 10/09/2026, retour de Francois : « pourquoi je peux pas enchainer plusieurs EMOM ? »
+  // Parce que « Personnalise » menait TOUJOURS a la musique, meme en seance. Or un EMOM
+  // avec son propre work/rest passe forcement par ici. Le WOD n'etait donc jamais ajoute
+  // a la seance, et le wizard sautait a la fin. En seance, on fait comme chooseTiming :
+  // on range le WOD et on passe a « repos, WOD suivant ou fin ».
+  const suite = S.multi ? apresWodDeLaSeance : showMusicChoice;
   const screen=document.getElementById('customScreen');
   if(screen){
     screen.style.opacity='0';
     screen.style.transition='opacity 0.4s ease';
-    setTimeout(()=>{ screen.style.display='none'; showMusicChoice(); },400);
+    setTimeout(()=>{ screen.style.display='none'; suite(); },400);
   } else {
-    showMusicChoice();
+    suite();
   }
 }
 

@@ -23,7 +23,9 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setAudioMixing", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "openExternalApp", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cameraState", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "deleteFile", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "deleteFile", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "planifierVoix", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "annulerVoix", returnType: CAPPluginReturnPromise)
     ]
 
     private var pickCall: CAPPluginCall?
@@ -39,6 +41,28 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
     private let sessionQueue = DispatchQueue(label: "reps.camera.session")
     // Observateurs de reprise apres arriere-plan (cf. reprendreCamera, 05/09/2026).
     private var camObservers: [NSObjectProtocol] = []
+
+    // ===== Voix en arriere-plan (10/09/2026), cf. le bloc du meme nom en fin de fichier =====
+    private let voixQueue = DispatchQueue(label: "reps.voix.arriereplan")
+    private var voixEngine: AVAudioEngine?
+    private var voixPlayer: AVAudioPlayerNode?      // annonces : une nouvelle coupe la precedente
+    private var voixBipPlayer: AVAudioPlayerNode?   // bips : ils se superposent a la voix (3-2-1)
+    // Les voix sont en 44,1 kHz mono (530 fichiers sur 539 lisibles, mesure du 10/09).
+    // Le melangeur de l'engine remonte le mono sur les deux oreilles.
+    private let voixFormat = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
+    private var voixBuffers: [String: AVAudioPCMBuffer] = [:]
+    private var voixPlanning: [(t: Double, f: String)] = []
+    private var voixTimers: [DispatchSourceTimer] = []
+    private var voixArrierePlan = false
+    private var voixDuckGen = 0
+    // Reglage de la session trouve en entrant en arriere-plan, remis tel quel au retour.
+    // Sans ca, le premier plan garderait le reglage d'arriere-plan (sans baisse de Spotify).
+    private var voixCategorieAvant: AVAudioSession.Category?
+    private var voixOptionsAvant: AVAudioSession.CategoryOptions?
+    private var voixTacheFond: UIBackgroundTaskIdentifier = .invalid
+    private var voixObservers: [NSObjectProtocol] = []
+    // Sons deja joues (cle « heure|fichier ») : un plan renvoye ne les rejoue pas.
+    private var voixDejaJoues: [String: Double] = [:]
 
     // ===== MENAGE DES FICHIERS VIDEO (08/09/2026) =====
     // Chaque WOD filme laissait un .mov brut dans Documents, jamais supprime : l'app est
@@ -98,6 +122,7 @@ public class VideoOverlayPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.global(qos: .utility).async { [weak self] in
             self?.menageFichiersAnciens()
         }
+        voixInstallerObservateurs()   // voix en arriere-plan, cf. plus bas (10/09/2026)
     }
 
     // Supprime un fichier de travail sur demande du web. Renvoie toujours, sans jeter :
@@ -845,5 +870,339 @@ extension VideoOverlayPlugin: PHPickerViewControllerDelegate {
                 cg.drawLinearGradient(g, start: CGPoint(x: 0, y: 0), end: CGPoint(x: w, y: 0), options: [])
             }
         }
+    }
+
+    // =====================================================================
+    // ===== VOIX EN ARRIERE-PLAN, mode « Ma musique » (10/09/2026) =====
+    // =====================================================================
+    //
+    // Retour d'un coach : il lance un WOD en mode « Ma musique », passe sur Spotify
+    // pour changer de morceau, et REPS se tait. Deux raisons :
+    //   1. l'app ne declarait pas l'audio en arriere-plan (Info.plist) : iOS la gelait ;
+    //   2. meme declaree, la page web est suspendue en arriere-plan quand elle ne joue
+    //      rien elle-meme, ce qui est le cas en « Ma musique » : c'est Spotify qui joue.
+    //      Or ce sont les minuteurs JavaScript qui declenchent les annonces.
+    //
+    // Remede : le JS calcule la liste des annonces a venir (planifierVoix, au GO puis
+    // au passage en arriere-plan) et ce code les joue lui-meme, a l'heure, tant que
+    // l'app est en arriere-plan. Un AVAudioEngine tourne pendant ce temps : c'est lui
+    // qui garde l'app eveillee (il sort du silence entre deux annonces).
+    //
+    // 10/09/2026 (soir) : le natif joue desormais TOUTES les voix du WOD des qu'il a un
+    // plan, premier plan compris (mode « Ma musique » seulement). Le JS se tait. Avant, il
+    // rendait la main au JS au retour dans REPS, et le passage de relais en plein
+    // decompte s'entendait.
+    //
+    // /!\ ECRIT SANS COMPILATEUR. A construire dans Xcode, puis a essayer sur iPhone.
+
+    // (proprietes stockees : declarees dans la classe, plus haut. Une extension n'en accepte pas.)
+
+    // Baisser Spotify pendant chaque annonce, puis le remonter.
+    // A VERIFIER A L'OREILLE : si Spotify reste baisse apres la premiere annonce, passer
+    // a false. Les voix sortiront alors par-dessus Spotify, sans le baisser.
+    private static let voixDucker = true
+
+    // Bips et signaux : ils ne coupent pas la voix en cours.
+    private static func voixEstBip(_ f: String) -> Bool {
+        let nom = (f as NSString).lastPathComponent
+        return nom == "tick.mp3" || nom == "beep.mp3" || nom.hasPrefix("start")
+    }
+
+    // Appele depuis load().
+    private func voixInstallerObservateurs() {
+        let nc = NotificationCenter.default
+        voixObservers.append(nc.addObserver(forName: UIApplication.didEnterBackgroundNotification,
+                                            object: nil, queue: .main) { [weak self] _ in
+            guard let self = self else { return }
+            self.voixDebutTacheFond()
+            self.voixQueue.async {
+                self.voixArrierePlan = true
+                if self.voixTimers.isEmpty { self.voixArmer() }   // deja arme : on ne touche a rien
+            }
+        })
+        voixObservers.append(nc.addObserver(forName: UIApplication.willEnterForegroundNotification,
+                                            object: nil, queue: .main) { [weak self] _ in
+            guard let self = self else { return }
+            self.voixFinTacheFond()
+            // 10/09/2026 (soir) : on ne desarme PLUS au retour. Le natif joue toutes les
+            // voix du WOD, premier plan compris : c'est ce qui supprime le decompte
+            // « destabilise » que Francois entendait en revenant de Spotify.
+            self.voixQueue.async { self.voixArrierePlan = false }
+        })
+    }
+
+    // Filet de quelques secondes le temps que le plan arrive et que l'engine demarre.
+    // Sans plan a venir, on ne demande rien : l'app s'endort normalement.
+    private func voixDebutTacheFond() {
+        let maintenant = Date().timeIntervalSince1970 * 1000
+        let aVenir = voixQueue.sync { voixPlanning.contains { $0.t > maintenant } }
+        guard aVenir, voixTacheFond == .invalid else { return }
+        voixTacheFond = UIApplication.shared.beginBackgroundTask(withName: "reps-voix") { [weak self] in
+            self?.voixFinTacheFond()
+        }
+    }
+
+    private func voixFinTacheFond() {
+        guard voixTacheFond != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(voixTacheFond)
+        voixTacheFond = .invalid
+    }
+
+    // items : [{t: heure absolue en ms (Date.now() cote JS), f: chemin sous public/}]
+    @objc func planifierVoix(_ call: CAPPluginCall) {
+        let brut = call.getArray("items", JSObject.self) ?? []
+        var plan: [(t: Double, f: String)] = []
+        for o in brut {
+            guard let f = o["f"] as? String, !f.isEmpty else { continue }
+            let t: Double
+            if let d = o["t"] as? Double { t = d }
+            else if let n = o["t"] as? NSNumber { t = n.doubleValue }
+            else { continue }
+            plan.append((t: t, f: f))
+        }
+        plan.sort { $0.t < $1.t }
+        let planFinal = plan
+        voixQueue.async {
+            self.voixPlanning = planFinal
+            // Decodage a l'avance : au moment de jouer, il ne reste qu'a pousser le buffer.
+            var manquants: [String] = []
+            let fichiers = Set(planFinal.map { $0.f })
+            for f in fichiers where self.voixBuffer(f) == nil { manquants.append(f) }
+            // Premier plan comme arriere-plan : le natif joue des maintenant.
+            self.voixArmer()
+            call.resolve(["count": planFinal.count, "manquants": manquants, "arrierePlan": self.voixArrierePlan])
+        }
+    }
+
+    @objc func annulerVoix(_ call: CAPPluginCall) {
+        voixQueue.async {
+            self.voixDesarmer(viderPlanning: true)
+            call.resolve(["ok": true])
+        }
+    }
+
+    // --- tout ce qui suit tourne sur voixQueue ---
+
+    private func voixArmer() {
+        voixAnnulerTimers()
+        let maintenant = Date().timeIntervalSince1970 * 1000
+        // 300 ms de tolerance : une annonce tombee pile pendant la bascule part quand meme.
+        // Menage : on oublie les sons joues il y a plus d'une minute.
+        voixDejaJoues = voixDejaJoues.filter { $0.value > maintenant - 60000 }
+        let aVenir = voixPlanning.filter {
+            $0.t > maintenant - 300 && voixDejaJoues[VideoOverlayPlugin.voixCle($0.t, $0.f)] == nil
+        }
+        guard !aVenir.isEmpty else { return }
+        guard voixDemarrerMoteur() else {
+            NSLog("REPS voix: engine KO, rien ne sera joue en arriere-plan")
+            return
+        }
+        for item in aVenir {
+            let timer = DispatchSource.makeTimerSource(queue: voixQueue)
+            let delai: Double = max(0, (item.t - maintenant) / 1000)
+            timer.schedule(deadline: DispatchTime.now() + delai, leeway: .milliseconds(5))
+            let f = item.f
+            let cle = VideoOverlayPlugin.voixCle(item.t, item.f)
+            timer.setEventHandler { [weak self] in
+                guard let self = self else { return }
+                if self.voixDejaJoues[cle] != nil { return }
+                self.voixDejaJoues[cle] = Date().timeIntervalSince1970 * 1000
+                self.voixJouer(f)
+            }
+            timer.resume()
+            voixTimers.append(timer)
+        }
+        // DUCKING PAR GRAPPE (11/09/2026). Francois : « le decompte du 10/9/8/7 est
+        // carrement decale sur le deuxieme bloc ». Ce decompte-la (fin de repos) est joue
+        // ici, par le plan. Avant, voixJouer() baissait Spotify juste avant CHAQUE son et
+        // le remontait 0,4 s apres sa fin. Les chiffres durent 0,34 a 0,7 s : Spotify
+        // remontait donc entre deux chiffres, et chaque chiffre commencait par un
+        // setCategory() synchrone sur cette file, juste avant de jouer. Un aller-retour
+        // avec le demon audio d'iOS, de duree variable, avant chaque son : decompte
+        // irregulier. Le decompte du premier bloc passe par NativeAudio, pas par ici :
+        // c'est pour ca qu'il etait bon.
+        // Maintenant : on baisse 350 ms AVANT une grappe d'annonces (moins de 1,2 s de
+        // silence entre deux sons), on remonte 0,4 s apres la fin de la derniere. Au
+        // moment de jouer, il ne reste qu'a pousser le buffer.
+        if VideoOverlayPlugin.voixDucker {
+            var fenetres: [(debut: Double, fin: Double)] = []
+            for item in aVenir where !VideoOverlayPlugin.voixEstBip(item.f) {
+                var dureeMs: Double = 1000
+                if let b = voixBuffers[item.f] { dureeMs = Double(b.frameLength) / voixFormat.sampleRate * 1000 }
+                let debut = item.t - 350
+                let finSon = item.t + dureeMs + 400
+                if let derniere = fenetres.last, debut <= derniere.fin + 1200 {
+                    fenetres[fenetres.count - 1].fin = max(derniere.fin, finSon)
+                } else {
+                    fenetres.append((debut: debut, fin: finSon))
+                }
+            }
+            // Plan renvoye alors que Spotify est deja baisse (fin d'une grappe coupee par le
+            // renvoi) et rien a dire dans l'immediat : on le remonte, sinon il resterait bas.
+            let dejaBaisse = AVAudioSession.sharedInstance().categoryOptions.contains(.duckOthers)
+            let bientot = fenetres.first.map { $0.debut <= maintenant + 1500 } ?? false
+            if dejaBaisse && !bientot {
+                fenetres.insert((debut: maintenant + 1500, fin: maintenant + 1500), at: 0)
+            }
+            for w in fenetres {
+                let etapes: [(quand: Double, on: Bool)] = (w.fin > w.debut)
+                    ? [(quand: w.debut, on: true), (quand: w.fin, on: false)]
+                    : [(quand: w.fin, on: false)]
+                for e in etapes {
+                    let tm = DispatchSource.makeTimerSource(queue: voixQueue)
+                    tm.schedule(deadline: DispatchTime.now() + max(0, (e.quand - maintenant) / 1000),
+                                leeway: .milliseconds(20))
+                    let on = e.on
+                    tm.setEventHandler { [weak self] in self?.voixDuck(on) }
+                    tm.resume()
+                    voixTimers.append(tm)
+                }
+            }
+        }
+        // Apres le dernier son (le TIME), on arrete l'engine : sinon il garderait l'app
+        // eveillee pour rien, et la batterie avec.
+        let dernier = aVenir[aVenir.count - 1].t
+        let fin = DispatchSource.makeTimerSource(queue: voixQueue)
+        let delaiFin: Double = max(0, (dernier - maintenant) / 1000) + 4
+        fin.schedule(deadline: DispatchTime.now() + delaiFin)
+        fin.setEventHandler { [weak self] in self?.voixDesarmer(viderPlanning: true) }
+        fin.resume()
+        voixTimers.append(fin)
+        NSLog("REPS voix: \(aVenir.count) annonces programmees en arriere-plan")
+        DispatchQueue.main.async { self.voixFinTacheFond() }
+    }
+
+    private func voixAnnulerTimers() {
+        for t in voixTimers { t.cancel() }
+        voixTimers.removeAll()
+    }
+
+    private func voixDesarmer(viderPlanning: Bool) {
+        voixAnnulerTimers()
+        if viderPlanning { voixPlanning.removeAll() }
+        voixPlayer?.stop()
+        voixBipPlayer?.stop()
+        if let e = voixEngine, e.isRunning { e.stop() }
+        // On rend la session dans l'etat ou on l'a trouvee (Spotify remonte si on l'avait
+        // baisse). Jamais de setActive(false) ici : ca couperait le son de la page web.
+        if let cat = voixCategorieAvant, let opts = voixOptionsAvant {
+            do { try AVAudioSession.sharedInstance().setCategory(cat, mode: .default, options: opts) }
+            catch { NSLog("REPS voix: remise de la session KO — \(error.localizedDescription)") }
+        }
+        voixCategorieAvant = nil
+        voixOptionsAvant = nil
+    }
+
+    private func voixDemarrerMoteur() -> Bool {
+        let s = AVAudioSession.sharedInstance()
+        if voixOptionsAvant == nil {
+            voixCategorieAvant = s.category
+            voixOptionsAvant = s.categoryOptions
+        }
+        do {
+            // Deja en lecture mixable (le cas en « Ma musique ») : on ne reconfigure pas.
+            // Une reconfiguration pendant que le GO du decompte sonne l'ecornerait.
+            if s.category != .playback || !s.categoryOptions.contains(.mixWithOthers) {
+                try s.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            }
+            try s.setActive(true)
+        } catch {
+            NSLog("REPS voix: session KO — \(error.localizedDescription)")
+        }
+        if voixEngine == nil {
+            let e = AVAudioEngine()
+            let p = AVAudioPlayerNode()
+            let b = AVAudioPlayerNode()
+            e.attach(p)
+            e.attach(b)
+            e.connect(p, to: e.mainMixerNode, format: voixFormat)
+            e.connect(b, to: e.mainMixerNode, format: voixFormat)
+            voixEngine = e
+            voixPlayer = p
+            voixBipPlayer = b
+            // Changement de sortie (casque debranche, enceinte Bluetooth) : iOS arrete
+            // l'engine. On le relance, sinon plus rien ne sort jusqu'a la fin du WOD.
+            voixObservers.append(NotificationCenter.default.addObserver(
+                forName: .AVAudioEngineConfigurationChange, object: e, queue: nil) { [weak self] _ in
+                    guard let self = self else { return }
+                    self.voixQueue.async {
+                        if !self.voixTimers.isEmpty { _ = self.voixDemarrerMoteur() }
+                    }
+            })
+        }
+        guard let e = voixEngine else { return false }
+        if !e.isRunning {
+            do { try e.start() } catch {
+                NSLog("REPS voix: engine.start KO — \(error.localizedDescription)")
+                return false
+            }
+        }
+        if voixPlayer?.isPlaying == false { voixPlayer?.play() }
+        if voixBipPlayer?.isPlaying == false { voixBipPlayer?.play() }
+        return true
+    }
+
+    // Cle d'un son : son heure au 1/10 de seconde et son fichier. Le JS recalcule les
+    // memes heures a chaque envoi (meme S.t0), donc un son deja joue se reconnait.
+    private static func voixCle(_ t: Double, _ f: String) -> String {
+        return "\(Int((t / 100).rounded()))|\(f)"
+    }
+
+    private func voixJouer(_ f: String) {
+        if voixEngine?.isRunning != true { _ = voixDemarrerMoteur() }
+        guard let buf = voixBuffer(f) else {
+            NSLog("REPS voix: fichier illisible \(f)")
+            return
+        }
+        let bip = VideoOverlayPlugin.voixEstBip(f)
+        guard let p = bip ? voixBipPlayer : voixPlayer else { return }
+        // 11/09/2026 : plus de ducking ici. Il est pose a l'avance, par grappe, dans
+        // voixArmer() : un setCategory() juste avant le son le retardait.
+        let options: AVAudioPlayerNodeBufferOptions = bip ? [] : [.interrupts]
+        p.scheduleBuffer(buf, at: nil, options: options, completionHandler: nil)
+        if !p.isPlaying { p.play() }
+    }
+
+    private func voixDuck(_ on: Bool) {
+        let s = AVAudioSession.sharedInstance()
+        let opts: AVAudioSession.CategoryOptions = on ? [.mixWithOthers, .duckOthers] : [.mixWithOthers]
+        if s.categoryOptions == opts { return }
+        do {
+            try s.setCategory(.playback, mode: .default, options: opts)
+            if on { try s.setActive(true) }
+        } catch {
+            NSLog("REPS voix: duck(\(on)) KO — \(error.localizedDescription)")
+        }
+    }
+
+    // Decode un mp3 du bundle (public/...) au format de l'engine. Garde en cache.
+    private func voixBuffer(_ f: String) -> AVAudioPCMBuffer? {
+        if let b = voixBuffers[f] { return b }
+        guard let base = Bundle.main.resourceURL else { return nil }
+        let url = base.appendingPathComponent("public").appendingPathComponent(f)
+        guard let fichier = try? AVAudioFile(forReading: url) else { return nil }
+        let src = fichier.processingFormat
+        let n = AVAudioFrameCount(fichier.length)
+        guard n > 0, let brut = AVAudioPCMBuffer(pcmFormat: src, frameCapacity: n) else { return nil }
+        do { try fichier.read(into: brut) } catch { return nil }
+        var sortie = brut
+        if src.sampleRate != voixFormat.sampleRate || src.channelCount != voixFormat.channelCount
+            || src.commonFormat != voixFormat.commonFormat || src.isInterleaved != voixFormat.isInterleaved {
+            guard let conv = AVAudioConverter(from: src, to: voixFormat) else { return nil }
+            let cap = AVAudioFrameCount(Double(n) * voixFormat.sampleRate / src.sampleRate) + 4096
+            guard let o = AVAudioPCMBuffer(pcmFormat: voixFormat, frameCapacity: cap) else { return nil }
+            var donne = false
+            var err: NSError?
+            let statut = conv.convert(to: o, error: &err) { _, etat in
+                if donne { etat.pointee = .endOfStream; return nil }
+                donne = true
+                etat.pointee = .haveData
+                return brut
+            }
+            if statut == .error || err != nil || o.frameLength == 0 { return nil }
+            sortie = o
+        }
+        voixBuffers[f] = sortie
+        return sortie
     }
 }
