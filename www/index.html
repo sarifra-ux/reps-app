@@ -320,6 +320,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .actus-pied{display:flex;flex-direction:column;gap:8px;padding-top:6px;}
   .actus-note{font-size:.62rem;color:var(--muted);text-align:center;}
   .actus-note:empty{display:none;}
+  .actus-vide{margin:40px 12px;text-align:center;color:var(--muted);font:500 .9rem/1.5 -apple-system,system-ui,sans-serif;}
   .actus-go{width:100%;padding:16px;border:0;border-radius:14px;background:linear-gradient(120deg,#9b30ff,#e63fff,#00d4ff);
     color:#fff;font:800 1rem/1 -apple-system,system-ui,sans-serif;letter-spacing:2px;cursor:pointer;box-shadow:0 8px 24px rgba(230,63,255,.4);}
 
@@ -2073,7 +2074,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   <div class="actus-liste" id="actusListe"></div>
   <div class="actus-pied">
     <div class="actus-note" id="actusNote"></div>
-    <button type="button" class="actus-go" id="actusGo" onclick="fermerActus()">C'EST PARTI</button>
+    <button type="button" class="actus-go" id="actusGo" onclick="fermerActus()">ENTRAÎNEMENT</button>
   </div>
 </div>
 
@@ -7564,9 +7565,11 @@ function majProUI(){
 // d'actualite sur le monde du sport, CF, HYROX ». Les actus viennent du Worker Cloudflare
 // (route /actus) : Morning Chalk Up + BOXROX, titres traduits en fr et pt. On n'affiche que
 // titre, source, date et image ; un appui ouvre l'article sur le site de la source.
-// Quand : apres le choix de la langue, puis a la premiere ouverture de chaque jour. Jamais
-// plus d'une fois par jour : un coach qui ouvre l'app en plein cours ne doit pas tomber
-// dessus a chaque fois. Sans reseau : les dernieres actus gardees, sinon on saute la page.
+// Quand (revu le 11/09 au soir, Francois : « je veux que ce soit la premiere page, et
+// ensuite un bouton training / entrainement ») : A CHAQUE ouverture de l'app, apres le
+// choix de la langue au premier lancement. La page s'affiche TOUT DE SUITE avec les
+// dernieres actus gardees (ou « chargement »), et se met a jour quand le reseau repond.
+// Plus de page sautee : sans reseau ni cache, un message, et le bouton pour s'entrainer.
 const ACTUS_URL='https://reps-inscription.reps-francois.workers.dev/actus';
 let _actusPromesse=null, _actusLang=null, _actusSuite=null;
 function _actusCache(l){ try{ return JSON.parse(localStorage.getItem('reps_actus_'+l)||'null'); }catch(e){ return null; } }
@@ -7574,7 +7577,7 @@ function actusCharger(){
   const l=S.lang||'fr';
   if(_actusPromesse && _actusLang===l) return _actusPromesse;
   _actusLang=l;
-  const delai=new Promise(r=>setTimeout(()=>r(null), 4000));
+  const delai=new Promise(r=>setTimeout(()=>r(null), 15000));
   _actusPromesse=Promise.race([fetch(ACTUS_URL+'?lang='+l).then(r=>r.ok?r.json():null).catch(()=>null), delai])
     .then(j=>{
       if(j && j.items && j.items.length){ try{ localStorage.setItem('reps_actus_'+l, JSON.stringify(j)); }catch(e){} return j; }
@@ -7582,14 +7585,19 @@ function actusCharger(){
     });
   return _actusPromesse;
 }
-function _actusDejaVuAujourdhui(){ try{ return localStorage.getItem('reps_actus_vu')===new Date().toDateString(); }catch(e){ return false; } }
-async function montrerActusPuis(suite){
-  if(_actusDejaVuAujourdhui()){ suite(); return; }
-  let j=null;
-  try{ j=await actusCharger(); }catch(e){}
-  if(!j || !j.items || !j.items.length){ suite(); return; }
-  try{ localStorage.setItem('reps_actus_vu', new Date().toDateString()); }catch(e){}
-  afficherActus(j, suite);
+let _actusAffiche=false;
+function montrerActusPuis(suite){
+  const l=S.lang||'fr';
+  afficherActus(_actusCache(l), suite, true);
+  actusCharger().then(j=>{
+    if(!_actusAffiche) return;                     // deja parti a l'entrainement
+    if(j && j.items && j.items.length) afficherActus(j, _actusSuite, false);
+    else if(!_actusCache(l)) _actusVide(L3("Pas de connexion pour l'instant. Les actus reviendront.","No connection right now. The news will be back.","Sem conexão agora. As notícias vão voltar."));
+  }).catch(()=>{});
+}
+function _actusVide(msg){
+  const L=document.getElementById('actusListe');
+  if(L) L.innerHTML='<div class="actus-vide">'+msg+'</div>';
 }
 function _actusQuand(iso){
   if(!iso) return '';
@@ -7603,11 +7611,17 @@ function _actusQuand(iso){
     return d.toLocaleDateString(loc,{day:'numeric',month:'short'});
   }catch(e){ return d.toLocaleDateString(); }
 }
-function afficherActus(j, suite){
+function afficherActus(j, suite, attente){
   _actusSuite=suite||null;
+  _actusAffiche=true;
   const L=document.getElementById('actusListe'); if(!L) { if(suite) suite(); return; }
+  if(!j || !j.items || !j.items.length){
+    _actusVide(attente?L3('Chargement des actus…','Loading the news…','Carregando as notícias…')
+                      :L3("Pas de connexion pour l'instant. Les actus reviendront.","No connection right now. The news will be back.","Sem conexão agora. As notícias vão voltar."));
+    j={items:[]};
+  }
   const esc=(t)=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  L.innerHTML=j.items.map((x,i)=>{
+  if(j.items.length) L.innerHTML=j.items.map((x,i)=>{
     const img=x.image?'<div class="actus-img" style="background-image:url(&quot;'+esc(x.image)+'&quot;)"></div>':'<div class="actus-img actus-img-vide">R</div>';
     return '<a class="actus-carte'+(i===0?' une':'')+'" href="'+esc(x.lien)+'" target="_blank" rel="noopener">'+img
       +'<div class="actus-txt"><div class="actus-t">'+esc(x.titre)+'</div>'
@@ -7616,19 +7630,23 @@ function afficherActus(j, suite){
   const so=document.getElementById('actusSous'); if(so) so.textContent='CrossFit · HYROX';
   const n=document.getElementById('actusNote');
   if(n) n.textContent=(S.lang==='en')?'':L3('Titres traduits automatiquement. Articles en anglais.','','Títulos traduzidos automaticamente. Artigos em inglês.');
-  const g=document.getElementById('actusGo'); if(g) g.textContent=_actusSuite?L3("C'EST PARTI","LET'S GO","BORA"):L3('FERMER','CLOSE','FECHAR');
-  const e=document.getElementById('actusScreen'); if(e){ e.style.display='flex'; e.scrollTop=0; L.scrollTop=0; }
+  const g=document.getElementById('actusGo'); if(g) g.textContent=_actusSuite?L3('ENTRAÎNEMENT','TRAINING','TREINO'):L3('FERMER','CLOSE','FECHAR');
+  const e=document.getElementById('actusScreen');
+  if(e){ const dejaOuvert=(e.style.display==='flex'); e.style.display='flex'; if(!dejaOuvert){ e.scrollTop=0; L.scrollTop=0; } }
 }
 function fermerActus(){
+  _actusAffiche=false;
   const e=document.getElementById('actusScreen'); if(e) e.style.display='none';
   const s=_actusSuite; _actusSuite=null;
   if(s) try{ s(); }catch(err){ DBG('actus suite KO '+((err&&err.message)||err)); }
 }
 async function ouvrirActus(){
   _actusPromesse=null;
+  afficherActus(_actusCache(S.lang||'fr'), null, true);
   const j=await actusCharger();
-  if(j && j.items && j.items.length) afficherActus(j, null);
-  else showAnnounce(L3('Pas de réseau pour les actus','No network for the news','Sem rede para as notícias'));
+  if(!_actusAffiche) return;
+  if(j && j.items && j.items.length) afficherActus(j, null, false);
+  else if(!_actusCache(S.lang||'fr')) _actusVide(L3("Pas de connexion pour l'instant. Les actus reviendront.","No connection right now. The news will be back.","Sem conexão agora. As notícias vão voltar."));
 }
 
 // ===== PANNEAU DE DEBUG =====

@@ -17,7 +17,7 @@
 // genere seul, valide a l'oreille par Francois (variante B).
 // 10/09/2026 : v216. enc-1..4.mp3 (MUTANT anglais) ajoutes, voix/sam/enc-3-fr.mp3 refait.
 // 10/09/2026 : v217. enc-1..4-pt.mp3 (MUTANT portugais) ajoutes.
-const CACHE_NAME = 'reps-v225';
+const CACHE_NAME = 'reps-v226';
 const ASSETS = [
   '/',
   '/index.html',
