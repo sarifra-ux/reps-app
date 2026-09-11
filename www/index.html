@@ -298,6 +298,31 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .voix-chip{flex:1 1 0;min-width:46px;padding:8px 3px;font-size:.66rem;letter-spacing:.3px;
     -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
   .voix-chip.on{border-color:#e63fff !important;color:#e63fff !important;box-shadow:0 0 0 1px #e63fff inset;}
+  /* Ecran actus (11/09/2026) */
+  .actus-ecran{position:fixed;inset:0;z-index:99990;display:flex;flex-direction:column;background:var(--bg,#08080f);
+    padding:calc(18px + env(safe-area-inset-top,0px)) 16px calc(14px + env(safe-area-inset-bottom,0px));}
+  .actus-tete{padding:4px 4px 12px;}
+  .actus-titre{font-family:'Bebas Neue',sans-serif;font-size:2.6rem;letter-spacing:8px;line-height:1;
+    background:linear-gradient(120deg,#9b30ff,#e63fff,#00d4ff);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
+  .actus-sous{font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:3px;color:var(--muted);margin-top:4px;}
+  .actus-liste{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:10px;padding:2px 2px 12px;}
+  .actus-carte{display:flex;gap:12px;align-items:stretch;text-decoration:none;color:var(--text);background:var(--surface);
+    border:1px solid var(--border);border-radius:14px;overflow:hidden;min-height:84px;}
+  .actus-img{flex:0 0 96px;background:#15131f center/cover no-repeat;}
+  .actus-img-vide{display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#2a2840;}
+  .actus-txt{flex:1;padding:10px 12px 10px 0;display:flex;flex-direction:column;justify-content:space-between;gap:6px;min-width:0;}
+  .actus-t{font:700 .9rem/1.3 -apple-system,system-ui,sans-serif;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
+  .actus-m{font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
+  .actus-carte.une{flex-direction:column;min-height:0;border:1px solid rgba(230,63,255,.35);}
+  .actus-carte.une .actus-img{flex:0 0 auto;height:170px;width:100%;}
+  .actus-carte.une .actus-txt{padding:12px 14px 14px;}
+  .actus-carte.une .actus-t{font-size:1.08rem;-webkit-line-clamp:4;}
+  .actus-pied{display:flex;flex-direction:column;gap:8px;padding-top:6px;}
+  .actus-note{font-size:.62rem;color:var(--muted);text-align:center;}
+  .actus-note:empty{display:none;}
+  .actus-go{width:100%;padding:16px;border:0;border-radius:14px;background:linear-gradient(120deg,#9b30ff,#e63fff,#00d4ff);
+    color:#fff;font:800 1rem/1 -apple-system,system-ui,sans-serif;letter-spacing:2px;cursor:pointer;box-shadow:0 8px 24px rgba(230,63,255,.4);}
+
   /* Abonnement REPS Pro (11/09/2026). Francois : « je veux voir la partie PRO plus
      importante, en couleur ». Un seul degrade partout, violet -> rose -> cyan, celui du logo
      pousse a fond : on reconnait Pro au premier coup d'oeil, dans l'en-tete, les reglages,
@@ -2038,6 +2063,20 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   </div>
 </div>
 
+<!-- ===== ECRAN ACTUS (11/09/2026) : juste apres le choix de la langue, puis une fois par
+     jour a l'ouverture. Contenu ecrit par afficherActus(). ===== -->
+<div id="actusScreen" class="actus-ecran" style="display:none">
+  <div class="actus-tete">
+    <div class="actus-titre">ACTUS</div>
+    <div class="actus-sous" id="actusSous">CrossFit · HYROX</div>
+  </div>
+  <div class="actus-liste" id="actusListe"></div>
+  <div class="actus-pied">
+    <div class="actus-note" id="actusNote"></div>
+    <button type="button" class="actus-go" id="actusGo" onclick="fermerActus()">C'EST PARTI</button>
+  </div>
+</div>
+
 <!-- ===== ÉCRAN 2 : CHOIX DU MODE WOD ===== -->
 <!-- ===== ÉCRAN 1 BIS : UN WOD OU PLUSIEURS ? (05/09/2026) =====
      Premiere question du wizard, avant meme le mode. Un seul WOD : le flux d'avant,
@@ -2329,6 +2368,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
         </div>
       </div>
       <button class="settings-action-btn pro-btn-reglages" id="btnReglagesPro" style="display:none" onclick="ouvrirPro('reglages');"><span class="settings-icon">⚡</span><span class="pro-btn-txt"><span id="btnReglagesProLabel">REPS Pro</span><span class="pro-btn-sous" id="btnReglagesProSous"></span></span></button>
+      <button class="settings-action-btn" onclick="closeSettings();ouvrirActus();"><span class="settings-icon">📰</span><span id="btnReglagesActus">Actus</span></button>
       <button class="settings-action-btn" onclick="closeSettings();openMembers();"><svg class="ico settings-icon" aria-hidden="true"><use href="#i-membres"/></svg><span data-i18n="nav.scores">Adhérents &amp; scores</span></button>
       <button class="settings-action-btn" onclick="closeSettings();openFavorites();"><span class="settings-icon">⭐</span><span data-i18n="fav.modalTitle">Favoris</span></button>
       <button class="settings-action-btn" onclick="closeSettings();toggleFullscreen();"><span class="settings-icon">⛶</span><span data-i18n="nav.fullscreen">Plein écran</span></button>
@@ -3471,6 +3511,7 @@ function applyI18n(){
   // l'ancienne voix sortir du pool.
   try{ if(!voixDisponible(S_voix)) choisirVoix(voixParDefaut()); }catch(e){}
   try{ majBadgeVoix(); }catch(e){}        // badge + chips + description suivent la langue
+  try{ const _a=document.getElementById('btnReglagesActus'); if(_a) _a.textContent=L3('Actus','News','Notícias'); majProUI(); }catch(e){}   // 11/09/2026
   try{ membersRefreshI18n(); }catch(e){}  // libelles du bloc score, ecrits en JS
   try{ setFilmCamBtn(); }catch(e){}       // libelle du bouton camera, ecrit en JS aussi
 }
@@ -7516,6 +7557,80 @@ function majProUI(){
   c.innerHTML=atouts+plans+cta+msg+actions+legal+liens;
 }
 
+// =====================================================================
+// ===== ACTUS CROSSFIT / HYROX (11/09/2026) =====
+// =====================================================================
+// Demande de Francois : « en premiere page apres avoir choisi la langue, des infos
+// d'actualite sur le monde du sport, CF, HYROX ». Les actus viennent du Worker Cloudflare
+// (route /actus) : Morning Chalk Up + BOXROX, titres traduits en fr et pt. On n'affiche que
+// titre, source, date et image ; un appui ouvre l'article sur le site de la source.
+// Quand : apres le choix de la langue, puis a la premiere ouverture de chaque jour. Jamais
+// plus d'une fois par jour : un coach qui ouvre l'app en plein cours ne doit pas tomber
+// dessus a chaque fois. Sans reseau : les dernieres actus gardees, sinon on saute la page.
+const ACTUS_URL='https://reps-inscription.reps-francois.workers.dev/actus';
+let _actusPromesse=null, _actusLang=null, _actusSuite=null;
+function _actusCache(l){ try{ return JSON.parse(localStorage.getItem('reps_actus_'+l)||'null'); }catch(e){ return null; } }
+function actusCharger(){
+  const l=S.lang||'fr';
+  if(_actusPromesse && _actusLang===l) return _actusPromesse;
+  _actusLang=l;
+  const delai=new Promise(r=>setTimeout(()=>r(null), 4000));
+  _actusPromesse=Promise.race([fetch(ACTUS_URL+'?lang='+l).then(r=>r.ok?r.json():null).catch(()=>null), delai])
+    .then(j=>{
+      if(j && j.items && j.items.length){ try{ localStorage.setItem('reps_actus_'+l, JSON.stringify(j)); }catch(e){} return j; }
+      return _actusCache(l);
+    });
+  return _actusPromesse;
+}
+function _actusDejaVuAujourdhui(){ try{ return localStorage.getItem('reps_actus_vu')===new Date().toDateString(); }catch(e){ return false; } }
+async function montrerActusPuis(suite){
+  if(_actusDejaVuAujourdhui()){ suite(); return; }
+  let j=null;
+  try{ j=await actusCharger(); }catch(e){}
+  if(!j || !j.items || !j.items.length){ suite(); return; }
+  try{ localStorage.setItem('reps_actus_vu', new Date().toDateString()); }catch(e){}
+  afficherActus(j, suite);
+}
+function _actusQuand(iso){
+  if(!iso) return '';
+  const d=new Date(iso), ecart=(Date.now()-d.getTime())/1000;
+  const loc=(S.lang==='en')?'en':((S.lang==='pt')?'pt-BR':'fr');
+  try{
+    const rtf=new Intl.RelativeTimeFormat(loc,{numeric:'auto'});
+    if(ecart<3600) return rtf.format(-Math.max(1,Math.round(ecart/60)),'minute');
+    if(ecart<86400) return rtf.format(-Math.round(ecart/3600),'hour');
+    if(ecart<7*86400) return rtf.format(-Math.round(ecart/86400),'day');
+    return d.toLocaleDateString(loc,{day:'numeric',month:'short'});
+  }catch(e){ return d.toLocaleDateString(); }
+}
+function afficherActus(j, suite){
+  _actusSuite=suite||null;
+  const L=document.getElementById('actusListe'); if(!L) { if(suite) suite(); return; }
+  const esc=(t)=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  L.innerHTML=j.items.map((x,i)=>{
+    const img=x.image?'<div class="actus-img" style="background-image:url(&quot;'+esc(x.image)+'&quot;)"></div>':'<div class="actus-img actus-img-vide">R</div>';
+    return '<a class="actus-carte'+(i===0?' une':'')+'" href="'+esc(x.lien)+'" target="_blank" rel="noopener">'+img
+      +'<div class="actus-txt"><div class="actus-t">'+esc(x.titre)+'</div>'
+      +'<div class="actus-m">'+esc(x.source)+(x.date?' · '+esc(_actusQuand(x.date)):'')+'</div></div></a>';
+  }).join('');
+  const so=document.getElementById('actusSous'); if(so) so.textContent='CrossFit · HYROX';
+  const n=document.getElementById('actusNote');
+  if(n) n.textContent=(S.lang==='en')?'':L3('Titres traduits automatiquement. Articles en anglais.','','Títulos traduzidos automaticamente. Artigos em inglês.');
+  const g=document.getElementById('actusGo'); if(g) g.textContent=_actusSuite?L3("C'EST PARTI","LET'S GO","BORA"):L3('FERMER','CLOSE','FECHAR');
+  const e=document.getElementById('actusScreen'); if(e){ e.style.display='flex'; e.scrollTop=0; L.scrollTop=0; }
+}
+function fermerActus(){
+  const e=document.getElementById('actusScreen'); if(e) e.style.display='none';
+  const s=_actusSuite; _actusSuite=null;
+  if(s) try{ s(); }catch(err){ DBG('actus suite KO '+((err&&err.message)||err)); }
+}
+async function ouvrirActus(){
+  _actusPromesse=null;
+  const j=await actusCharger();
+  if(j && j.items && j.items.length) afficherActus(j, null);
+  else showAnnounce(L3('Pas de réseau pour les actus','No network for the news','Sem rede para as notícias'));
+}
+
 // ===== PANNEAU DE DEBUG =====
 //
 // Historique : active par ?debug=1 (web), puis par 5 appuis sur le logo, puis plus
@@ -7542,7 +7657,7 @@ function majProUI(){
 //
 // A BUMPER A CHAQUE LIVRAISON. La liste des correctifs sert de controle croise : si
 // une ligne attendue manque dans le journal, le telephone tourne sur du vieux code.
-const REPS_JS_BUILD='2026-09-11-build12-abonnement';
+const REPS_JS_BUILD='2026-09-11-build12-actus';
 const REPS_JS_CORRECTIFS='mixage-si-change, decompte-ctx-running, annonces-WA, relance-au-geste, rattrapage-routage, sonde-musique, cache-v212, gain-voix-unifie, cache-v216, time-partout, leo-time, enc-180s, mike-pt-1, enc-mutant-en, sam-enc-3, enc-mutant-pt, cache-v217';
 
 const DBG_MAX=400;              // ~un WOD entier, cout memoire negligeable
@@ -10015,8 +10130,9 @@ function setupModeSwipe(){ setupWizardSwipe(); }
 // Lancer le wizard après le splash
 function showWelcomeThenWizard(){
   showWelcome();
+  try{ actusCharger(); }catch(e){}   // 11/09/2026 : les actus se chargent pendant le splash
   // Après le splash, afficher l'écran approprié selon les choix précédents
-  setTimeout(()=>{
+  setTimeout(()=>{ montrerActusPuis(()=>{
     let savedMode=null,savedTiming=null,savedMusic=null;
     try{
       savedMode=localStorage.getItem('reps_mode');
@@ -10036,7 +10152,7 @@ function showWelcomeThenWizard(){
       // Tout déjà choisi : afficher l'app
       finishWizard();
     }
-  },1800);
+  }); },1800);
 }
 
 // Au chargement : vérifier si langue déjà choisie
