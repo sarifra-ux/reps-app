@@ -1271,7 +1271,8 @@ extension VideoOverlayPlugin {
                 let produits = try await Product.products(for: VideoOverlayPlugin.proIds)
                 let liste: [[String: Any]] = produits.map { (p: Product) -> [String: Any] in
                     var d: [String: Any] = ["id": p.id, "prix": p.displayPrice,
-                                            "nom": p.displayName, "description": p.description]
+                                            "nom": p.displayName, "description": p.description,
+                                            "prixNum": NSDecimalNumber(decimal: p.price).doubleValue]
                     if let sub = p.subscription {
                         let u = sub.subscriptionPeriod.unit
                         d["periode"] = (u == .year) ? "an" : ((u == .month) ? "mois" : "autre")

@@ -298,24 +298,59 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .voix-chip{flex:1 1 0;min-width:46px;padding:8px 3px;font-size:.66rem;letter-spacing:.3px;
     -webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;}
   .voix-chip.on{border-color:#e63fff !important;color:#e63fff !important;box-shadow:0 0 0 1px #e63fff inset;}
-  /* Abonnement REPS Pro (11/09/2026) : badge sur ce qui est reserve aux abonnes. */
-  .pro-verrou{position:relative;opacity:.6;}
-  .pro-verrou::after{content:'PRO';position:absolute;top:-7px;right:-5px;font:700 8px/1 'DM Mono',monospace;letter-spacing:1px;
-    padding:2px 4px;border-radius:4px;background:linear-gradient(135deg,#e63fff,#00d4ff);color:#fff;pointer-events:none;}
-  .pro-content{max-height:90vh;overflow-y:auto;}
-  .pro-atouts{display:flex;flex-direction:column;gap:10px;font-size:.92rem;line-height:1.4;color:var(--text);}
+  /* Abonnement REPS Pro (11/09/2026). Francois : « je veux voir la partie PRO plus
+     importante, en couleur ». Un seul degrade partout, violet -> rose -> cyan, celui du logo
+     pousse a fond : on reconnait Pro au premier coup d'oeil, dans l'en-tete, les reglages,
+     les voix, le bouton Filmer et l'ecran d'abonnement. */
+  :root{--pro-grad:linear-gradient(120deg,#9b30ff 0%,#e63fff 50%,#00d4ff 100%);}
+  @keyframes proBrille{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+  .pro-pill{display:inline-flex;align-items:center;gap:3px;margin-top:4px;padding:3px 9px;border:0;border-radius:999px;
+    background:linear-gradient(120deg,#9b30ff,#e63fff,#00d4ff,#e63fff,#9b30ff);background-size:200% 100%;animation:proBrille 4s linear infinite;
+    color:#fff;font:800 .62rem/1.2 -apple-system,system-ui,sans-serif;letter-spacing:1.5px;cursor:pointer;
+    box-shadow:0 0 14px rgba(230,63,255,.55);}
+  .pro-pill.actif{animation:none;background:var(--pro-grad);box-shadow:0 0 8px rgba(0,212,255,.45);}
+  .pro-verrou{position:relative;}
+  .voix-chip.pro-verrou{color:#f3c8ff !important;border-color:rgba(230,63,255,.55) !important;
+    background:linear-gradient(120deg,rgba(155,48,255,.18),rgba(230,63,255,.14),rgba(0,212,255,.14)) !important;}
+  .btn-ctrl.pro-verrou{color:#f3c8ff !important;border-color:rgba(230,63,255,.55) !important;
+    background:linear-gradient(120deg,rgba(155,48,255,.22),rgba(230,63,255,.16),rgba(0,212,255,.16)) !important;}
+  .pro-verrou::after{content:'PRO';position:absolute;top:-8px;right:-5px;font:800 8.5px/1 -apple-system,system-ui,sans-serif;letter-spacing:1px;
+    padding:3px 5px;border-radius:5px;background:var(--pro-grad);color:#fff;pointer-events:none;box-shadow:0 0 8px rgba(230,63,255,.6);}
+  .pro-btn-reglages{background:var(--pro-grad) !important;border:0 !important;color:#fff !important;
+    box-shadow:0 6px 22px rgba(155,48,255,.45);font-weight:800;}
+  .pro-btn-txt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;}
+  .pro-btn-sous{font:500 .7rem/1.2 -apple-system,system-ui,sans-serif;opacity:.92;letter-spacing:0;}
+  .pro-content{max-height:90vh;overflow-y:auto;border:1px solid transparent !important;
+    background:linear-gradient(var(--card),var(--card)) padding-box,var(--pro-grad) border-box !important;
+    box-shadow:0 0 50px rgba(230,63,255,.35),0 0 90px rgba(0,212,255,.15) !important;}
+  .pro-content .settings-modal-title{background:var(--pro-grad);-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;font-size:2.3rem;letter-spacing:6px;}
+  .pro-accroche{font:700 1.05rem/1.35 -apple-system,system-ui,sans-serif;color:var(--text);margin-top:-6px;}
+  .pro-atouts{display:flex;flex-direction:column;gap:10px;}
+  .pro-atout{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
+    background:linear-gradient(120deg,rgba(155,48,255,.16),rgba(230,63,255,.10),rgba(0,212,255,.10));
+    border:1px solid rgba(230,63,255,.28);font-size:.9rem;line-height:1.35;color:var(--text);}
+  .pro-atout-ico{flex:0 0 38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;
+    font-size:1.2rem;background:var(--pro-grad);box-shadow:0 0 12px rgba(230,63,255,.5);}
+  .pro-atout b{display:block;font-size:.95rem;margin-bottom:2px;}
   .pro-plans{display:flex;flex-direction:column;gap:10px;}
-  .pro-plan{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border:1px solid var(--border);
-    border-radius:14px;background:var(--surface);color:var(--text);font:600 .95rem/1.2 -apple-system,system-ui,sans-serif;cursor:pointer;text-align:left;}
-  .pro-plan.on{border-color:#e63fff;box-shadow:0 0 0 1px #e63fff inset;}
+  .pro-plan{position:relative;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 16px;
+    border:1px solid var(--border);border-radius:14px;background:var(--surface);color:var(--text);
+    font:600 .95rem/1.2 -apple-system,system-ui,sans-serif;cursor:pointer;text-align:left;}
+  .pro-plan.on{border:1px solid transparent;background:linear-gradient(var(--surface),var(--surface)) padding-box,var(--pro-grad) border-box;
+    box-shadow:0 0 18px rgba(230,63,255,.4);}
   .pro-prix{font-weight:800;white-space:nowrap;}
-  .pro-cta{width:100%;padding:16px;border:0;border-radius:14px;background:linear-gradient(135deg,#9b30ff,#e63fff);color:#fff;
-    font:800 1rem/1 -apple-system,system-ui,sans-serif;letter-spacing:.5px;cursor:pointer;}
-  .pro-cta[disabled]{opacity:.45;}
+  .pro-eco{position:absolute;top:-9px;left:14px;padding:3px 8px;border-radius:999px;background:#00d4ff;color:#07121a;
+    font:800 .66rem/1 -apple-system,system-ui,sans-serif;letter-spacing:.5px;}
+  .pro-cta{width:100%;padding:17px;border:0;border-radius:14px;
+    background:linear-gradient(120deg,#9b30ff,#e63fff,#00d4ff,#e63fff,#9b30ff);background-size:200% 100%;animation:proBrille 5s linear infinite;
+    color:#fff;font:800 1.05rem/1 -apple-system,system-ui,sans-serif;letter-spacing:.8px;cursor:pointer;box-shadow:0 8px 26px rgba(230,63,255,.5);}
+  .pro-cta[disabled]{opacity:.45;animation:none;}
   .pro-liens{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 18px;}
   .pro-liens a,.pro-lien{color:var(--muted);background:none;border:0;padding:0;text-decoration:underline;font-size:.78rem;cursor:pointer;}
   .pro-legal{font-size:.68rem;line-height:1.45;color:var(--muted);}
   .pro-msg{font-size:.82rem;color:var(--text);text-align:center;}
+  .pro-merci{text-align:center;font:700 1rem/1.4 -apple-system,system-ui,sans-serif;color:var(--text);}
   /* Sens du chrono AMRAP (build 4). Classe distincte de .voix-chip : majBadgeVoix()
      balaie .voix-chip et eteindrait ces boutons-la a chaque changement de langue. */
   .sens-chip{flex:1 1 0;min-width:46px;padding:8px 3px;font-size:.66rem;letter-spacing:.3px;
@@ -2182,6 +2217,8 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   <div>
     <div class="logo">R·E·P·S</div>
     <div class="logo-sub">Rhythm Engine Performance Sound</div>
+    <!-- Abonnement (11/09/2026) : visible dans l'app iOS seulement, cf. majProUI() -->
+    <button type="button" class="pro-pill" id="proPill" style="display:none" onclick="ouvrirPro('entete')">⚡ PRO</button>
   </div>
   <div class="header-right">
     <button class="new-wod-btn" id="newWodBtn" onclick="resetWizard()" title="Nouveau WOD" data-i18n-title="title.new"><svg class="ico" aria-hidden="true"><use href="#i-nouveau"/></svg> <span class="new-wod-label" data-i18n="nav.new">NOUVEAU</span></button>
@@ -2291,7 +2328,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <button class="lang-btn" id="btnPT" onclick="setLang('pt')">🇧🇷 PT</button>
         </div>
       </div>
-      <button class="settings-action-btn" id="btnReglagesPro" style="display:none" onclick="ouvrirPro('reglages');"><span class="settings-icon">⚡</span><span id="btnReglagesProLabel">REPS Pro</span></button>
+      <button class="settings-action-btn pro-btn-reglages" id="btnReglagesPro" style="display:none" onclick="ouvrirPro('reglages');"><span class="settings-icon">⚡</span><span class="pro-btn-txt"><span id="btnReglagesProLabel">REPS Pro</span><span class="pro-btn-sous" id="btnReglagesProSous"></span></span></button>
       <button class="settings-action-btn" onclick="closeSettings();openMembers();"><svg class="ico settings-icon" aria-hidden="true"><use href="#i-membres"/></svg><span data-i18n="nav.scores">Adhérents &amp; scores</span></button>
       <button class="settings-action-btn" onclick="closeSettings();openFavorites();"><span class="settings-icon">⭐</span><span data-i18n="fav.modalTitle">Favoris</span></button>
       <button class="settings-action-btn" onclick="closeSettings();toggleFullscreen();"><span class="settings-icon">⛶</span><span data-i18n="nav.fullscreen">Plein écran</span></button>
@@ -7424,8 +7461,13 @@ function majProUI(){
   if(bs){
     bs.style.display=_proPlugin()?'':'none';
     const l=document.getElementById('btnReglagesProLabel');
-    if(l) l.textContent=proActif()?L3('REPS Pro · actif','REPS Pro · active','REPS Pro · ativo'):'REPS Pro';
+    if(l) l.textContent=proActif()?L3('REPS Pro · actif','REPS Pro · active','REPS Pro · ativo'):L3('Passer à REPS Pro','Go REPS Pro','Assinar o REPS Pro');
+    const so=document.getElementById('btnReglagesProSous');
+    if(so) so.textContent=proActif()?L3('Gérer mon abonnement','Manage my subscription','Gerenciar minha assinatura')
+                                    :L3('Toutes les voix + la caméra','Every voice + the camera','Todas as vozes + a câmera');
   }
+  const pill=document.getElementById('proPill');
+  if(pill){ pill.style.display=_proPlugin()?'':'none'; pill.classList.toggle('actif', proActif()); }
   const c=document.getElementById('proCorps');
   const m=document.getElementById('proModal');
   if(!c || !m || m.style.display==='none') return;
@@ -7434,21 +7476,29 @@ function majProUI(){
     +'<a href="'+URL_EULA+'" target="_blank" rel="noopener">'+L3("Conditions d'utilisation",'Terms of Use','Termos de uso')+'</a>'
     +'<a href="'+URL_CONFID_PRO+'" target="_blank" rel="noopener">'+L3('Confidentialité','Privacy','Privacidade')+'</a></div>';
   if(proActif()){
-    c.innerHTML='<div class="pro-atouts"><div>'+L3('Tu es Pro. Toutes les voix et la caméra sont débloquées.','You are Pro. All voices and the camera are unlocked.','Você é Pro. Todas as vozes e a câmera estão liberadas.')+'</div></div>'
+    c.innerHTML='<div class="pro-merci">⚡ '+L3('Tu es Pro. Toutes les voix et la caméra sont débloquées.','You are Pro. All voices and the camera are unlocked.','Você é Pro. Todas as vozes e a câmera estão liberadas.')+'</div>'
       +'<button class="pro-cta" onclick="proGerer()">'+L3('Gérer mon abonnement','Manage my subscription','Gerenciar minha assinatura')+'</button>'
       +msg+liens;
     return;
   }
-  const atouts='<div class="pro-atouts">'
-    +'<div>🎙️ '+L3('Toutes les voix en plus de SAM : LEO en français, MUTANT et MIKE en anglais et en portugais.','Every voice on top of SAM: MUTANT and MIKE in English and Portuguese, LEO in French.','Todas as vozes além do SAM: MUTANT e MIKE em inglês e português, LEO em francês.')+'</div>'
-    +'<div>🎥 '+L3("La caméra : filme ton WOD, le chrono s'incruste dans la vidéo.",'The camera: film your WOD, the timer is burned into the video.','A câmera: filme teu WOD, o cronômetro aparece no vídeo.')+'</div></div>';
+  const atouts='<div class="pro-accroche">'+L3('Le coach complet, dans ta poche.','The full coach, in your pocket.','O coach completo, no teu bolso.')+'</div>'
+    +'<div class="pro-atouts">'
+    +'<div class="pro-atout"><span class="pro-atout-ico">🎙️</span><span><b>'+L3('Toutes les voix','Every voice','Todas as vozes')+'</b>'
+      +L3('LEO en français, MUTANT et MIKE en anglais et en portugais, en plus de SAM.','MUTANT and MIKE in English and Portuguese, LEO in French, on top of SAM.','MUTANT e MIKE em inglês e português, LEO em francês, além do SAM.')+'</span></div>'
+    +'<div class="pro-atout"><span class="pro-atout-ico">🎥</span><span><b>'+L3('La caméra','The camera','A câmera')+'</b>'
+      +L3("Filme ton WOD, le chrono s'incruste dans la vidéo.",'Film your WOD, the timer is burned into the video.','Filme teu WOD, o cronômetro aparece no vídeo.')+'</span></div></div>';
   let plans;
   if(_proErreur) plans='<div class="pro-msg">'+L3("L'App Store ne répond pas. Réessaie dans un moment.",'The App Store is not responding. Try again in a moment.','A App Store não responde. Tenta de novo daqui a pouco.')+'</div>'
     +'<button class="pro-lien" onclick="proChargerProduits()">'+L3('Réessayer','Retry','Tentar de novo')+'</button>';
   else if(!_proProduits) plans='<div class="pro-msg">'+L3('Chargement des prix…','Loading prices…','Carregando preços…')+'</div>';
   else {
+    // Economie de l'annuel, calculee sur les prix REELS de l'App Store (monnaie du pays).
+    let eco='';
+    try{ const m=_proProduits.mensuel, a=_proProduits.annuel;
+         if(m && a && m.prixNum>0 && a.prixNum>0){ const pc=Math.round((1-a.prixNum/(m.prixNum*12))*100); if(pc>=5) eco='−'+pc+' %'; } }catch(e){}
     const ligne=(k,lib,per)=>{ const x=_proProduits[k]; if(!x) return '';
-      return '<button class="pro-plan'+(_proChoix===k?' on':'')+'" onclick="proChoisir(\''+k+'\')"><span>'+lib+'</span><span class="pro-prix">'+_proEsc(x.prix)+' / '+per+'</span></button>'; };
+      const tag=(k==='annuel' && eco)?'<span class="pro-eco">'+eco+'</span>':'';
+      return '<button class="pro-plan'+(_proChoix===k?' on':'')+'" onclick="proChoisir(\''+k+'\')">'+tag+'<span>'+lib+'</span><span class="pro-prix">'+_proEsc(x.prix)+' / '+per+'</span></button>'; };
     plans='<div class="pro-plans">'
       +ligne('annuel',L3('Annuel','Yearly','Anual'),L3('an','year','ano'))
       +ligne('mensuel',L3('Mensuel','Monthly','Mensal'),L3('mois','month','mês'))+'</div>';
