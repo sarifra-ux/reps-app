@@ -17,7 +17,7 @@
 // genere seul, valide a l'oreille par Francois (variante B).
 // 10/09/2026 : v216. enc-1..4.mp3 (MUTANT anglais) ajoutes, voix/sam/enc-3-fr.mp3 refait.
 // 10/09/2026 : v217. enc-1..4-pt.mp3 (MUTANT portugais) ajoutes.
-const CACHE_NAME = 'reps-v218';
+const CACHE_NAME = 'reps-v219';
 const ASSETS = [
   '/',
   '/index.html',
@@ -46,6 +46,7 @@ const ASSETS = [
   '/beep.mp3',
   '/tick.mp3',
   '/start-signal.mp3',
+  '/break.mp3','/lets-go.mp3',
   '/fr-1.mp3','/fr-2.mp3','/fr-3.mp3','/fr-4.mp3','/fr-5.mp3',
   '/en-1.mp3','/en-2.mp3','/en-3.mp3','/en-4.mp3','/en-5.mp3',
   '/round-2.mp3','/round-3.mp3','/round-4.mp3','/round-5.mp3','/round-6.mp3',

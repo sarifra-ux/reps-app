@@ -5913,7 +5913,7 @@ function _announceFilesForLang(){
   // du pool natif pour un son qui ne peut pas partir (meme piege que halfway, ci-dessous).
   const vf=VOICE_FILES[L]||{}; Object.keys(vf).forEach(k=>{ if(VOICE_FILES_PRESENTS[k]) out.push(vf[k]); });
   out.push(BEEP_AUDIO, TICK_AUDIO, START_AUDIO);
-  if(BREAK_LETSGO_PRESENTS) out.push(BREAK_AUDIO, LETSGO_AUDIO);   // 11/09/2026, seances
+  if(_breakPresent()) out.push(BREAK_AUDIO); if(_letsGoPresent()) out.push(LETSGO_AUDIO);   // 11/09/2026, seances
   // NOTE (10/08/2026) : le prechargement de halfway-*.mp3 a ete retire. Il n'existe
   // AUCUNE annonce « a la moitie » dans l'app : pas de cle dans TXT, pas de mapping
   // dans voiceFileForText(). Les fichiers etaient donc charges dans le pool audio
@@ -6016,7 +6016,7 @@ function simulerAnnoncesRestantes(){
     end=function(){ fini=true; try{ speak(TXT[S.lang].time); }catch(e){} };
     let precRepos=!!(S.seance && S.estRepos);
     // 11/09/2026 : bloc parti d'un repos a l'instant (finDuRepos) : son LET'S GO est a venir.
-    if(!precRepos && BREAK_LETSGO_PRESENTS && S._letsGoA && S._letsGoA>=Date.now()-150)
+    if(!precRepos && _letsGoPresent() && S._letsGoA && S._letsGoA>=Date.now()-150)
       out.push({t:S._letsGoA, f:VP(LETSGO_AUDIO), r:LETSGO_AUDIO});
     derouler();
     segs.push({index:idx, fin:base+k*1000});
@@ -6034,7 +6034,7 @@ function simulerAnnoncesRestantes(){
           tGo=L+PREROLL_MS+10500+on0;
           _itemsDecompteBloc(tGo).forEach(it=>{ out.push({t:it.t, f:VP(it.f), r:it.f}); });
         }
-        if(precRepos && BREAK_LETSGO_PRESENTS && b.type!=='repos')
+        if(precRepos && _letsGoPresent() && b.type!=='repos')
           out.push({t:tGo+LETSGO_APRES_MS, f:VP(LETSGO_AUDIO), r:LETSGO_AUDIO});
         S.state='idle';
         chargerBlocDansEtat(b);                          // le vrai code, comme en salle
@@ -6123,11 +6123,16 @@ function _itemsDecompteBloc(tChrono){
 // Au debut d'un repos entre deux blocs : « BREAK ». Quand le bloc suivant repart :
 // « LET'S GO ». En anglais pour toutes les voix et toutes les langues, comme TIME.
 // Un fichier par pack (break.mp3, lets-go.mp3), resolu par VP() comme le reste.
-// Tant que BREAK_LETSGO_PRESENTS vaut false, rien n'est joue ni precharge : un son
-// absent ne doit ni faire de 404 dans le natif ni casser le cache du service worker.
+// Un pack sans son fichier ne joue rien : pas de 404 dans le natif, pas de bip.
+// Choix de Francois le 11/09 : MUTANT et LEO « Break! », SAM « Break time! »
+// (son « Break! » etait « catastrophe »), LET'S GO « Let's go! » partout.
+// MIKE : « BREAK! » (deuxieme essai, il hesitait avec « Take a break! »).
 const BREAK_AUDIO='break.mp3';
 const LETSGO_AUDIO='lets-go.mp3';
-const BREAK_LETSGO_PRESENTS=false;
+const BREAK_PACKS ={max:true, sam:true, leo:true, nina:true};
+const LETSGO_PACKS={max:true, sam:true, leo:true, nina:true};
+function _breakPresent(){ return !!BREAK_PACKS[S_voix]; }
+function _letsGoPresent(){ return !!LETSGO_PACKS[S_voix]; }
 // BREAK : 1,9 s apres le debut du repos. Le repos part 50 ms apres le TIME du bloc
 // precedent, et le TIME dure 1,67 s : sans ce delai, le BREAK lui couperait la parole.
 const BREAK_APRES_MS=1900;
@@ -6139,7 +6144,7 @@ const BREAK_REPOS_MIN_S=15;
 // Sons d'un repos qui finit a tFin : BREAK au debut, decompte du bloc suivant a la fin.
 function _itemsRepos(tFin, totalSec){
   const out=_itemsDecompteBloc(tFin);
-  if(BREAK_LETSGO_PRESENTS && totalSec>=BREAK_REPOS_MIN_S)
+  if(_breakPresent() && totalSec>=BREAK_REPOS_MIN_S)
     out.unshift({t:tFin-totalSec*1000+BREAK_APRES_MS, f:BREAK_AUDIO});
   return out;
 }
@@ -6212,8 +6217,9 @@ function _demarrerRepos(){
   try{ showAnnounce(L3('REPOS','REST','DESCANSO'),'goutte'); }catch(e){}
   // 11/09/2026 : BREAK. En « Ma musique » le natif l'a dans son plan et la garde de
   // nativeVoicePlay fait taire ce minuteur-ci ; ailleurs, c'est lui qui le joue.
-  if(BREAK_LETSGO_PRESENTS && S.total>=BREAK_REPOS_MIN_S){
-    try{ if(!byoMusic && ensureAudioCtx()){ _loadRecBuf(BREAK_AUDIO); _loadRecBuf(LETSGO_AUDIO); } }catch(e){}
+  try{ if(!byoMusic && ensureAudioCtx() && _letsGoPresent()) _loadRecBuf(LETSGO_AUDIO); }catch(e){}
+  if(_breakPresent() && S.total>=BREAK_REPOS_MIN_S){
+    try{ if(!byoMusic && ensureAudioCtx()) _loadRecBuf(BREAK_AUDIO); }catch(e){}
     const iRepos=S.seance?S.seance.index:-1;
     S.cdTimers.push(setTimeout(()=>{
       if(S.state==='playing' && S.estRepos && S.seance && S.seance.index===iRepos){ try{ playAnnounceEl(BREAK_AUDIO); }catch(e){} }
@@ -6236,7 +6242,7 @@ function finDuRepos(){
   // au natif par startChrono l'inclue (cf. simulerAnnoncesRestantes).
   S._letsGoA=Date.now()+LETSGO_APRES_MS;
   _demarrerBlocSansDecompte();
-  if(BREAK_LETSGO_PRESENTS){
+  if(_letsGoPresent()){
     setTimeout(()=>{
       if(S.state==='playing' && S.seance && S.seance.index===i){ try{ playAnnounceEl(LETSGO_AUDIO); }catch(e){} }
     }, LETSGO_APRES_MS);
