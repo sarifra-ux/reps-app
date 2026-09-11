@@ -2065,7 +2065,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
      jour a l'ouverture. Contenu ecrit par afficherActus(). ===== -->
 <div id="actusScreen" class="actus-ecran" style="display:none">
   <div class="actus-tete">
-    <div class="actus-titre">ACTUS</div>
+    <div class="actus-titre" id="actusTitre">ACTUS</div>
     <div class="actus-sous" id="actusSous">CrossFit · HYROX</div>
   </div>
   <div class="actus-liste" id="actusListe"></div>
@@ -6755,7 +6755,8 @@ function sqRendreListe(){
     var h=document.createElement('span'); h.className='sq-h';
     h.textContent=sqMmss(debut)+'–'+sqMmss(debut+d);
     var nom=document.createElement('span'); nom.className='sq-nom-bloc';
-    nom.textContent=String(b.titre||b.mode||b.type).toUpperCase();
+    // 11/09 : un repos s'affiche dans la langue de l'app (son titre enregistre est « REPOS »).
+    nom.textContent=(b.type==='repos')?L3('REPOS','REST','DESCANSO'):String(b.titre||b.mode||b.type).toUpperCase();
     var det=document.createElement('span'); det.className='sq-det';
     det.textContent = b.type==='intervalle' ? (b.tours+'×'+sqMmss(b.work))
                     : (b.type==='repos' ? '' : 'cap '+sqMmss(b.cap));
@@ -7632,6 +7633,7 @@ function afficherActus(j, suite, attente){
       +'<a class="actus-lien" href="'+esc(x.lien)+'" target="_blank" rel="noopener">'+lire+' →</a></article>';
   }).join('');
   const so=document.getElementById('actusSous'); if(so) so.textContent='CrossFit · HYROX';
+  const ti=document.getElementById('actusTitre'); if(ti) ti.textContent=L3('ACTUS','NEWS','NOTÍCIAS');   // 11/09 : le titre restait « ACTUS » en EN et PT
   const n=document.getElementById('actusNote');
   if(n) n.textContent=(S.lang==='en')?'':L3('Traduit automatiquement. Articles complets en anglais.','','Tradução automática. Artigos completos em inglês.');
   const g=document.getElementById('actusGo'); if(g) g.textContent=_actusSuite?L3('ENTRAÎNEMENT','TRAINING','TREINO'):L3('FERMER','CLOSE','FECHAR');
@@ -7679,7 +7681,7 @@ async function ouvrirActus(){
 //
 // A BUMPER A CHAQUE LIVRAISON. La liste des correctifs sert de controle croise : si
 // une ligne attendue manque dans le journal, le telephone tourne sur du vieux code.
-const REPS_JS_BUILD='2026-09-11-build12-actus';
+const REPS_JS_BUILD='2026-09-11-build13-trad';
 const REPS_JS_CORRECTIFS='mixage-si-change, decompte-ctx-running, annonces-WA, relance-au-geste, rattrapage-routage, sonde-musique, cache-v212, gain-voix-unifie, cache-v216, time-partout, leo-time, enc-180s, mike-pt-1, enc-mutant-en, sam-enc-3, enc-mutant-pt, cache-v217';
 
 const DBG_MAX=400;              // ~un WOD entier, cout memoire negligeable
