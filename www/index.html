@@ -3211,6 +3211,9 @@ function choisirVoix(cle){
   try{ for(const k in roundBuffers) delete roundBuffers[k]; }catch(e){}
   try{ for(const k in restBuffer) delete restBuffer[k]; }catch(e){}
   try{ majBadgeVoix(); }catch(e){}
+  // 14/09/2026 : changer de voix vide _naLoaded juste au-dessus. On remet le decompte
+  // dans le pool natif immediatement, sinon le prochain depart serait muet.
+  try{ if(byoMusic) nativePreloadCountdown(); }catch(e){}
   try{ DBG('voix -> '+cle); }catch(e){}
 }
 function majBadgeVoix(){
@@ -3336,6 +3339,9 @@ function setLang(l){
     if(bEN) bEN.className='lang-btn'+(l==='en'?' active':'');
     if(bPT) bPT.className='lang-btn'+(l==='pt'?' active':'');
     try{localStorage.setItem('reps_lang',l);}catch(e){}
+    // 14/09/2026 : changer de langue change les onze fichiers du decompte. On les remet
+    // dans le pool natif tout de suite, pas au moment du GO.
+    try{ if(byoMusic) nativePreloadCountdown(); }catch(e){}
     applyI18n();
     renderSched();
     _updateDiag();
@@ -4181,7 +4187,8 @@ function chooseByoMusic(){
   const mb=document.getElementById('mixManualBtn'); if(mb) mb.classList.remove('on');
   if(S.state==='playing') stopMusic();
   appliquerMixageAudio();   // .mixWithOthers + .duckOthers : le podcast du client survit
-  try{ nativePreloadAnnounces(); }catch(e){} // prépare toutes les voix natives à l'avance
+  // 14/09/2026 : le decompte de depart d'abord, le reste des annonces ensuite.
+  try{ nativePreloadCountdown().then(()=>nativePreloadAnnounces()).catch(()=>{}); }catch(e){}
   try{localStorage.setItem('reps_music_category','byo');}catch(e){}
   // Libellé "en cours de lecture"
   const npBadge=document.getElementById('npBadge'); if(npBadge) npBadge.textContent='🎧 '+L3('MA MUSIQUE','MY MUSIC','MINHA MÚSICA');
@@ -6038,13 +6045,52 @@ function nativeVoicePlay(file){
   // la main au retour dans REPS, en plein decompte : Francois entendait le decompte
   // « destabilise » a chaque changement d'app. Un seul lecteur, plus de passage de relais.
   if(_planNatifActif) return true;
-  try{ _NA.play({ assetId:VPid(file) }); return true; }
+  // 14/09/2026 : filet. Le natif ne joue que ce qui lui a ete precharge, et un play()
+  // sur un assetId inconnu ne fait AUCUN bruit et ne leve pas toujours. Si le fichier
+  // n'est pas encore dans le pool, on le precharge et on le joue derriere : le son
+  // arrive en retard, ce qui vaut toujours mieux qu'un silence definitif.
+  const _id=VPid(file);
+  if(!_naLoaded[_id]){
+    DBG('NA play : '+_id+' pas dans le pool, prechargement a la volee');
+    nativeVoicePreload(file).then(()=>{ try{ if(!_planNatifActif) _NA.play({ assetId:_id }); }catch(e){} });
+    return true;
+  }
+  try{ _NA.play({ assetId:_id }); return true; }
   catch(e){ DBG('NA play KO '+file+' '+((e&&e.message)||e)); return false; }
 }
+// ===== 14/09/2026 : LE DECOMPTE DE DEPART EN « MA MUSIQUE » =====
+// Symptome, installation neuve depuis l'App Store, Spotify en route : le 10 -> GO est
+// entierement MUET, et tout le reste (3-2-1, ROUND, REST) sort normalement des le premier
+// repos. Cause : en « Ma musique » toutes les voix passent par le plugin natif, qui ne
+// joue QUE ce qu'on lui a precharge. Le prechargement partait bien dans launch(), mais
+// sans etre attendu, et le pas t=0 du decompte appelait le natif sur un pool encore vide.
+// Une minute plus tard le pool est plein, d'ou « ca marche apres le premier repos ».
+// Cette fonction existait deja et n'etait appelee NULLE PART. Elle l'est maintenant a
+// chaque endroit ou l'on sait quoi precharger : choix de « Ma musique », changement de
+// langue, changement de voix, ouverture de l'app, et en dernier recours dans launch().
+// Elle passe par listeDecompte(), comme les deux chemins de launch() : les trois ne
+// peuvent donc pas diverger sur le fichier du GO.
 async function nativePreloadCountdown(){
   if(!(await nativeVoiceInit())) return;
-  const list=(typeof S!=='undefined'&&S.lang==='fr')?COUNT_AUDIO_FR:((typeof S!=='undefined'&&S.lang==='pt')?COUNT_AUDIO_PT:COUNT_AUDIO_EN);
-  for(const f of list){ await nativeVoicePreload(f); }
+  for(const f of _listeDecompteNatif()){ await nativeVoicePreload(f); }
+}
+// Les onze sons du depart, plus le signal de depart quand il s'ajoute a la voix du GO.
+function _listeDecompteNatif(){
+  try{
+    const l=listeDecompte().slice();
+    if(!SIGNAL_DEPART_REMPLACE_VOIX) l.push(START_AUDIO);
+    return l.filter(Boolean);
+  }catch(e){ return []; }
+}
+// Vrai quand le natif a TOUT le decompte sous la main. En cas de doute on repond vrai :
+// un depart qui part vaut mieux qu'un depart bloque par ce garde-fou.
+function decompteNatifPret(){
+  try{
+    const l=_listeDecompteNatif();
+    if(!l.length) return true;
+    for(const f of l){ if(!_naLoaded[VPid(f)]) return false; }
+    return true;
+  }catch(e){ return true; }
 }
 // Toutes les voix d'un WOD pour la langue courante (décompte + 3-2-1 + ROUND + rest/time/… + bips)
 function _announceFilesForLang(){
@@ -8080,8 +8126,23 @@ function runAbsSchedule(steps, periode){
   return iv;
 }
 
+var _decompteNatifTente=false;   // un seul report par appui sur GO, jamais de boucle
 function launch(){
   if(S.state!=='idle') return; // garde-fou : pas de double-lancement (intervalle orphelin)
+  // 14/09/2026 : en « Ma musique », rien ne part tant que les onze sons du depart ne sont
+  // pas chez le natif. C'est le cas d'une installation neuve : le pool est vide et le
+  // decompte sortait entierement muet. On precharge, puis on rappelle launch(). Un seul
+  // report, et on part quand meme si le prechargement echoue : ce garde-fou ne doit
+  // jamais pouvoir empecher un WOD de demarrer.
+  if(byoMusic && _NA && !_decompteNatifTente && !decompteNatifPret()){
+    _decompteNatifTente=true;
+    try{ wakeLockOn(); }catch(e){}   // la demande reste dans le geste utilisateur
+    DBG('launch: pool natif incomplet, prechargement du decompte avant le depart');
+    const _reprendre=()=>{ try{ launch(); }catch(e){} };
+    try{ nativePreloadCountdown().then(_reprendre,_reprendre); }catch(e){ _reprendre(); }
+    return;
+  }
+  _decompteNatifTente=false;
   // Ardoise propre : couper tout résidu d'un WOD précédent avant de repartir.
   clearInterval(S.iv);
   clearCd();
@@ -8100,7 +8161,9 @@ function launch(){
   updateClock();
   if(byoMusic){
     // Mode Ma musique : AUCUN audio WebKit (il couperait Spotify). Toutes les voix via plugin natif.
-    nativePreloadAnnounces();
+    // 14/09/2026 : le decompte d'abord, le reste ensuite. Sans cet ordre, les onze sons du
+    // depart attendaient derriere une quarantaine d'autres fichiers.
+    nativePreloadCountdown().then(()=>nativePreloadAnnounces()).catch(()=>{});
   } else {
     // Débloquer les éléments <audio> d'annonce PENDANT le geste utilisateur
     unlockAnnounceEls();
@@ -10210,6 +10273,13 @@ window.addEventListener('DOMContentLoaded',()=>{
   setupModeSwipe();
 });
 
+
+// 14/09/2026 : a l'ouverture, si « Ma musique » est deja le mode retenu, le decompte
+// part dans le pool natif sans attendre le premier GO. Delai court : byoMusic est
+// restaure par la reprise des choix, qui passe apres DOMContentLoaded.
+window.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{ try{ if(byoMusic && _NA) nativePreloadCountdown(); }catch(e){} }, 1500);
+});
 
 // ===== POPUP AIDE MODES =====
 function showModeHelp(){
