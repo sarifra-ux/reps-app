@@ -1890,7 +1890,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
      Les coachs sans image gardent le fond SVG dans la carte. */
   .av-fond{display:none;}
   body.av-fond-img .av-fond{display:block;position:fixed;inset:0;z-index:1;pointer-events:none;background:#000;overflow:hidden;}
-  .av-fond img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 42%;
+  .av-fond img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 42%;transform-origin:50% 62%;
     transition:filter .25s ease;will-change:transform;}
   .av-fond img:not([src]){display:none;}
   body.av-fond-img .av-fond img{filter:brightness(.9);}
@@ -3370,7 +3370,7 @@ const AVATAR_COULEUR={sam:'#00e5ff',leo:'#ffb300',max:'#e63fff',nina:'#ff3b6f'};
 // l'image, bouche grande ouverte. Pour ajouter un coach : deux fichiers dans avatars/
 // (le haut SANS machoire, fond noir a sa place ; la machoire seule sur fond transparent,
 // memes dimensions) et une ligne ici.
-const AVATAR_IMAGE={max:{haut:'avatars/mutant-haut.webp',machoire:'avatars/mutant-machoire.webp',jaw:2.4}};
+const AVATAR_IMAGE={max:{haut:'avatars/mutant-haut.webp',machoire:'avatars/mutant-machoire.webp',jaw:4.2}};
 const AVATAR_EXTRAIT={sam:{fr:'enc-1-fr.mp3',en:'enc-1.mp3',pt:'enc-1-pt.mp3'},leo:{fr:'enc-1-fr.mp3'},
   max:{en:'enc-1.mp3',pt:'enc-1-pt.mp3'},nina:{en:'lets-go.mp3',pt:'lets-go.mp3'}};
 let _avUid=0, _avatarOn=true;
@@ -3459,24 +3459,32 @@ function avatarRemplir(host,k){ if(!host) return; host.style.setProperty('--c',A
   const im=(typeof AVATAR_IMAGE!=='undefined')&&AVATAR_IMAGE[k];
   // 18/09 : un coach qui a une illustration l'a aussi en vignette (reglages), teintee a sa couleur.
   if(im && host.classList.contains('vc-av')){
-    host.innerHTML='<span class="av-img" data-jaw="5"><img src="'+im.haut+'" alt=""><img class="jaw" src="'+im.machoire+'" alt=""></span><span class="av-ring"></span>';
+    host.innerHTML='<span class="av-img" data-jaw="9"><img src="'+im.haut+'" alt=""><img class="jaw" src="'+im.machoire+'" alt=""></span><span class="av-ring"></span>';
     return; }
   host.innerHTML=avatarSVG(k,++_avUid)+'<span class="av-ring"></span>'; }
 // Bouche : ouverture pseudo-syllabique tant que actif() est vrai.
 function avatarBouche(hosts,actif){
   const opens=hosts.flatMap(h=>[...h.querySelectorAll('.open')]), jaws=hosts.flatMap(h=>[...h.querySelectorAll('.jaw')]);
   const t0=performance.now(), ph=Math.random()*6;
+  // 18/09 nuit, « fais-la mieux bouger » : de vraies syllabes plutot qu'une sinusoide.
+  // Chaque syllabe dure 110 a 210 ms, ouvre vite (attaque), referme presque a fond,
+  // avec une amplitude tiree au hasard ; la premiere est la plus grande (attaque du mot).
+  const syl=[]; let acc=0;
+  for(let i=0;i<60;i++){ const d=110+Math.random()*100; syl.push({a:acc,d:d,amp:i===0?1:(0.45+Math.random()*0.55)}); acc+=d; }
+  function niveau(t){ for(const y of syl){ if(t<y.a+y.d){ const x=(t-y.a)/y.d; return y.amp*Math.pow(Math.sin(Math.PI*Math.min(1,x*1.25)),0.7); } } return 0; }
   hosts.forEach(h=>{ if(h._avRun) h._avRun.stop=true; });
   const run={stop:false}; hosts.forEach(h=>h._avRun=run);
   function f(){
     if(run.stop) return;
     const on=actif(); let v=0;
     hosts.forEach(h=>h.classList.toggle('av-parle',on));
-    if(on){ const t=performance.now()-t0; v=(0.3+0.7*Math.abs(Math.sin(t*0.026+ph)))*(0.55+0.45*Math.abs(Math.sin(t*0.009+ph*2))); }
+    if(on){ v=niveau(performance.now()-t0); }
     opens.forEach(o=>o.setAttribute('ry',(v*7).toFixed(2)));
-    jaws.forEach(j=>{ if(j.tagName==='IMG') j.style.transform='translateY('+(v*(+(j.parentNode.dataset.jaw)||2)).toFixed(2)+'%)';
+    jaws.forEach(j=>{ if(j.tagName==='IMG'){ const J=+(j.parentNode.dataset.jaw)||2;
+        j.style.transform='translateY('+(v*J).toFixed(2)+'%) rotate('+(v*J*0.18*(j._avSens||(j._avSens=Math.random()<.5?-1:1))).toFixed(2)+'deg)';
+        const haut=j.previousElementSibling; if(haut) haut.style.transform='translateY('+(-v*J*0.12).toFixed(2)+'%)'; return; }
       else j.setAttribute('transform','translate(0 '+(v*4.5).toFixed(2)+')'); });
-    if(on) requestAnimationFrame(f); else { opens.forEach(o=>o.setAttribute('ry','0')); jaws.forEach(j=>{ if(j.tagName==='IMG') j.style.transform=''; else j.removeAttribute('transform'); }); }
+    if(on) requestAnimationFrame(f); else { opens.forEach(o=>o.setAttribute('ry','0')); jaws.forEach(j=>{ if(j.tagName==='IMG'){ j.style.transform=''; j._avSens=0; if(j.previousElementSibling) j.previousElementSibling.style.transform=''; } else j.removeAttribute('transform'); }); }
   }
   requestAnimationFrame(f);
 }
