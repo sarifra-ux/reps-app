@@ -1838,21 +1838,34 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.filming #timerCard .dial-wrap .timer-clock{
     font-size:clamp(1rem,min(30cqh,19vw),3.4rem);
   }
-  /* ===== AVATAR AU CENTRE (18/09/2026, choix de Francois : « avatar dans l'anneau »,
-     « tout a la couleur de l'avatar ») =====
-     Actif tant que le reglage « Avatar pendant le WOD » est sur AFFICHE (body.avatar-central).
-     - l'avatar prend le centre de l'anneau ;
-     - les chiffres sortent de l'anneau et passent JUSTE EN DESSOUS, en gros
-       (majAvatarCoach deplace #timerClock dans le DOM, et le remet a sa place si on
-       masque l'avatar : tout le JS qui ecrit par id continue de marcher) ;
-     - anneau et chiffres prennent la couleur du coach (--av-c). Les alertes restent,
-       mais par l'animation et la lueur, plus par un changement de couleur ;
-     - le petit avatar en haut a droite disparait, il ferait doublon.
-     La hauteur perdue par les chiffres est prise sur l'anneau, qui sait deja retrecir
-     (cf. « ANNEAU : PLUS D'ECRASEMENT », 03/09). */
-  .coach-av-grand{display:none;}
-  body.avatar-central .coach-av-grand{display:block;position:absolute;inset:13%;z-index:2;pointer-events:none;}
-  body.avatar-central .coach-av-grand svg{width:100%;height:100%;display:block;overflow:visible;}
+  /* ===== AVATAR EN FOND D'ECRAN (18/09/2026, 3e version, choix de Francois) =====
+     Historique du jour : avatar dans l'anneau + chiffres dessous (v1), puis partage de
+     hauteur (v2). Francois veut finalement l'avatar « beaucoup plus gros, comme un fond
+     d'ecran, avec le chrono au milieu ». Donc :
+     - le chrono retrouve sa place d'origine, dans l'anneau (plus aucun deplacement DOM) ;
+     - #coachAvGrand est un fond : centre, plus haut que la carte (elle le recadre), en
+       transparence pour que les chiffres restent lisibles de loin ;
+     - quand le coach parle, le fond s'eclaire (.av-parle) et la bouche bouge ;
+     - anneau et chiffres a la couleur du coach, alertes par l'animation ;
+     - meme principe pour le decompte de depart (#cdAv derriere le chiffre).
+     Reglage « Avatar pendant le WOD » sur MASQUE : ancien ecran, a l'identique. */
+  .coach-av-grand,.cd-av{display:none;}
+  body.avatar-central .coach-av-grand,
+  body.avatar-central .cd-av{display:block;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    height:112%;aspect-ratio:1;max-width:none;z-index:-1;pointer-events:none;opacity:.28;transition:opacity .25s ease;}
+  body.avatar-central .coach-av-grand svg,
+  body.avatar-central .cd-av svg{width:100%;height:100%;display:block;overflow:visible;}
+  body.avatar-central .coach-av-grand.av-parle{opacity:.46;}
+  body.avatar-central .cd-av{opacity:.42;}
+  body.avatar-central .cd-av.av-parle{opacity:.7;}
+  body.avatar-central .coach-av-grand .av-ring,body.avatar-central .cd-av .av-ring{display:none;}
+  /* Le fond passe sous tout le contenu sans toucher au positionnement des autres
+     elements : z-index negatif dans un contexte isole (isolation:isolate). */
+  body.avatar-central #timerCard,body.avatar-central .cd-overlay{isolation:isolate;}
+  body.avatar-central .dial-piste{stroke:rgba(255,255,255,.12);}
+  /* La lueur de l'arc etait coupee net au bord du SVG : un carre plus clair, invisible sur
+     fond uni, qui sautait aux yeux par-dessus l'avatar. */
+  body.avatar-central .dial-svg{overflow:visible;}
   body.avatar-central .coach-av{display:none;}
   body.avatar-central .dial-arc{stroke:var(--av-c) !important;filter:drop-shadow(0 0 9px var(--av-c)) !important;}
   body.avatar-central .dial-alerte .dial-arc{stroke-width:8;filter:drop-shadow(0 0 18px var(--av-c)) !important;}
@@ -1860,41 +1873,14 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.avatar-central .timer-clock.warn,
   body.avatar-central .timer-clock.rest,
   body.avatar-central .timer-clock.danger{background:none;-webkit-text-fill-color:var(--av-c);color:var(--av-c);
-    filter:drop-shadow(0 0 18px var(--av-c));}
-  body.avatar-central .timer-clock{animation:none;}
-  body.avatar-central .timer-clock.rest{opacity:.75;}
+    filter:none !important;text-shadow:0 2px 10px rgba(0,0,0,.95),0 0 22px var(--av-c);}
+  /* text-shadow et pas filter:drop-shadow : le filtre posait un rectangle sombre sur
+     tout le bloc des chiffres, visible par-dessus l'avatar en fond. */
+  body.avatar-central .timer-clock:not(.danger){animation:none !important;}
+  body.avatar-central .timer-clock.rest{opacity:.8;}
   body.avatar-central .timer-clock.danger{animation:throb 0.4s ease-in-out infinite alternate;}
-  /* 18/09 soir, retour de Francois (fenetre basse / paysage) : l'anneau absorbait TOUT
-     le manque de hauteur et tombait a quelques pixels, pendant que les chiffres
-     gardaient leur taille, voire se faisaient couper par la carte. Desormais les
-     chiffres se dimensionnent aussi sur la HAUTEUR de l'ecran (vh), et l'anneau garde
-     un plancher. Les deux se partagent la place. */
-  /* Anneau + chiffres vivent dans .av-duo. Hors seance (page qui defile) : tailles fixes.
-     Ecran « pret » et WOD en cours (.epured-mode, .wod-live, .filming) : la carte n'a
-     que la hauteur qui reste, donc .av-duo devient un conteneur (container-type:size)
-     et anneau + chiffres se partagent SA hauteur (unites cqh). Basis explicite pour la
-     meme raison qu'au 03/09 : contain:size ne donne aucune taille intrinseque. */
-  .av-duo{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;gap:6px;}
-  body.avatar-central #timerCard .timer-clock.hors-anneau{position:relative;z-index:1;margin:0;
-    font-size:clamp(3.4rem,17vw,6.2rem) !important;line-height:.95;flex:0 0 auto;}
-  body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo{
-    flex:0 1 calc(min(272px,72vw) + min(17vw,6.2rem) + 6px);min-height:0;align-self:stretch;container-type:size;}
-  body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo .timer-clock.hors-anneau{
-    font-size:min(17vw,6.2rem,24cqh) !important;}
-  body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo .dial-wrap{
-    flex:0 0 auto !important;height:min(272px,72vw,calc(100cqh - min(17vw,6.2rem,24cqh) - 6px)) !important;
-    width:auto !important;max-width:none !important;max-height:none !important;min-height:0 !important;
-    aspect-ratio:1;margin:0 !important;}
-  /* Ecran bas (paysage, fenetre d'ordinateur) : anneau a gauche, chiffres a droite. */
-  @media (orientation:landscape) and (max-height:700px){
-    body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo{flex-direction:row;gap:4vw;
-      flex:1 1 min(272px,60vh);}
-    body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo .dial-wrap{height:min(100cqh,42cqw) !important;}
-    body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo .timer-clock.hors-anneau{font-size:min(48cqh,17cqw) !important;}
-  }
-  body.avatar-central.filming #timerCard .timer-clock.hors-anneau{font-size:clamp(2rem,10vw,3.4rem) !important;}
-  body.avatar-central.fullscreen-mode .dial-wrap{width:min(46vh,70vw) !important;max-width:none !important;max-height:none !important;}
-  body.avatar-central.fullscreen-mode #timerCard .timer-clock.hors-anneau{font-size:clamp(6rem,min(24vw,28vh),22rem) !important;margin-top:1vh;}
+  body.avatar-central .cd-num,body.avatar-central .cd-num.go{color:var(--av-c);
+    text-shadow:0 2px 12px rgba(0,0,0,.95),0 0 40px var(--av-c);}
 
 </style>
 </head>
@@ -2861,10 +2847,12 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
          l'absorbe : c'est exactement ce que permet la mecanique posee le 03/09. -->
     <div class="seance-bandeau" id="seanceBandeau" style="display:none"></div>
     <div class="timer-card" id="timerCard">
+      <div class="coach-av-grand" id="coachAvGrand" aria-hidden="true"></div>
       <div class="phase-indicator" id="phaseIndicator">WORK</div>
       <div class="round-badge" id="roundBadge"></div>
       <div class="coach-av" id="coachAv" aria-hidden="true"></div>
       <div class="cd-overlay" id="cdOverlay">
+        <div class="cd-av" id="cdAv" aria-hidden="true"></div>
         <div class="cd-num" id="cdNum">10</div>
         <div class="cd-sub" id="cdSub" data-i18n="cd.sub">DÉCOMPTE</div>
       </div>
@@ -2878,7 +2866,6 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <circle class="dial-piste" cx="50" cy="50" r="44"></circle>
           <circle class="dial-arc" id="dialArc" cx="50" cy="50" r="44"></circle>
         </svg>
-        <div class="coach-av-grand" id="coachAvGrand" aria-hidden="true"></div>
         <div class="timer-clock" id="timerClock">05:00</div>
       </div>
       <div class="timer-status" id="timerStatus">Prêt à démarrer</div>
@@ -3434,6 +3421,7 @@ function avatarBouche(hosts,actif){
   function f(){
     if(run.stop) return;
     const on=actif(); let v=0;
+    hosts.forEach(h=>h.classList.toggle('av-parle',on));
     if(on){ const t=performance.now()-t0; v=(0.3+0.7*Math.abs(Math.sin(t*0.026+ph)))*(0.55+0.45*Math.abs(Math.sin(t*0.009+ph*2))); }
     opens.forEach(o=>o.setAttribute('ry',(v*7).toFixed(2)));
     jaws.forEach(j=>j.setAttribute('transform','translate(0 '+(v*4.5).toFixed(2)+')'));
@@ -3484,24 +3472,17 @@ function majAvatarCoach(){
   if(h && h.dataset.k!==S_voix){ h.dataset.k=S_voix; avatarRemplir(h,S_voix); }
   const hg=document.getElementById('coachAvGrand');
   if(hg && hg.dataset.k!==S_voix){ hg.dataset.k=S_voix; avatarRemplir(hg,S_voix); }
+  const hc=document.getElementById('cdAv');
+  if(hc && hc.dataset.k!==S_voix){ hc.dataset.k=S_voix; avatarRemplir(hc,S_voix); }
   document.body.classList.toggle('sans-avatar',!_avatarOn);
   document.body.classList.toggle('avatar-central',_avatarOn);
   document.body.style.setProperty('--av-c',AVATAR_COULEUR[S_voix]||'#00e5ff');
   // Horloge : sous l'anneau en mode avatar, dedans sinon.
-  // 18/09 soir : anneau + chiffres dans un conteneur .av-duo, colonne en portrait,
-  // CÔTE À CÔTE sur un écran bas (paysage, fenêtre d'ordinateur) : sinon l'anneau
-  // absorbait tout le manque de hauteur et tombait à quelques pixels.
+  // Chrono toujours dans l'anneau (v3, avatar en fond). Filet : si une version
+  // precedente l'en avait sorti, on le remet et on retire l'ancien conteneur .av-duo.
   try{ const clk=document.getElementById('timerClock'), dw=clk&&document.querySelector('#timerCard .dial-wrap');
-    if(clk && dw){
-      let duo=document.getElementById('avDuo');
-      if(_avatarOn && clk.parentNode===dw){
-        if(!duo){ duo=document.createElement('div'); duo.id='avDuo'; duo.className='av-duo'; }
-        dw.before(duo); duo.appendChild(dw); duo.appendChild(clk); clk.classList.add('hors-anneau');
-      } else if(!_avatarOn && clk.parentNode!==dw){
-        dw.appendChild(clk); clk.classList.remove('hors-anneau');
-        if(duo){ duo.before(dw); duo.remove(); }
-      }
-    } }catch(e){}
+    if(clk && dw && clk.parentNode!==dw){ const duo=document.getElementById('avDuo'); if(duo) duo.before(dw); dw.appendChild(clk); if(duo) duo.remove(); }
+    if(clk) clk.classList.remove('hors-anneau'); }catch(e){}
   document.querySelectorAll('.voix-card').forEach(b=>{
     const k=b.dataset.voix, host=b.querySelector('.vc-av');
     if(host && !host.firstChild) avatarRemplir(host,k);
@@ -4238,7 +4219,6 @@ function updateClock(){
   else if(S.mode==='emom' && (S.emomPhase==='rest'||S.emomPhase==='cyclerest') && S.state==='playing'){cls+=' rest';}
   else if(r<=10) cls+=' danger';
   else if(r<=60 && S.mode!=='emom') cls+=' warn';
-  if(clock.classList.contains('hors-anneau')) cls+=' hors-anneau';
   clock.className=cls;
   
   // En EMOM, l'eyebrow affiche la phase (le round est dans #roundBadge)
@@ -6310,6 +6290,8 @@ function startVisualCountdown(){
       numEl.style.animation='none';void numEl.offsetWidth;
       numEl.style.animation='pop 0.15s ease-out';
       subEl.textContent=isGo?L3("C'EST PARTI !","LET'S GO!",'VAMOS!'):'';
+      // 18/09 : l'avatar dit chaque chiffre (pulse + bouche), plus longtemps sur le GO.
+      try{ if(_avatarOn){ const h=document.getElementById('cdAv'); if(h&&h.firstChild){ avatarPulse(h); const fin=performance.now()+(isGo?900:520); avatarBouche([h],()=>performance.now()<fin); } } }catch(e){}
   }}));
   const lastT=timings[timings.length-1].t;
   visSteps.push({t:lastT+500,fn:()=>overlay.classList.remove('show')});
