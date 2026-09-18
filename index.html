@@ -3392,7 +3392,7 @@ const AVATAR_COULEUR={sam:'#00e5ff',leo:'#ffb300',max:'#e63fff',nina:'#ff3b6f'};
 // l'image, bouche grande ouverte. Pour ajouter un coach : deux fichiers dans avatars/
 // (le haut SANS machoire, fond noir a sa place ; la machoire seule sur fond transparent,
 // memes dimensions) et une ligne ici.
-const AVATAR_IMAGE={max:{haut:'avatars/mutant-haut.webp',machoire:'avatars/mutant-machoire.webp',jaw:4.2}};
+const AVATAR_IMAGE={max:{haut:'avatars/mutant-haut.webp',machoire:'avatars/mutant-machoire.webp',jaw:3.2}};
 const AVATAR_EXTRAIT={sam:{fr:'enc-1-fr.mp3',en:'enc-1.mp3',pt:'enc-1-pt.mp3'},leo:{fr:'enc-1-fr.mp3'},
   max:{en:'enc-1.mp3',pt:'enc-1-pt.mp3'},nina:{en:'lets-go.mp3',pt:'lets-go.mp3'}};
 let _avUid=0, _avatarOn=true;
@@ -3492,7 +3492,8 @@ function avatarBouche(hosts,actif){
   // Chaque syllabe dure 110 a 210 ms, ouvre vite (attaque), referme presque a fond,
   // avec une amplitude tiree au hasard ; la premiere est la plus grande (attaque du mot).
   const syl=[]; let acc=0;
-  for(let i=0;i<60;i++){ const d=110+Math.random()*100; syl.push({a:acc,d:d,amp:i===0?1:(0.45+Math.random()*0.55)}); acc+=d; }
+  for(let i=0;i<80;i++){ const d=120+Math.random()*90; syl.push({a:acc,d:d,amp:i===0?.9:(0.5+Math.random()*0.35)}); acc+=d; }
+  let lisse=0;
   function niveau(t){ for(const y of syl){ if(t<y.a+y.d){ const x=(t-y.a)/y.d; return y.amp*Math.pow(Math.sin(Math.PI*Math.min(1,x*1.25)),0.7); } } return 0; }
   hosts.forEach(h=>{ if(h._avRun) h._avRun.stop=true; });
   const run={stop:false}; hosts.forEach(h=>h._avRun=run);
@@ -3501,6 +3502,7 @@ function avatarBouche(hosts,actif){
     const on=actif(); let v=0;
     hosts.forEach(h=>h.classList.toggle('av-parle',on));
     if(on){ v=niveau(performance.now()-t0); }
+    lisse+= (v-lisse)*0.45; v=lisse;
     opens.forEach(o=>o.setAttribute('ry',(v*7).toFixed(2)));
     jaws.forEach(j=>{ if(j.tagName==='IMG'){ const _jh=j.closest('[data-jaw]'); const J=(_jh&&+_jh.dataset.jaw)||2;
         j.style.transform='translateY('+(v*J).toFixed(2)+'%) rotate('+(v*J*0.18*(j._avSens||(j._avSens=Math.random()<.5?-1:1))).toFixed(2)+'deg)';
@@ -3512,12 +3514,23 @@ function avatarBouche(hosts,actif){
 }
 function avatarPulse(h){ if(!h) return; h.classList.remove('av-talk'); void h.offsetWidth; h.classList.add('av-talk'); setTimeout(()=>h.classList.remove('av-talk'),760); }
 const _avDuree={};
+var _avSim=false, _avDernier={f:'',t:0};
+// Sons qui ne font PAS parler l'avatar : bips, et le 5-4-3-2-1 de fin (le chrono prime).
+const AV_MUET=/(^|\/)(tick|beep|bip|start|silence)[^\/]*\.(mp3|wav)$|(^|\/)(fr|en|pt)-[1-5]\.mp3$/i;
 function avatarParle(file){
-  if(!_avatarOn || !file) return;
+  if(!_avatarOn || !file || _avSim) return;
+  file=String(file);
+  const nu=file.replace(/^.*\//,'');
+  if(AV_MUET.test(file)) return;
+  // Une meme annonce traverse playVoiceFile -> playAnnounceEl -> nativeVoicePlay :
+  // un seul declenchement par son.
+  const now=performance.now();
+  if(_avDernier.f===nu && now-_avDernier.t<400) return;
+  _avDernier={f:nu,t:now};
   const hs=['coachAv','coachAvGrand'].map(id=>document.getElementById(id)).filter(x=>x&&x.firstChild&&x.offsetParent!==null);
   if(document.body.classList.contains('av-fond-img')){ const f=document.getElementById('avFond'); if(f) hs.push(f); }
   if(!hs.length) return;
-  let src=file; try{ src=VP(file); }catch(e){}
+  let src=file; try{ if(file.indexOf('/')<0) src=VP(file); }catch(e){}
   const debut=performance.now(); let fin=debut+(_avDuree[src]||900);
   if(!_avDuree[src]){ try{ const a=new Audio(); a.preload='metadata';
     a.onloadedmetadata=()=>{ if(isFinite(a.duration)&&a.duration>0){ _avDuree[src]=a.duration*1000; fin=debut+_avDuree[src]; } };
@@ -5619,6 +5632,7 @@ function jouerAnnonceWA(src){
 
 function playAnnounceEl(src, onFail){
   if(!src) return false;
+  try{ avatarParle(src); }catch(e){}   // 18/09 : avatar (filtre + anti-doublon dans avatarParle)
   if(nativeVoiceOn()){ // Ma musique : voix natives par-dessus la musique du client, jamais de <audio> WebKit
     if(_naLoaded[VPid(src)]) nativeVoicePlay(src);
     else nativeVoicePreload(src).then(()=>nativeVoicePlay(src));
@@ -6427,6 +6441,7 @@ async function nativeVoicePreload(file){
   catch(e){ DBG('NA preload KO '+file+' '+((e&&e.message)||e)); }
 }
 function nativeVoicePlay(file){
+  try{ avatarParle(file); }catch(e){}   // 18/09 : avatar
   if(!_NA) return false;
   // 10/09/2026 (soir) : des qu'un plan est chez le natif, c'est LUI qui joue toutes les
   // voix, premier plan compris. Avant, le natif ne jouait qu'en arriere-plan et rendait
@@ -6546,6 +6561,7 @@ function _seanceAutoAvecSuite(){
   }catch(e){ return false; }
 }
 function simulerAnnoncesRestantes(){
+  _avSim=true;   // 18/09 : l'avatar ne doit pas « parler » pendant la simulation du plan natif
   const out=[], segs=[];
   if(S.state!=='playing' || !isFinite(S.t0) || !isFinite(S.startRemain) || !isFinite(S.remain)) return {items:out, segments:segs};
   // Heure reelle de la seconde en cours, meme arithmetique que la boucle de startChrono.
@@ -6651,6 +6667,7 @@ function simulerAnnoncesRestantes(){
       try{ updateClock(); renderSched(); }catch(e){}
     }
     _encPlanning=snapEnc; _encSacGeneral=snapSacG; _encSacFinale=snapSacF;
+    _avSim=false;
   }
   return {items:out, segments:segs};
 }
