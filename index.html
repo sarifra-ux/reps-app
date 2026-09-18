@@ -1864,8 +1864,34 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.avatar-central .timer-clock{animation:none;}
   body.avatar-central .timer-clock.rest{opacity:.75;}
   body.avatar-central .timer-clock.danger{animation:throb 0.4s ease-in-out infinite alternate;}
-  body.avatar-central #timerCard .timer-clock.hors-anneau{position:relative;z-index:1;margin:6px 0 0;
+  /* 18/09 soir, retour de Francois (fenetre basse / paysage) : l'anneau absorbait TOUT
+     le manque de hauteur et tombait a quelques pixels, pendant que les chiffres
+     gardaient leur taille, voire se faisaient couper par la carte. Desormais les
+     chiffres se dimensionnent aussi sur la HAUTEUR de l'ecran (vh), et l'anneau garde
+     un plancher. Les deux se partagent la place. */
+  /* Anneau + chiffres vivent dans .av-duo. Hors seance (page qui defile) : tailles fixes.
+     Ecran « pret » et WOD en cours (.epured-mode, .wod-live, .filming) : la carte n'a
+     que la hauteur qui reste, donc .av-duo devient un conteneur (container-type:size)
+     et anneau + chiffres se partagent SA hauteur (unites cqh). Basis explicite pour la
+     meme raison qu'au 03/09 : contain:size ne donne aucune taille intrinseque. */
+  .av-duo{display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;gap:6px;}
+  body.avatar-central #timerCard .timer-clock.hors-anneau{position:relative;z-index:1;margin:0;
     font-size:clamp(3.4rem,17vw,6.2rem) !important;line-height:.95;flex:0 0 auto;}
+  body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo{
+    flex:0 1 calc(min(272px,72vw) + min(17vw,6.2rem) + 6px);min-height:0;align-self:stretch;container-type:size;}
+  body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo .timer-clock.hors-anneau{
+    font-size:min(17vw,6.2rem,24cqh) !important;}
+  body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo .dial-wrap{
+    flex:0 0 auto !important;height:min(272px,72vw,calc(100cqh - min(17vw,6.2rem,24cqh) - 6px)) !important;
+    width:auto !important;max-width:none !important;max-height:none !important;min-height:0 !important;
+    aspect-ratio:1;margin:0 !important;}
+  /* Ecran bas (paysage, fenetre d'ordinateur) : anneau a gauche, chiffres a droite. */
+  @media (orientation:landscape) and (max-height:700px){
+    body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo{flex-direction:row;gap:4vw;
+      flex:1 1 min(272px,60vh);}
+    body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo .dial-wrap{height:min(100cqh,42cqw) !important;}
+    body.avatar-central:is(.epured-mode,.wod-live,.filming) #timerCard .av-duo .timer-clock.hors-anneau{font-size:min(48cqh,17cqw) !important;}
+  }
   body.avatar-central.filming #timerCard .timer-clock.hors-anneau{font-size:clamp(2rem,10vw,3.4rem) !important;}
   body.avatar-central.fullscreen-mode .dial-wrap{width:min(46vh,70vw) !important;max-width:none !important;max-height:none !important;}
   body.avatar-central.fullscreen-mode #timerCard .timer-clock.hors-anneau{font-size:clamp(6rem,min(24vw,28vh),22rem) !important;margin-top:1vh;}
@@ -3462,10 +3488,19 @@ function majAvatarCoach(){
   document.body.classList.toggle('avatar-central',_avatarOn);
   document.body.style.setProperty('--av-c',AVATAR_COULEUR[S_voix]||'#00e5ff');
   // Horloge : sous l'anneau en mode avatar, dedans sinon.
+  // 18/09 soir : anneau + chiffres dans un conteneur .av-duo, colonne en portrait,
+  // CÔTE À CÔTE sur un écran bas (paysage, fenêtre d'ordinateur) : sinon l'anneau
+  // absorbait tout le manque de hauteur et tombait à quelques pixels.
   try{ const clk=document.getElementById('timerClock'), dw=clk&&document.querySelector('#timerCard .dial-wrap');
     if(clk && dw){
-      if(_avatarOn && clk.parentNode===dw){ dw.after(clk); clk.classList.add('hors-anneau'); }
-      else if(!_avatarOn && clk.parentNode!==dw){ dw.appendChild(clk); clk.classList.remove('hors-anneau'); }
+      let duo=document.getElementById('avDuo');
+      if(_avatarOn && clk.parentNode===dw){
+        if(!duo){ duo=document.createElement('div'); duo.id='avDuo'; duo.className='av-duo'; }
+        dw.before(duo); duo.appendChild(dw); duo.appendChild(clk); clk.classList.add('hors-anneau');
+      } else if(!_avatarOn && clk.parentNode!==dw){
+        dw.appendChild(clk); clk.classList.remove('hors-anneau');
+        if(duo){ duo.before(dw); duo.remove(); }
+      }
     } }catch(e){}
   document.querySelectorAll('.voix-card').forEach(b=>{
     const k=b.dataset.voix, host=b.querySelector('.vc-av');
