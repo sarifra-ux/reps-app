@@ -1944,6 +1944,13 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   }
   @media (prefers-reduced-motion:reduce){ .af-tete{animation:none;transform:scale(1.2);} }
 
+  /* 18/09 : voix bloquee pendant un WOD */
+  .voix-verrou-msg{display:none;margin:0 0 8px;padding:9px 12px;border-radius:12px;font:600 .8rem/1.3 -apple-system,system-ui,sans-serif;
+    color:#ffd27a;background:rgba(255,179,0,.1);border:1px solid rgba(255,179,0,.4);}
+  .voix-verrou-msg.show{display:block;}
+  body.wod-verrou .voix-card:not(.on){opacity:.4;filter:grayscale(.7);}
+  body.wod-verrou .voix-card:not(.on)::before{content:'🔒';position:absolute;top:8px;left:9px;font-size:.8rem;}
+
 </style>
 </head>
 <body>
@@ -2470,6 +2477,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
         <!-- 18/09/2026 : cartes avec avatar (voir « AVATARS DES VOIX » dans le script).
              Toujours ecrit a la main : pour remettre EVA, ajouter sa carte ici ET dans
              VOIX_PACKS, et lui donner un visage dans avatarSVG. -->
+        <div class="voix-verrou-msg" id="voixVerrouMsg"></div>
         <div class="voix-cards">
           <button type="button" class="voix-chip voix-card" data-voix="sam"  onclick="toucherVoix('sam')"><span class="vc-av"></span><span class="vc-nom">SAM</span><span class="vc-desc"></span></button>
           <button type="button" class="voix-chip voix-card" data-voix="leo"  onclick="toucherVoix('leo')"><span class="vc-av"></span><span class="vc-nom">LEO</span><span class="vc-desc"></span></button>
@@ -3326,8 +3334,16 @@ function onsetsDecompte(){
 
 // Changer de voix invalide TOUS les caches audio : sans ca l'ancienne voix
 // continuerait de sortir du pool natif et des buffers deja decodes.
+// 18/09 : on ne change pas de voix pendant un WOD (lance, en cours ou en pause).
+// Le plan des annonces, les buffers et l'avatar sont prepares pour une voix : en
+// changer en route donnait des annonces melangees.
+function wodEnCours(){ return S.state==='launching'||S.state==='playing'||S.state==='paused'; }
+function voixVerrouilleeMsg(){
+  try{ const m=document.getElementById('voixVerrouMsg'); if(m){ m.textContent=L3('Voix bloquée pendant le WOD. Arrête ou termine le WOD pour en changer.','Voice locked during the WOD. Stop or finish the WOD to change it.','Voz bloqueada durante o WOD. Pare ou termine o WOD para trocar.'); m.classList.add('show'); clearTimeout(m._t); m._t=setTimeout(()=>m.classList.remove('show'),3200); } }catch(e){}
+}
 function choisirVoix(cle){
   if(!VOIX_PACKS[cle]||cle===S_voix) return;
+  if(wodEnCours()){ voixVerrouilleeMsg(); return; }
   if(!proActif() && voixPayante(cle)){                 // 11/09/2026 : voix payante
     try{ if(_proPlugin()) ouvrirPro('voix'); }catch(e){}
     return;
@@ -3550,6 +3566,7 @@ function avatarParle(file){
 }
 let _avPreview=null, _avVerrouTap={};
 function toucherVoix(k){
+  if(wodEnCours() && k!==S_voix){ voixVerrouilleeMsg(); return; }
   const b=document.querySelector('.voix-card[data-voix="'+k+'"]');
   const verrou=!proActif() && voixPayante(k);
   // extrait
@@ -9718,6 +9735,7 @@ function resetWizard(){
 
 // ===== MENU SETTINGS =====
 function openSettings(){
+  try{ document.body.classList.toggle('wod-verrou', wodEnCours()); }catch(e){}
   const modal=document.getElementById('settingsModal');
   if(!modal) return;
   // Adapter les labels selon la langue
