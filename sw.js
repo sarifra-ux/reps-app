@@ -36,6 +36,8 @@ const ASSETS = [
   '/avatars/mutant-machoire.webp',
   '/avatars/sam-haut.webp',
   '/avatars/sam-machoire.webp',
+  '/avatars/leo-haut.webp',
+  '/avatars/leo-machoire.webp',
   '/pogo.mp3',
   '/pleinfeu.mp3',
   '/techno.mp3',
