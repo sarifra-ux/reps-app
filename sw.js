@@ -34,6 +34,8 @@ const ASSETS = [
   '/apple-touch-icon.png',
   '/avatars/mutant-haut.webp',       // 18/09 : fond d'ecran de MUTANT
   '/avatars/mutant-machoire.webp',
+  '/avatars/sam-haut.webp',
+  '/avatars/sam-machoire.webp',
   '/pogo.mp3',
   '/pleinfeu.mp3',
   '/techno.mp3',
