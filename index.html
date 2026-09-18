@@ -1919,6 +1919,22 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .av-img::after{content:'';position:absolute;inset:0;background:var(--c);mix-blend-mode:color;opacity:.9;pointer-events:none;}
   .vc-play .av-img img,.av-talk .av-img img{filter:brightness(1.4);}
 
+  /* 18/09 nuit, demande de Francois : la tete « vit ». Derive lente et continue
+     (gauche/droite, haut/bas, legere rotation), 13 s par cycle, amplitude faible pour ne
+     jamais gener la lecture du chrono. Le calque .af-tete porte la derive, les deux
+     images dedans gardent leurs propres transforms (machoire, tete qui remonte).
+     Zoom 1.06 pour que les bords ne se decouvrent jamais. Coupe si l'utilisateur a
+     demande moins d'animations au systeme. */
+  .af-tete{position:absolute;inset:0;animation:afFlotte 13s ease-in-out infinite;will-change:transform;}
+  @keyframes afFlotte{
+    0%  {transform:scale(1.06) translate(0,0) rotate(0deg);}
+    22% {transform:scale(1.06) translate(-1.3%,-0.7%) rotate(-1.1deg);}
+    47% {transform:scale(1.06) translate(0.5%,0.9%) rotate(0.5deg);}
+    71% {transform:scale(1.06) translate(1.4%,-0.5%) rotate(1.2deg);}
+    100%{transform:scale(1.06) translate(0,0) rotate(0deg);}
+  }
+  @media (prefers-reduced-motion:reduce){ .af-tete{animation:none;transform:scale(1.06);} }
+
 </style>
 </head>
 <body>
@@ -2559,7 +2575,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
 </div>
 
 <!-- 18/09/2026 : fond d'ecran du coach (illustration). Voir « AVATAR EN FOND D'ECRAN, IMAGES ». -->
-<div class="av-fond" id="avFond" aria-hidden="true"><img class="af-haut" alt=""><img class="af-jaw jaw" alt=""></div>
+<div class="av-fond" id="avFond" aria-hidden="true"><div class="af-tete"><img class="af-haut" alt=""><img class="af-jaw jaw" alt=""></div></div>
 <div class="app">
   <aside>
     <!-- 1. MODE TABS -->
@@ -3480,7 +3496,7 @@ function avatarBouche(hosts,actif){
     hosts.forEach(h=>h.classList.toggle('av-parle',on));
     if(on){ v=niveau(performance.now()-t0); }
     opens.forEach(o=>o.setAttribute('ry',(v*7).toFixed(2)));
-    jaws.forEach(j=>{ if(j.tagName==='IMG'){ const J=+(j.parentNode.dataset.jaw)||2;
+    jaws.forEach(j=>{ if(j.tagName==='IMG'){ const _jh=j.closest('[data-jaw]'); const J=(_jh&&+_jh.dataset.jaw)||2;
         j.style.transform='translateY('+(v*J).toFixed(2)+'%) rotate('+(v*J*0.18*(j._avSens||(j._avSens=Math.random()<.5?-1:1))).toFixed(2)+'deg)';
         const haut=j.previousElementSibling; if(haut) haut.style.transform='translateY('+(-v*J*0.12).toFixed(2)+'%)'; return; }
       else j.setAttribute('transform','translate(0 '+(v*4.5).toFixed(2)+')'); });
