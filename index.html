@@ -1882,6 +1882,27 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.avatar-central .cd-num,body.avatar-central .cd-num.go{color:var(--av-c);
     text-shadow:0 2px 12px rgba(0,0,0,.95),0 0 40px var(--av-c);}
 
+  /* ===== AVATAR EN FOND D'ECRAN, IMAGES (18/09/2026) =====
+     Quand le coach a une illustration (AVATAR_IMAGE, MUTANT d'abord : crane genere par
+     Francois avec ChatGPT), elle devient le fond de TOUT l'ecran, pas seulement de la
+     carte. Deux calques : le crane sans la machoire, et la machoire seule, decoupee au
+     ras des dents, qui descend quand il parle. La carte chrono devient transparente.
+     Les coachs sans image gardent le fond SVG dans la carte. */
+  .av-fond{display:none;}
+  body.av-fond-img .av-fond{display:block;position:fixed;inset:0;z-index:1;pointer-events:none;background:#000;overflow:hidden;}
+  .av-fond img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 42%;
+    transition:filter .25s ease;will-change:transform;}
+  .av-fond img:not([src]){display:none;}
+  body.av-fond-img .av-fond.av-parle img{filter:brightness(1.45);}
+  body.av-fond-img .app{position:relative;z-index:2;}
+  body.av-fond-img #timerCard{background:transparent !important;border-color:transparent !important;box-shadow:none !important;}
+  body.av-fond-img #timerCard::before,body.av-fond-img #timerCard::after{display:none !important;}
+  body.av-fond-img .coach-av-grand,body.av-fond-img .cd-av{display:none !important;}
+  body.av-fond-img .cd-overlay{background:rgba(0,0,0,.3);}
+  /* Pendant le decompte, l'overlay est presque transparent : on masque l'anneau et le
+     chrono dessous, sinon le chiffre du decompte se superpose a 05:00. */
+  body.av-fond-img #timerCard:has(.cd-overlay.show) .dial-wrap{visibility:hidden;}
+
 </style>
 </head>
 <body>
@@ -2521,6 +2542,8 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   </div>
 </div>
 
+<!-- 18/09/2026 : fond d'ecran du coach (illustration). Voir « AVATAR EN FOND D'ECRAN, IMAGES ». -->
+<div class="av-fond" id="avFond" aria-hidden="true"><img class="af-haut" alt=""><img class="af-jaw jaw" alt=""></div>
 <div class="app">
   <aside>
     <!-- 1. MODE TABS -->
@@ -3327,6 +3350,11 @@ function majBadgeVoix(){
 //    (metadonnees, mises en cache) et on anime pendant cette duree.
 //  - Reglage « Avatar pendant le WOD » (reps_avatar), actif par defaut.
 const AVATAR_COULEUR={sam:'#00e5ff',leo:'#ffb300',max:'#e63fff',nina:'#ff3b6f'};
+// Illustrations plein ecran (fond). jaw = descente de la machoire, en % de la hauteur de
+// l'image, bouche grande ouverte. Pour ajouter un coach : deux fichiers dans avatars/
+// (le haut SANS machoire, fond noir a sa place ; la machoire seule sur fond transparent,
+// memes dimensions) et une ligne ici.
+const AVATAR_IMAGE={max:{haut:'avatars/mutant-haut.webp',machoire:'avatars/mutant-machoire.webp',jaw:2.4}};
 const AVATAR_EXTRAIT={sam:{fr:'enc-1-fr.mp3',en:'enc-1.mp3',pt:'enc-1-pt.mp3'},leo:{fr:'enc-1-fr.mp3'},
   max:{en:'enc-1.mp3',pt:'enc-1-pt.mp3'},nina:{en:'lets-go.mp3',pt:'lets-go.mp3'}};
 let _avUid=0, _avatarOn=true;
@@ -3424,8 +3452,9 @@ function avatarBouche(hosts,actif){
     hosts.forEach(h=>h.classList.toggle('av-parle',on));
     if(on){ const t=performance.now()-t0; v=(0.3+0.7*Math.abs(Math.sin(t*0.026+ph)))*(0.55+0.45*Math.abs(Math.sin(t*0.009+ph*2))); }
     opens.forEach(o=>o.setAttribute('ry',(v*7).toFixed(2)));
-    jaws.forEach(j=>j.setAttribute('transform','translate(0 '+(v*4.5).toFixed(2)+')'));
-    if(on) requestAnimationFrame(f); else { opens.forEach(o=>o.setAttribute('ry','0')); jaws.forEach(j=>j.removeAttribute('transform')); }
+    jaws.forEach(j=>{ if(j.tagName==='IMG') j.style.transform='translateY('+(v*(+(j.parentNode.dataset.jaw)||2)).toFixed(2)+'%)';
+      else j.setAttribute('transform','translate(0 '+(v*4.5).toFixed(2)+')'); });
+    if(on) requestAnimationFrame(f); else { opens.forEach(o=>o.setAttribute('ry','0')); jaws.forEach(j=>{ if(j.tagName==='IMG') j.style.transform=''; else j.removeAttribute('transform'); }); }
   }
   requestAnimationFrame(f);
 }
@@ -3434,6 +3463,7 @@ const _avDuree={};
 function avatarParle(file){
   if(!_avatarOn || !file) return;
   const hs=['coachAv','coachAvGrand'].map(id=>document.getElementById(id)).filter(x=>x&&x.firstChild&&x.offsetParent!==null);
+  if(document.body.classList.contains('av-fond-img')){ const f=document.getElementById('avFond'); if(f) hs.push(f); }
   if(!hs.length) return;
   let src=file; try{ src=VP(file); }catch(e){}
   const debut=performance.now(); let fin=debut+(_avDuree[src]||900);
@@ -3475,6 +3505,10 @@ function majAvatarCoach(){
   const hc=document.getElementById('cdAv');
   if(hc && hc.dataset.k!==S_voix){ hc.dataset.k=S_voix; avatarRemplir(hc,S_voix); }
   document.body.classList.toggle('sans-avatar',!_avatarOn);
+  const img=AVATAR_IMAGE[S_voix], fond=document.getElementById('avFond');
+  document.body.classList.toggle('av-fond-img',_avatarOn && !!img);
+  if(fond && img && fond.dataset.k!==S_voix){ fond.dataset.k=S_voix; fond.dataset.jaw=img.jaw;
+    fond.querySelector('.af-haut').src=img.haut; fond.querySelector('.af-jaw').src=img.machoire; }
   document.body.classList.toggle('avatar-central',_avatarOn);
   document.body.style.setProperty('--av-c',AVATAR_COULEUR[S_voix]||'#00e5ff');
   // Horloge : sous l'anneau en mode avatar, dedans sinon.
@@ -6291,7 +6325,7 @@ function startVisualCountdown(){
       numEl.style.animation='pop 0.15s ease-out';
       subEl.textContent=isGo?L3("C'EST PARTI !","LET'S GO!",'VAMOS!'):'';
       // 18/09 : l'avatar dit chaque chiffre (pulse + bouche), plus longtemps sur le GO.
-      try{ if(_avatarOn){ const h=document.getElementById('cdAv'); if(h&&h.firstChild){ avatarPulse(h); const fin=performance.now()+(isGo?900:520); avatarBouche([h],()=>performance.now()<fin); } } }catch(e){}
+      try{ if(_avatarOn){ const h=document.getElementById('cdAv'), hs=[]; if(h&&h.firstChild) hs.push(h); if(document.body.classList.contains('av-fond-img')){ const f=document.getElementById('avFond'); if(f) hs.push(f); } if(hs.length){ hs.forEach(avatarPulse); const fin=performance.now()+(isGo?900:520); avatarBouche(hs,()=>performance.now()<fin); } } }catch(e){}
   }}));
   const lastT=timings[timings.length-1].t;
   visSteps.push({t:lastT+500,fn:()=>overlay.classList.remove('show')});
