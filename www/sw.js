@@ -17,7 +17,14 @@
 // genere seul, valide a l'oreille par Francois (variante B).
 // 10/09/2026 : v216. enc-1..4.mp3 (MUTANT anglais) ajoutes, voix/sam/enc-3-fr.mp3 refait.
 // 10/09/2026 : v217. enc-1..4-pt.mp3 (MUTANT portugais) ajoutes.
-const CACHE_NAME = 'reps-v229';
+// 17/09/2026 : v230. Reperes de phase EMOM : twenty-sec* et athletes-ten-sec* ajoutes
+// dans les quatre packs (MIKE remonte de 2,5 dB, il sortait trop faible).
+// 18/09/2026 : v231. Pack MIKE (voix/nina) remonte en volume (compression, version
+// « tres fort » validee par Francois) et nouveau « um » portugais (pt-1, count-pt-1).
+// Memes noms de fichiers : seul un CACHE_NAME neuf force les telephones a les recharger.
+// 18/09/2026 (bis) : toujours v231, rien n'a ete pousse entre-temps. S'y ajoutent les
+// avatars des voix (SVG dans index.html, aucun fichier nouveau a precharger).
+const CACHE_NAME = 'reps-v231';
 const ASSETS = [
   '/',
   '/index.html',
@@ -25,6 +32,14 @@ const ASSETS = [
   '/icon-192.png',
   '/icon-512.png',
   '/apple-touch-icon.png',
+  '/avatars/mutant-haut.webp',       // 18/09 : fond d'ecran de MUTANT
+  '/avatars/mutant-machoire.webp',
+  '/avatars/sam-haut.webp',
+  '/avatars/sam-machoire.webp',
+  '/avatars/leo-haut.webp',
+  '/avatars/leo-machoire.webp',
+  '/avatars/mike-haut.webp',
+  '/avatars/mike-machoire.webp',
   '/pogo.mp3',
   '/pleinfeu.mp3',
   '/techno.mp3',
@@ -75,7 +90,12 @@ const ASSETS = [
     '/round-2-pt.mp3','/round-3-pt.mp3','/round-4-pt.mp3','/round-5-pt.mp3','/round-6-pt.mp3',
     '/round-7-pt.mp3','/round-8-pt.mp3','/round-9-pt.mp3','/round-10-pt.mp3',
     '/rest-pt.mp3',
-    '/three-min-pt.mp3','/last-minute-pt.mp3','/ten-sec-pt.mp3','/time-pt.mp3'
+    '/three-min-pt.mp3','/last-minute-pt.mp3','/ten-sec-pt.mp3','/time-pt.mp3',
+    // 17/09/2026, v230 : reperes de phase EMOM. Comme le reste de cette liste, seuls les
+    // fichiers de la RACINE (voix MUTANT) sont precaches ; les packs voix/<cle>/ se
+    // chargent a la demande.
+    '/twenty-sec.mp3','/twenty-sec-pt.mp3',
+    '/athletes-ten-sec.mp3','/athletes-ten-sec-pt.mp3'
 ];
 
 // Installation : on précharge les fichiers un par un.
