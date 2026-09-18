@@ -343,6 +343,30 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     box-shadow:0 6px 22px rgba(155,48,255,.45);font-weight:800;}
   .pro-btn-txt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;}
   .pro-btn-sous{font:500 .7rem/1.2 -apple-system,system-ui,sans-serif;opacity:.92;letter-spacing:0;}
+
+  /* ===== AVATARS DES VOIX (18/09/2026) ===== */
+  .voix-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .voix-card{--c:#00e5ff;position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;
+    padding:12px 8px 10px;border-radius:16px;border:1px solid var(--border);background:var(--card);color:var(--text);
+    cursor:pointer;font:inherit;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;transition:transform .15s;}
+  .voix-card:active{transform:scale(.97);}
+  .voix-card.on{border-color:var(--c) !important;color:var(--text) !important;box-shadow:0 0 0 1px var(--c) inset,0 0 22px -6px var(--c) !important;}
+  .vc-av{position:relative;display:block;width:78px;height:78px;transition:filter .3s,opacity .3s;}
+  .vc-av svg,.coach-av svg{width:100%;height:100%;display:block;overflow:visible;}
+  .voix-card.pro-verrou:not(.vc-play) .vc-av{filter:grayscale(.55) brightness(.85);opacity:.85;}
+  .vc-nom{font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:1.5px;color:var(--c);line-height:1.1;margin-top:4px;}
+  .vc-desc{font-size:.72rem;color:#b9b8d4;line-height:1.15;min-height:2.3em;text-align:center;}
+  .voix-card.vc-inclus::after{content:'INCLUS';position:absolute;top:7px;right:7px;font:800 8.5px/1 -apple-system,system-ui,sans-serif;
+    letter-spacing:1px;padding:3px 5px;border-radius:5px;color:#00e5ff;border:1px solid rgba(0,229,255,.5);background:rgba(0,229,255,.1);}
+  .voix-card.pro-verrou::after{top:7px;right:7px;}
+  .av-ring{position:absolute;inset:4%;border-radius:50%;pointer-events:none;opacity:0;}
+  .av-talk .av-ring{animation:avRing .75s ease-out;}
+  .av-talk svg{animation:avPop .75s ease-out;}
+  @keyframes avRing{0%{opacity:.9;box-shadow:0 0 0 0 var(--c)}100%{opacity:0;box-shadow:0 0 0 12px transparent}}
+  @keyframes avPop{0%{transform:scale(1)}25%{transform:scale(1.07)}100%{transform:scale(1)}}
+  .coach-av{position:absolute;top:12px;right:12px;width:46px;height:46px;z-index:4;pointer-events:none;}
+  body.fullscreen-mode .coach-av{top:calc(env(safe-area-inset-top,0px) + 18px);right:22px;width:64px;height:64px;}
+  body.sans-avatar .coach-av{display:none;}
   .pro-content{max-height:90vh;overflow-y:auto;border:1px solid transparent !important;
     background:linear-gradient(var(--card),var(--card)) padding-box,var(--pro-grad) border-box !important;
     box-shadow:0 0 50px rgba(230,63,255,.35),0 0 90px rgba(0,212,255,.15) !important;}
@@ -1814,6 +1838,38 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   body.filming #timerCard .dial-wrap .timer-clock{
     font-size:clamp(1rem,min(30cqh,19vw),3.4rem);
   }
+  /* ===== AVATAR AU CENTRE (18/09/2026, choix de Francois : « avatar dans l'anneau »,
+     « tout a la couleur de l'avatar ») =====
+     Actif tant que le reglage « Avatar pendant le WOD » est sur AFFICHE (body.avatar-central).
+     - l'avatar prend le centre de l'anneau ;
+     - les chiffres sortent de l'anneau et passent JUSTE EN DESSOUS, en gros
+       (majAvatarCoach deplace #timerClock dans le DOM, et le remet a sa place si on
+       masque l'avatar : tout le JS qui ecrit par id continue de marcher) ;
+     - anneau et chiffres prennent la couleur du coach (--av-c). Les alertes restent,
+       mais par l'animation et la lueur, plus par un changement de couleur ;
+     - le petit avatar en haut a droite disparait, il ferait doublon.
+     La hauteur perdue par les chiffres est prise sur l'anneau, qui sait deja retrecir
+     (cf. « ANNEAU : PLUS D'ECRASEMENT », 03/09). */
+  .coach-av-grand{display:none;}
+  body.avatar-central .coach-av-grand{display:block;position:absolute;inset:13%;z-index:2;pointer-events:none;}
+  body.avatar-central .coach-av-grand svg{width:100%;height:100%;display:block;overflow:visible;}
+  body.avatar-central .coach-av{display:none;}
+  body.avatar-central .dial-arc{stroke:var(--av-c) !important;filter:drop-shadow(0 0 9px var(--av-c)) !important;}
+  body.avatar-central .dial-alerte .dial-arc{stroke-width:8;filter:drop-shadow(0 0 18px var(--av-c)) !important;}
+  body.avatar-central .timer-clock,
+  body.avatar-central .timer-clock.warn,
+  body.avatar-central .timer-clock.rest,
+  body.avatar-central .timer-clock.danger{background:none;-webkit-text-fill-color:var(--av-c);color:var(--av-c);
+    filter:drop-shadow(0 0 18px var(--av-c));}
+  body.avatar-central .timer-clock{animation:none;}
+  body.avatar-central .timer-clock.rest{opacity:.75;}
+  body.avatar-central .timer-clock.danger{animation:throb 0.4s ease-in-out infinite alternate;}
+  body.avatar-central #timerCard .timer-clock.hors-anneau{position:relative;z-index:1;margin:6px 0 0;
+    font-size:clamp(3.4rem,17vw,6.2rem) !important;line-height:.95;flex:0 0 auto;}
+  body.avatar-central.filming #timerCard .timer-clock.hors-anneau{font-size:clamp(2rem,10vw,3.4rem) !important;}
+  body.avatar-central.fullscreen-mode .dial-wrap{width:min(46vh,70vw) !important;max-width:none !important;max-height:none !important;}
+  body.avatar-central.fullscreen-mode #timerCard .timer-clock.hors-anneau{font-size:clamp(6rem,min(24vw,28vh),22rem) !important;margin-top:1vh;}
+
 </style>
 </head>
 <body>
@@ -2337,22 +2393,28 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <span class="settings-icon">🎤</span>
           <span class="settings-name" data-i18n="voix.choix">Voix du coach</span>
         </div>
-        <div class="lang-switch voix-chips">
-          <button type="button" class="lang-btn voix-chip" data-voix="max"  onclick="choisirVoix('max')">MUTANT</button>
-          <button type="button" class="lang-btn voix-chip" data-voix="sam"  onclick="choisirVoix('sam')">SAM</button>
-          <button type="button" class="lang-btn voix-chip" data-voix="nina" onclick="choisirVoix('nina')">MIKE</button>
-          <!-- EVA retiree le 31/08/2026. Le selecteur est du HTML ECRIT A LA MAIN, il
-               n'est pas engendre depuis VOIX_PACKS : commenter le pack ne suffisait donc
-               pas, la pastille restait affichee. Elle etait inerte (choisirVoix sort si
-               la cle n'est pas dans VOIX_PACKS) mais visible, ce qui est pire.
-               Pour la remettre : decommenter ici ET dans VOIX_PACKS. Les deux.
-          <button type="button" class="lang-btn voix-chip" data-voix="eva"  onclick="choisirVoix('eva')">EVA</button>
-          -->
-          <button type="button" class="lang-btn voix-chip" data-voix="leo"  onclick="choisirVoix('leo')">LEO</button>
+        <!-- 18/09/2026 : cartes avec avatar (voir « AVATARS DES VOIX » dans le script).
+             Toujours ecrit a la main : pour remettre EVA, ajouter sa carte ici ET dans
+             VOIX_PACKS, et lui donner un visage dans avatarSVG. -->
+        <div class="voix-cards">
+          <button type="button" class="voix-chip voix-card" data-voix="sam"  onclick="toucherVoix('sam')"><span class="vc-av"></span><span class="vc-nom">SAM</span><span class="vc-desc"></span></button>
+          <button type="button" class="voix-chip voix-card" data-voix="leo"  onclick="toucherVoix('leo')"><span class="vc-av"></span><span class="vc-nom">LEO</span><span class="vc-desc"></span></button>
+          <button type="button" class="voix-chip voix-card" data-voix="max"  onclick="toucherVoix('max')"><span class="vc-av"></span><span class="vc-nom">MUTANT</span><span class="vc-desc"></span></button>
+          <button type="button" class="voix-chip voix-card" data-voix="nina" onclick="toucherVoix('nina')"><span class="vc-av"></span><span class="vc-nom">MIKE</span><span class="vc-desc"></span></button>
         </div>
       </div>
-      <div class="settings-row" style="padding-top:0;">
+      <div class="settings-row" style="padding-top:0;display:none;">
         <div class="voix-desc" id="voixDesc"></div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label">
+          <span class="settings-icon">🙂</span>
+          <span class="settings-name" id="avLabel">Avatar pendant le WOD</span>
+        </div>
+        <div class="lang-switch">
+          <button type="button" class="lang-btn" id="avBtnOn" onclick="reglerAvatar(true)">AFFICHÉ</button>
+          <button type="button" class="lang-btn" id="avBtnOff" onclick="reglerAvatar(false)">MASQUÉ</button>
+        </div>
       </div>
       <div class="settings-row">
         <div class="settings-row-label">
@@ -2775,6 +2837,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
     <div class="timer-card" id="timerCard">
       <div class="phase-indicator" id="phaseIndicator">WORK</div>
       <div class="round-badge" id="roundBadge"></div>
+      <div class="coach-av" id="coachAv" aria-hidden="true"></div>
       <div class="cd-overlay" id="cdOverlay">
         <div class="cd-num" id="cdNum">10</div>
         <div class="cd-sub" id="cdSub" data-i18n="cd.sub">DÉCOMPTE</div>
@@ -2789,6 +2852,7 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <circle class="dial-piste" cx="50" cy="50" r="44"></circle>
           <circle class="dial-arc" id="dialArc" cx="50" cy="50" r="44"></circle>
         </svg>
+        <div class="coach-av-grand" id="coachAvGrand" aria-hidden="true"></div>
         <div class="timer-clock" id="timerClock">05:00</div>
       </div>
       <div class="timer-status" id="timerStatus">Prêt à démarrer</div>
@@ -3230,9 +3294,194 @@ function majBadgeVoix(){
     b.classList.toggle('pro-verrou', verrou);
     b.classList.toggle('on', cle===S_voix);
   });
+  try{ majAvatarCoach(); }catch(e){}
   const d=document.getElementById('voixDesc');
   if(d){ const i=(S.lang==='en')?1:((S.lang==='pt')?2:0); d.textContent=v.desc[i]||v.desc[0]; }
 }
+
+
+// ===== AVATARS DES VOIX (18/09/2026, demande de Francois) =====
+// Quatre visages inventes, dessines en SVG (aucune image, aucun droit a verifier),
+// dans le style neon de l'app. Maquette validee : Desktop/REPS/avatars/prototype-v2.
+//  - Ecran de choix : un appui JOUE UN EXTRAIT de la voix, meme payante (c'est ce qui
+//    vend). Sur une voix Pro verrouillee, le 2e appui dans les 4 s ouvre l'abonnement.
+//  - Pendant le WOD : avatar fixe en haut a droite de la carte chrono. Il pulse moins
+//    d'une seconde au debut de chaque annonce, et sa bouche bouge tant qu'il parle.
+//    Branche sur playVoiceFile et playRound. PAS sur playCount : pendant le 3-2-1,
+//    rien ne bouge, le chrono prime.
+//  - La bouche est une ANIMATION, pas une mesure du son : en « Ma musique » la voix
+//    sort du lecteur natif, invisible pour Web Audio. On prend la duree du mp3
+//    (metadonnees, mises en cache) et on anime pendant cette duree.
+//  - Reglage « Avatar pendant le WOD » (reps_avatar), actif par defaut.
+const AVATAR_COULEUR={sam:'#00e5ff',leo:'#ffb300',max:'#e63fff',nina:'#ff3b6f'};
+const AVATAR_EXTRAIT={sam:{fr:'enc-1-fr.mp3',en:'enc-1.mp3',pt:'enc-1-pt.mp3'},leo:{fr:'enc-1-fr.mp3'},
+  max:{en:'enc-1.mp3',pt:'enc-1-pt.mp3'},nina:{en:'lets-go.mp3',pt:'lets-go.mp3'}};
+let _avUid=0, _avatarOn=true;
+try{ if(localStorage.getItem('reps_avatar')==='0') _avatarOn=false; }catch(e){}
+function avatarSVG(k,uid){
+  const c=AVATAR_COULEUR[k]||'#00e5ff', g=`g${k}${uid}`, gl=`gl${k}${uid}`;
+  const defs=`<defs>
+    <radialGradient id="${g}" cx="50%" cy="38%" r="65%"><stop offset="0" stop-color="${c}" stop-opacity=".30"/><stop offset=".7" stop-color="#15131f"/><stop offset="1" stop-color="#0a0814"/></radialGradient>
+    <filter id="${gl}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <circle cx="60" cy="60" r="58" fill="url(#${g})" stroke="${c}" stroke-opacity=".35" stroke-width="1.5"/>`;
+  const S=`stroke="${c}" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"`;
+  const skin='#141024';
+  let body='';
+  if(k==='sam'){ // casquette a l'envers, grand sourire, taches de rousseur
+    body=`<g filter="url(#${gl})">
+      <path d="M40 104 q20 -12 40 0" ${S}/>
+      <circle cx="60" cy="66" r="29" fill="${skin}" ${S}/>
+      <path d="M31 60 q1 -30 29 -30 q28 0 29 30 z" fill="${c}" fill-opacity=".22" ${S}/>
+      <path d="M31 60 h58" ${S}/>
+      <path d="M34 54 q-10 2 -13 9" ${S}/>
+      <circle cx="60" cy="31" r="2.4" fill="${c}"/>
+      <path d="M46 67 q4.5 -6 9 0 M65 67 q4.5 -6 9 0" ${S}/>
+      <g fill="${c}" opacity=".7"><circle cx="44" cy="74" r="1.1"/><circle cx="48" cy="76" r="1.1"/><circle cx="72" cy="76" r="1.1"/><circle cx="76" cy="74" r="1.1"/></g>
+      <path class="lip" d="M49 80 q11 9 22 0" ${S}/>
+      <ellipse class="open" cx="60" cy="84" rx="7" ry="0" fill="${c}" fill-opacity=".85"/>
+    </g>`;
+  } else if(k==='leo'){ // bandeau, moustache, sourcil leve, sifflet
+    body=`<g filter="url(#${gl})">
+      <path d="M49 94 v10 M71 94 v10" ${S}/>
+      <path d="M46 100 q14 12 28 0" ${S} stroke-width="1.8" opacity=".8"/>
+      <circle cx="66" cy="108" r="3.5" fill="${c}" fill-opacity=".3" ${S} stroke-width="2"/><rect x="68" y="105" width="9" height="5" rx="1.5" fill="${c}" fill-opacity=".3" ${S} stroke-width="2"/>
+      <ellipse cx="60" cy="64" rx="27" ry="32" fill="${skin}" ${S}/>
+      <path d="M36 42 q24 -10 48 0" ${S} stroke-width="7" stroke-opacity=".9"/>
+      <path d="M85 42 l9 -5 M85 44 l8 5" ${S} stroke-width="2.5"/>
+      <path d="M38 38 q22 -14 44 0" ${S} stroke-width="2" opacity=".5"/>
+      <path d="M44 56 l10 -1 M66 52 l10 3" ${S}/>
+      <circle cx="49" cy="63" r="2.8" fill="${c}"/><circle cx="71" cy="63" r="2.8" fill="${c}"/>
+      <path class="lip" d="M46 78 q7 -7 14 -1 q7 -6 14 1 q-7 3 -14 0 q-7 3 -14 0 z" fill="${c}" fill-opacity=".85" stroke="${c}" stroke-width="1.5" stroke-linejoin="round"/>
+      <ellipse class="open" cx="60" cy="85" rx="6" ry="0" fill="${c}" fill-opacity=".85"/>
+    </g>`;
+  } else if(k==='max'){ // MUTANT v2 : cornes annelees, arcade lourde, 3 yeux, crocs, machoire qui tombe
+    const M=(d)=>d; // lisibilite
+    body=`<g filter="url(#${gl})">
+      <path d="M40 40 C25 36 17 22 23 6 C27 18 36 25 48 31 Z" fill="${c}" fill-opacity=".22" ${S} stroke-width="2.6"/>
+      <path d="M80 40 C95 36 103 22 97 6 C93 18 84 25 72 31 Z" fill="${c}" fill-opacity=".22" ${S} stroke-width="2.6"/>
+      <path d="M26 17 l6 -1 M28 25 l6 1 M33 31 l5 2 M94 17 l-6 -1 M92 25 l-6 1 M87 31 l-5 2" ${S} stroke-width="1.6" opacity=".7"/>
+      <path d="M40 34 Q60 24 80 34 L88 52 Q93 64 86 78 L80 96 Q60 105 40 96 L34 78 Q27 64 32 52 Z" fill="${skin}" ${S}/>
+      <path d="M36 53 L56 60 M84 53 L64 60" ${S} stroke-width="4.2"/>
+      <path d="M41 60 L56 63.5 L46 68 Z M79 60 L64 63.5 L74 68 Z" fill="${c}" stroke="${c}" stroke-width="1.2" stroke-linejoin="round"/>
+      <path d="M49 61.5 v5 M71 61.5 v5" stroke="#0a0814" stroke-width="1.6" stroke-linecap="round"/>
+      <ellipse cx="60" cy="45" rx="2.6" ry="4.3" fill="${c}"/><path d="M60 42.5 v5" stroke="#0a0814" stroke-width="1.1" stroke-linecap="round"/>
+      <path d="M57 72 l-1.2 3.2 M63 72 l1.2 3.2" ${S} stroke-width="2"/>
+      <path d="M70 37 l-3 6 l4 4 M34 70 l6 2 l-2 4 M84 72 l-5 3" ${S} stroke-width="1.5" opacity=".55"/>
+      <g transform="translate(0 -3)">
+      <ellipse class="open" cx="60" cy="87" rx="14" ry="0" fill="${c}" fill-opacity=".45"/>
+      <path d="M42 80 Q60 86 78 80" ${S} stroke-width="2.6"/>
+      <path d="M48.5 82.3 l2.8 9.5 l2.6 -8.7 M66.1 83.2 l2.6 8.6 l2.8 -9.5" fill="${skin}" ${S} stroke-width="2.2"/>
+      <path d="M56 84.4 l2 3.4 l2 -3.4" ${S} stroke-width="1.6"/>
+      <g class="jaw">
+        <path d="M44 91 Q60 97.5 76 91" ${S} stroke-width="2.6"/>
+        <path d="M53 93.2 l1.6 -3.4 l1.6 3.6 M63.8 93.4 l1.6 -3.6 l1.6 3.4" fill="${skin}" ${S} stroke-width="1.8"/>
+      </g>
+      </g>
+    </g>`;
+  } else { // MIKE : brosse, aviateurs, machoire carree, micro-casque
+    body=`<g filter="url(#${gl})">
+      <path d="M44 104 v-8 M76 104 v-8" ${S}/>
+      <rect x="33" y="36" width="54" height="62" rx="15" fill="${skin}" ${S}/>
+      <rect x="33" y="24" width="54" height="16" rx="4" fill="${c}" fill-opacity=".25" ${S}/>
+      <path d="M40 26 v11 M47 26 v11 M54 26 v11 M61 26 v11 M68 26 v11 M75 26 v11 M82 26 v11" ${S} stroke-width="1.4" opacity=".6"/>
+      <path d="M37 55 h20 q1 13 -10 14 q-10 -1 -10 -14 z M63 55 h20 q0 13 -10 14 q-11 -1 -10 -14 z" fill="${c}" fill-opacity=".55" ${S} stroke-width="2.5"/>
+      <path d="M57 57 h6" ${S} stroke-width="2.5"/>
+      <path d="M41 58 l5 5 M67 58 l5 5" stroke="#fff" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M33 60 q-8 18 14 22" ${S} stroke-width="2"/><circle cx="48" cy="82" r="2.5" fill="${c}"/>
+      <path class="lip" d="M52 81 q9 3 18 -2" ${S}/>
+      <ellipse class="open" cx="61" cy="83" rx="7" ry="0" fill="${c}" fill-opacity=".85"/>
+      <path d="M48 93 q12 4 24 0" ${S} stroke-width="1.8" opacity=".6"/>
+    </g>`;
+  }
+  return `<svg viewBox="0 0 120 120" aria-label="${(VOIX_PACKS[k]||{}).nom||k}">${defs}${body}</svg>`;
+}
+
+
+function avatarRemplir(host,k){ if(!host) return; host.style.setProperty('--c',AVATAR_COULEUR[k]||'#00e5ff'); host.innerHTML=avatarSVG(k,++_avUid)+'<span class="av-ring"></span>'; }
+// Bouche : ouverture pseudo-syllabique tant que actif() est vrai.
+function avatarBouche(hosts,actif){
+  const opens=hosts.flatMap(h=>[...h.querySelectorAll('.open')]), jaws=hosts.flatMap(h=>[...h.querySelectorAll('.jaw')]);
+  const t0=performance.now(), ph=Math.random()*6;
+  hosts.forEach(h=>{ if(h._avRun) h._avRun.stop=true; });
+  const run={stop:false}; hosts.forEach(h=>h._avRun=run);
+  function f(){
+    if(run.stop) return;
+    const on=actif(); let v=0;
+    if(on){ const t=performance.now()-t0; v=(0.3+0.7*Math.abs(Math.sin(t*0.026+ph)))*(0.55+0.45*Math.abs(Math.sin(t*0.009+ph*2))); }
+    opens.forEach(o=>o.setAttribute('ry',(v*7).toFixed(2)));
+    jaws.forEach(j=>j.setAttribute('transform','translate(0 '+(v*4.5).toFixed(2)+')'));
+    if(on) requestAnimationFrame(f); else { opens.forEach(o=>o.setAttribute('ry','0')); jaws.forEach(j=>j.removeAttribute('transform')); }
+  }
+  requestAnimationFrame(f);
+}
+function avatarPulse(h){ if(!h) return; h.classList.remove('av-talk'); void h.offsetWidth; h.classList.add('av-talk'); setTimeout(()=>h.classList.remove('av-talk'),760); }
+const _avDuree={};
+function avatarParle(file){
+  if(!_avatarOn || !file) return;
+  const hs=['coachAv','coachAvGrand'].map(id=>document.getElementById(id)).filter(x=>x&&x.firstChild&&x.offsetParent!==null);
+  if(!hs.length) return;
+  let src=file; try{ src=VP(file); }catch(e){}
+  const debut=performance.now(); let fin=debut+(_avDuree[src]||900);
+  if(!_avDuree[src]){ try{ const a=new Audio(); a.preload='metadata';
+    a.onloadedmetadata=()=>{ if(isFinite(a.duration)&&a.duration>0){ _avDuree[src]=a.duration*1000; fin=debut+_avDuree[src]; } };
+    a.src=src; }catch(e){} }
+  hs.forEach(avatarPulse); avatarBouche(hs,()=>performance.now()<fin);
+}
+let _avPreview=null, _avVerrouTap={};
+function toucherVoix(k){
+  const b=document.querySelector('.voix-card[data-voix="'+k+'"]');
+  const verrou=!proActif() && voixPayante(k);
+  // extrait
+  try{
+    const tab=AVATAR_EXTRAIT[k]||{}, f=tab[S.lang]||tab[Object.keys(tab)[0]];
+    const d=(VOIX_PACKS[k]||{}).dossier||'';
+    if(_avPreview){ _avPreview.pause(); }
+    document.querySelectorAll('.voix-card.vc-play').forEach(x=>x.classList.remove('vc-play'));
+    if(f){ const a=new Audio(d+f); _avPreview=a; try{ a.volume=gainVoix(); }catch(e){}
+      const host=b&&b.querySelector('.vc-av');
+      if(b) b.classList.add('vc-play');
+      a.onended=a.onerror=()=>{ if(b) b.classList.remove('vc-play'); };
+      a.play().then(()=>{ if(host){ avatarPulse(host); avatarBouche([host],()=>!a.paused&&!a.ended); } }).catch(()=>{ if(b) b.classList.remove('vc-play'); });
+    }
+  }catch(e){}
+  if(verrou){
+    const now=Date.now();
+    if(_avVerrouTap[k] && now-_avVerrouTap[k]<4000){ _avVerrouTap[k]=0; choisirVoix(k); }
+    else _avVerrouTap[k]=now;
+    return;
+  }
+  choisirVoix(k);
+}
+function majAvatarCoach(){
+  const h=document.getElementById('coachAv');
+  if(h && h.dataset.k!==S_voix){ h.dataset.k=S_voix; avatarRemplir(h,S_voix); }
+  const hg=document.getElementById('coachAvGrand');
+  if(hg && hg.dataset.k!==S_voix){ hg.dataset.k=S_voix; avatarRemplir(hg,S_voix); }
+  document.body.classList.toggle('sans-avatar',!_avatarOn);
+  document.body.classList.toggle('avatar-central',_avatarOn);
+  document.body.style.setProperty('--av-c',AVATAR_COULEUR[S_voix]||'#00e5ff');
+  // Horloge : sous l'anneau en mode avatar, dedans sinon.
+  try{ const clk=document.getElementById('timerClock'), dw=clk&&document.querySelector('#timerCard .dial-wrap');
+    if(clk && dw){
+      if(_avatarOn && clk.parentNode===dw){ dw.after(clk); clk.classList.add('hors-anneau'); }
+      else if(!_avatarOn && clk.parentNode!==dw){ dw.appendChild(clk); clk.classList.remove('hors-anneau'); }
+    } }catch(e){}
+  document.querySelectorAll('.voix-card').forEach(b=>{
+    const k=b.dataset.voix, host=b.querySelector('.vc-av');
+    if(host && !host.firstChild) avatarRemplir(host,k);
+    b.style.setProperty('--c',AVATAR_COULEUR[k]||'#00e5ff');
+    const i=(S.lang==='en')?1:((S.lang==='pt')?2:0), p=VOIX_PACKS[k];
+    const dd=b.querySelector('.vc-desc'); if(dd&&p&&p.desc) dd.textContent=p.desc[i]||p.desc[0];
+    b.classList.toggle('vc-inclus', !voixPayante(k) && !proActif());
+  });
+  const bo=document.getElementById('avBtnOn'), bf=document.getElementById('avBtnOff');
+  if(bo){ bo.classList.toggle('active',_avatarOn); bo.textContent=L3('AFFICHÉ','SHOWN','VISÍVEL'); }
+  if(bf){ bf.classList.toggle('active',!_avatarOn); bf.textContent=L3('MASQUÉ','HIDDEN','OCULTO'); }
+  const al=document.getElementById('avLabel'); if(al) al.textContent=L3('Avatar pendant le WOD','Avatar during the WOD','Avatar durante o WOD');
+}
+function reglerAvatar(on){ _avatarOn=!!on; try{ localStorage.setItem('reps_avatar',on?'1':'0'); }catch(e){} majAvatarCoach(); }
+document.addEventListener('DOMContentLoaded',()=>{ try{ majAvatarCoach(); }catch(e){} });
 
 const TXT={
   fr:{
@@ -3954,6 +4203,7 @@ function updateClock(){
   else if(S.mode==='emom' && (S.emomPhase==='rest'||S.emomPhase==='cyclerest') && S.state==='playing'){cls+=' rest';}
   else if(r<=10) cls+=' danger';
   else if(r<=60 && S.mode!=='emom') cls+=' warn';
+  if(clock.classList.contains('hors-anneau')) cls+=' hors-anneau';
   clock.className=cls;
   
   // En EMOM, l'eyebrow affiche la phase (le round est dans #roundBadge)
@@ -5501,6 +5751,7 @@ function playRestBufferNow(buf){
 }
 
 function playRound(num){
+  try{ avatarParle((ROUND_AUDIO[S.lang]||{})[num]); }catch(e){}   // 18/09 : avatar
   if(_busActive){ playRoundWA(num); return; } // enregistrement : chemin Web Audio propre
   const src=(ROUND_AUDIO[S.lang]||{})[num];
   if(src && playAnnounceEl(src, ()=>playRoundWA(num))) return;
@@ -5545,7 +5796,7 @@ function playRoundBufferNow(buf){
 const VOICE_FILES={
   fr:{min3:'three-min-fr.mp3',min1:'last-minute-fr.mp3',s10:'ten-sec-fr.mp3',time:'time-fr.mp3',rest:'rest-fr.mp3',
       min2:'two-min-fr.mp3',min6:'six-min-fr.mp3',min9:'nine-min-fr.mp3',
-      min12:'twelve-min-fr.mp3',min15:'fifteen-min-fr.mp3',min18:'eighteen-min-fr.mp3',s30:'thirty-sec-fr.mp3',
+      min12:'twelve-min-fr.mp3',min15:'fifteen-min-fr.mp3',min18:'eighteen-min-fr.mp3',s30:'thirty-sec-fr.mp3',s20:'twenty-sec-fr.mp3',s10ath:'athletes-ten-sec-fr.mp3',
       // Mi-parcours : cle FRANCAISE uniquement (25/08/2026). Pas d'entree dans
       // en: ni pt:, donc annonceVoix('half') n'y trouve rien et ne sort pas.
       half:'halfway-fr.mp3',
@@ -5557,11 +5808,11 @@ const VOICE_FILES={
       enc1:'enc-1-fr.mp3',enc2:'enc-2-fr.mp3',enc3:'enc-3-fr.mp3',enc4:'enc-4-fr.mp3'},
   en:{min3:'three-min.mp3',min1:'last-minute.mp3',s10:'ten-sec.mp3',time:'time.mp3',rest:'rest.mp3',
       min2:'two-min.mp3',min6:'six-min.mp3',min9:'nine-min.mp3',
-      min12:'twelve-min.mp3',min15:'fifteen-min.mp3',min18:'eighteen-min.mp3',s30:'thirty-sec.mp3',
+      min12:'twelve-min.mp3',min15:'fifteen-min.mp3',min18:'eighteen-min.mp3',s30:'thirty-sec.mp3',s20:'twenty-sec.mp3',s10ath:'athletes-ten-sec.mp3',
       enc1:'enc-1.mp3',enc2:'enc-2.mp3',enc3:'enc-3.mp3',enc4:'enc-4.mp3'},
   pt:{min3:'three-min-pt.mp3',min1:'last-minute-pt.mp3',s10:'ten-sec-pt.mp3',time:'time-pt.mp3',rest:'rest-pt.mp3',
       min2:'two-min-pt.mp3',min6:'six-min-pt.mp3',min9:'nine-min-pt.mp3',
-      min12:'twelve-min-pt.mp3',min15:'fifteen-min-pt.mp3',min18:'eighteen-min-pt.mp3',s30:'thirty-sec-pt.mp3',
+      min12:'twelve-min-pt.mp3',min15:'fifteen-min-pt.mp3',min18:'eighteen-min-pt.mp3',s30:'thirty-sec-pt.mp3',s20:'twenty-sec-pt.mp3',s10ath:'athletes-ten-sec-pt.mp3',
       enc1:'enc-1-pt.mp3',enc2:'enc-2-pt.mp3',enc3:'enc-3-pt.mp3',enc4:'enc-4-pt.mp3'}
 };
 
@@ -5573,6 +5824,12 @@ const VOICE_FILES={
 const VOICE_FILES_PRESENTS={
   min3:true, min1:true, s10:true, time:true, rest:true,
   min2:true, min6:true, min9:true, min12:true, min15:true, min18:true, s30:true,
+  // 17/09/2026 : a passer a true quand les mp3 seront generes et normalises, pack par
+  // pack. Tant que c'est false, le repere ne sonne PAS et ne fait PAS de bip : il est
+  // simplement saute (cf. annonceVoixSiPresente).
+  //   s20    « 20 secondes »
+  //   s10ath « Athletes, 10 secondes » (remplace s10 en EMOM quand il existera)
+  s20:true, s10ath:true,   // 17/09/2026 soir : generes, normalises et copies dans les 4 packs.
   // halfway-*.mp3 dormait sur le disque depuis toujours : les fichiers existaient
   // dans les quatre packs et les trois langues, mais AUCUN code ne les jouait.
   // Constate et documente le 10/08/2026, le prechargement natif avait meme ete
@@ -5591,6 +5848,33 @@ function annonceVoix(cle){
   const f=(VOICE_FILES[S.lang]||{})[cle];
   if(!f || !VOICE_FILES_PRESENTS[cle]){ try{ playTick(); }catch(e){} return; }
   playVoiceFile(f, ()=>{ try{ playTick(); }catch(e){} });
+}
+
+// Comme annonceVoix, mais SANS bip de repli : si le fichier n'existe pas encore dans
+// le pack, la seconde reste muette. Sert aux reperes EMOM du 17/09 (s20, s10ath), qui
+// sont des ajouts de confort : un bip a leur place serait pire que le silence.
+// DEUX JEUX DE CHIFFRES, piege deja documente le 07/09 :
+//   depart : count-fr-10..1.mp3   (voix « decompte », 10 a 1 disponibles)
+//   EMOM   : fr-5..1.mp3          (voix « chrono », SEULEMENT 5 a 1)
+// Le decompte de phase du 17/09 va de 9 a 1 : au-dessus de 5, la table COUNT_AUDIO n'a
+// rien, playCount tombait dans le vide et la seconde restait muette. On va donc chercher
+// les chiffres 9 a 6 dans les fichiers du decompte de depart, qui existent dans tous les
+// packs et les trois langues.
+// Secondes restantes de la phase ou part « athletes, dix secondes », par pack.
+// Voir le commentaire dans checkAnnounce, section EMOM.
+const S10ATH_AVANCE={leo:12, sam:12, nina:12, max:14};  // MUTANT mesure 3,8 s en anglais
+
+function playCountPhase(num){
+  if(num<=5){ playCount(num); return; }
+  const f='count-'+(S.lang||'fr')+'-'+num+'.mp3';
+  try{ playVoiceFile(f, ()=>{}); }catch(e){}
+}
+
+function annonceVoixSiPresente(cle){
+  const f=(VOICE_FILES[S.lang]||{})[cle];
+  if(!f || !VOICE_FILES_PRESENTS[cle]) return false;
+  playVoiceFile(f, ()=>{});
+  return true;
 }
 
 // ===== REPÈRES AMRAP (24/08/2026, build 4) =====
@@ -5838,6 +6122,7 @@ function voiceFileForText(text){
 
 // Joue un fichier voix avec ducking musique ; onFail si le fichier est absent
 function playVoiceFile(file, onFail){
+  try{ avatarParle(file); }catch(e){}   // 18/09 : la bouche de l'avatar
   // 10/09/2026 : en « Ma musique », TOUTES les voix passent par le lecteur natif, qui se
   // melange a Spotify. Jusqu'ici seuls le decompte et les bips y passaient : les 10 s,
   // les reperes AMRAP, la mi-parcours, les encouragements et le TIME prenaient un
@@ -8719,8 +9004,59 @@ function checkAnnounce(){
       return;
     }
     
-    // Décompte 3-2-1 avant la fin de la phase (work ou rest), sauf sur les 10 dernières sec du WOD complet
-    if(secsToNext>=1 && secsToNext<=3 && r>10){
+    // ===== REPERES DE PHASE EMOM (17/09/2026, demande de Francois) =====
+    // Avant, un intervalle EMOM etait muet du debut a 3 secondes de la fin : sur un
+    // intervalle de 3 min (soiree On Air du 17/09), l'athlete n'entendait rien pendant
+    // presque 3 minutes. On annonce donc, DANS CHAQUE PHASE, « 30 secondes » et
+    // « 10 secondes », puis un decompte 5-4-3-2-1 (au lieu de 3-2-1).
+    //
+    // Cles s30 et s10 : fichiers deja presents dans les quatre packs, FR/EN/PT, les
+    // memes que ceux des reperes AMRAP. Pas de nouveau fichier a generer.
+    // « 20 secondes » n'existe dans AUCUN pack : il est volontairement absent ici,
+    // plutot que de faire un bip. A brancher quand les mp3 seront enregistres.
+    //
+    // Garde phaseLen : sur une phase courte le repere n'a pas de sens et tomberait
+    // sur le decompte (ex : rest de 30 s). On exige 10 secondes de marge.
+    // 17/09 soir : « athletes, dix secondes » est une phrase LONGUE (1,7 s chez LEO,
+    // 4 s chez MUTANT). Dite a 10, elle finit bien apres le 10 et mord sur le 9.
+    // Elle part donc a 12 secondes, pour que « dix secondes » tombe au bon moment.
+    // Le repere court « 10 secondes » (s10), lui, reste a 10 : deux fichiers, deux
+    // instants, jamais les deux dans le meme intervalle.
+    // AVANCE PAR VOIX. Demande de Francois : ce qui doit tomber a 10 secondes, c'est
+    // le MOT « dix secondes », pas le debut de la phrase. Chaque pack parle a sa
+    // vitesse, donc l'avance depend de la duree du fichier, mesuree le 17/09 :
+    //   LEO 1,75 s · SAM et MIKE ~1,2 s  -> 12 s
+    //   MUTANT 3,2 s (sa voix ne descend pas plus bas, l'API plafonne speed a 1.2) -> 13 s
+    // Si un fichier est regenere plus court ou plus long, c'est CETTE table qu'on corrige.
+    const _dixAvance=!!(VOICE_FILES[S.lang]||{}).s10ath && VOICE_FILES_PRESENTS.s10ath;
+    const _dixDepart=(S10ATH_AVANCE[S_voix]||12);
+    if(r>10 && _dixAvance && secsToNext===_dixDepart && phaseLen>=_dixDepart+10){
+      const _lp=(_P.cycle===_P.cycles && currentRound===rounds && !inWork);
+      if(!_lp){
+        showAnnounce(L3('ATHLÈTES, 10 SECONDES','ATHLETES, 10 SECONDS','ATLETAS, 10 SEGUNDOS'));
+        annonceVoixSiPresente('s10ath');
+        return;
+      }
+    }
+    if(r>10 && (secsToNext===30 || secsToNext===20 || (secsToNext===10 && !_dixAvance)) && phaseLen>=secsToNext+10){
+      const isLastPhaseRep=(_P.cycle===_P.cycles && currentRound===rounds && !inWork);
+      if(!isLastPhaseRep){
+        if(secsToNext===30){ showAnnounce(L3('30 SECONDES','30 SECONDS','30 SEGUNDOS')); annonceVoix('s30'); return; }
+        if(secsToNext===20){
+          // Tant que twenty-sec-*.mp3 n'existe pas, on n'affiche rien et on ne sonne pas.
+          if(annonceVoixSiPresente('s20')) showAnnounce(L3('20 SECONDES','20 SECONDS','20 SEGUNDOS'));
+          return;
+        }
+        // 10 s : repere court existant (le « athletes » est parti a 12 s, plus haut).
+        showAnnounce(schedLbl10s()); annonceVoix('s10');
+        return;
+      }
+    }
+
+    // Décompte 9-8-7-...-1 avant la fin de la phase (work ou rest), sauf sur les 10
+    // dernieres sec du WOD complet. 17/09/2026 : etendu de 3 a 9 a la demande de Francois,
+    // le « 10 » etant dit juste avant par le repere ci-dessus.
+    if(secsToNext>=1 && secsToNext<=9 && r>10){
       // Pour ne pas décompter à la fin du dernier rest si c'est aussi la fin du WOD
       const isLastPhase=(_P.cycle===_P.cycles && currentRound===rounds && !inWork);
       // On garde le décompte 3-2-1 à la fin du dernier WORK (ex: minute 7 d'un EMOM 8min 1/1).
@@ -8730,7 +9066,7 @@ function checkAnnounce(){
         const num=secsToNext;
         showAnnounce(String(num),'chrono');
         playBipDecompte();
-        playCount(num);
+        playCountPhase(num);
         return;
       }
     }
