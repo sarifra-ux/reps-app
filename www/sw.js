@@ -24,7 +24,8 @@
 // Memes noms de fichiers : seul un CACHE_NAME neuf force les telephones a les recharger.
 // 18/09/2026 (bis) : toujours v231, rien n'a ete pousse entre-temps. S'y ajoutent les
 // avatars des voix (SVG dans index.html, aucun fichier nouveau a precharger).
-const CACHE_NAME = 'reps-v231';
+// 19/09/2026 : v232. Web : le cache reps_pro n'est plus pris en compte (faille Pro).
+const CACHE_NAME = 'reps-v232';
 const ASSETS = [
   '/',
   '/index.html',

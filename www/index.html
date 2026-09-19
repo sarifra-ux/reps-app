@@ -7902,7 +7902,15 @@ function proAppliquer(actif, droits, source){
 }
 async function proVerifier(){
   const P=_proPlugin();
-  if(!P){ try{ majProUI(); }catch(e){} return; }   // web : pas d'abonnement
+  if(!P){                                           // web : pas d'abonnement
+    // 19/09/2026 : sur le web, personne ne peut acheter le Pro et Apple n'est pas la pour
+    // verifier. Le cache localStorage 'reps_pro' se falsifiait depuis la console : on
+    // l'ignore et on l'efface. Une voix payante memorisee retombe sur SAM.
+    _proAchete=false;
+    try{ localStorage.removeItem('reps_pro'); }catch(e){}
+    try{ if(voixPayante(S_voix)) choisirVoix('sam'); }catch(e){}
+    try{ majBadgeVoix(); }catch(e){}
+    try{ majProUI(); }catch(e){} return; }
   try{ if(P.addListener) P.addListener('proDroits', r=>proAppliquer(r&&r.actif, r&&r.droits, 'transaction')); }catch(e){}
   try{ const r=await P.proDroits(); proAppliquer(r&&r.actif, r&&r.droits, 'lancement'); }
   catch(e){ DBG('pro : droits KO '+((e&&e.message)||e)); }
