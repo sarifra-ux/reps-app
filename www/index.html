@@ -1948,6 +1948,16 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
   .voix-verrou-msg{display:none;margin:0 0 8px;padding:9px 12px;border-radius:12px;font:600 .8rem/1.3 -apple-system,system-ui,sans-serif;
     color:#ffd27a;background:rgba(255,179,0,.1);border:1px solid rgba(255,179,0,.4);}
   .voix-verrou-msg.show{display:block;}
+  /* 19/09/2026 : « Ton prenom » (REPS Pro), sous les cartes des coachs. */
+  .prenom-zone{display:flex;align-items:center;gap:8px;}
+  .prenom-zone input{flex:1;min-width:0;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;
+    padding:10px 12px;color:#fff;font:600 1rem/1.2 -apple-system,system-ui,sans-serif;outline:none;}
+  .prenom-zone input:focus{border-color:#e63fff;}
+  .prenom-zone input:disabled{opacity:.55;}
+  .prenom-zone .lang-btn{border-color:var(--border);padding:10px 12px;font-size:.66rem;}
+  .prenom-zone .lang-btn.prenom-pro{color:#f3c8ff;border-color:rgba(230,63,255,.55);
+    background:linear-gradient(120deg,rgba(155,48,255,.18),rgba(230,63,255,.14),rgba(0,212,255,.14));}
+  .prenom-note{font:500 .72rem/1.35 -apple-system,system-ui,sans-serif;color:var(--muted);}
   body.wod-verrou .voix-card:not(.on){opacity:.4;filter:grayscale(.7);}
   body.wod-verrou .voix-card:not(.on)::before{content:'🔒';position:absolute;top:8px;left:9px;font-size:.8rem;}
 
@@ -2484,6 +2494,22 @@ src:url(data:font/woff2;base64,d09GMgABAAAAAFXQABEAAAAA0/AAAFVtAAEAAAAAAAAAAAAAA
           <button type="button" class="voix-chip voix-card" data-voix="max"  onclick="toucherVoix('max')"><span class="vc-av"></span><span class="vc-nom">MUTANT</span><span class="vc-desc"></span></button>
           <button type="button" class="voix-chip voix-card" data-voix="nina" onclick="toucherVoix('nina')"><span class="vc-av"></span><span class="vc-nom">MIKE</span><span class="vc-desc"></span></button>
         </div>
+      </div>
+      <!-- 19/09/2026 : le coach dit ton prenom (REPS Pro). Voir « LE COACH DIT TON PRENOM ». -->
+      <div class="settings-row" id="prenomRow" style="display:none;">
+        <div class="settings-row-label">
+          <span class="settings-icon">🗣️</span>
+          <span class="settings-name" id="prenomLabel">Ton prénom</span>
+        </div>
+        <div class="voix-verrou-msg" id="prenomMsg"></div>
+        <div class="prenom-zone">
+          <input id="prenomInput" type="text" maxlength="20" autocomplete="given-name" autocapitalize="words"
+                 autocorrect="off" spellcheck="false" enterkeyhint="done"
+                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();prenomEnregistrer();}">
+          <button type="button" class="lang-btn" id="prenomBtn" onclick="prenomEnregistrer()">OK</button>
+          <button type="button" class="lang-btn" id="prenomEff" onclick="prenomEffacer()" style="display:none;">✕</button>
+        </div>
+        <div class="prenom-note" id="prenomNote"></div>
       </div>
       <div class="settings-row" style="padding-top:0;display:none;">
         <div class="voix-desc" id="voixDesc"></div>
@@ -3184,6 +3210,7 @@ const VOIX_GRATUITES={sam:true};
 // dernier mot (proVerifier, au lancement et a chaque transaction). Un abonnement dont la
 // periode est passee ne compte plus, meme en cache.
 let _proAchete=false;
+let _proDroitsListe=[];   // 19/09/2026 : droits StoreKit, avec la transaction signee (jws) pour le relais prenom
 try{ const _c=JSON.parse(localStorage.getItem('reps_pro')||'null');
      if(_c && _c.actif && (!_c.expire || _c.expire>Date.now())) _proAchete=true; }catch(e){}
 function proActif(){ return REPS_PRO || _proAchete; }
@@ -3563,6 +3590,157 @@ function avatarParle(file){
     a.onloadedmetadata=()=>{ if(isFinite(a.duration)&&a.duration>0){ _avDuree[src]=a.duration*1000; fin=debut+_avDuree[src]; } };
     a.src=src; }catch(e){} }
   hs.forEach(avatarPulse); avatarBouche(hs,()=>performance.now()<fin);
+}
+// ===== LE COACH DIT TON PRENOM (REPS Pro, 19/09/2026) =====
+// L'athlete TAPE son prenom dans les reglages (jamais de micro). Le relais Vercel
+// (api/prenom.js) verifie l'abonnement aupres d'Apple (transaction signee), filtre le
+// prenom, et renvoie 3 mp3 generes par ElevenLabs avec la voix du coach :
+//   bienvenue  « Welcome, Léa ! »                      (juste apres l'avoir tape)
+//   retour     « Welcome back, Léa ! »                 (aux lancements suivants)
+//   question   « Quel est ton training aujourd'hui, Léa ? »
+// Les mp3 sont gardes dans localStorage, par coach et par langue (~150 Ko chacun) : on
+// n'appelle le relais qu'une fois par coach/langue. Changer de prenom efface tout.
+// Uniquement dans l'app iOS : sur le web, pas d'abonnement, la ligne est masquee.
+// A TESTER : volume par rapport aux packs (sons bruts, non normalises), prononciation
+// de « training », et comportement si Spotify joue deja au lancement.
+const PRENOM_URL='https://reps-app.pro/api/prenom';
+let _prenomOccupe=false, _prenomAccueilFait=false, _prenomAudio=null;
+function prenomLire(){ try{ return localStorage.getItem('reps_prenom')||''; }catch(e){ return ''; } }
+function _prenomCle(c,l){ return 'reps_prenom_voix_'+c+'_'+l; }
+function _prenomViderSons(){
+  try{ Object.keys(localStorage).filter(k=>k.indexOf('reps_prenom_voix_')===0).forEach(k=>localStorage.removeItem(k)); }catch(e){}
+}
+function prenomSons(c,l){
+  try{ const o=JSON.parse(localStorage.getItem(_prenomCle(c,l))||'null');
+       return (o && o.prenom===prenomLire() && o.retour && o.question)?o:null; }catch(e){ return null; }
+}
+function _prenomGarder(c,l,o){
+  const v=JSON.stringify(o);
+  try{ localStorage.setItem(_prenomCle(c,l),v); return; }catch(e){}
+  // Plein : on ne garde que ce coach-la.
+  _prenomViderSons();
+  try{ localStorage.setItem(_prenomCle(c,l),v); }catch(e){}
+}
+// Meme regle que le relais : lettres de toutes les langues, espace, tiret, apostrophe, 20 max.
+function prenomValide(p){
+  p=String(p||'').normalize('NFC').replace(/\s+/g,' ').trim();
+  try{ return (p.length>=1 && p.length<=20 && /^\p{L}[\p{L}\p{M}' \-’]*$/u.test(p))?p:''; }catch(e){ return ''; }
+}
+function _prenomJws(){
+  const d=(_proDroitsListe||[]).filter(x=>x&&x.jws).sort((a,b)=>(b.expire||0)-(a.expire||0));
+  return d.length?d[0].jws:'';
+}
+function prenomDisponible(){ return !!_proPlugin() && proActif(); }
+async function prenomGenerer(c,l){
+  const prenom=prenomLire(), jws=_prenomJws();
+  if(!prenom) throw new Error('prenom_absent');
+  if(!jws) throw new Error('pro');
+  const r=await fetch(PRENOM_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+                                  body:JSON.stringify({prenom:prenom,coach:c,langue:l,jws:jws})});
+  let j=null; try{ j=await r.json(); }catch(e){}
+  if(!r.ok || !j || !j.mp3) throw new Error((j&&j.erreur)||('http_'+r.status));
+  const o={prenom:prenom, bienvenue:j.mp3.bienvenue, retour:j.mp3.retour, question:j.mp3.question, vu:false};
+  _prenomGarder(c,l,o);
+  DBG('prenom : sons generes ('+c+' '+l+')');
+  return o;
+}
+function _prenomBouche(a){
+  try{
+    if(!_avatarOn) return;
+    const hs=['coachAv','coachAvGrand'].map(id=>document.getElementById(id)).filter(x=>x&&x.firstChild&&x.offsetParent!==null);
+    const carte=document.querySelector('.voix-card[data-voix="'+S_voix+'"] .vc-av');
+    if(carte && carte.offsetParent!==null) hs.push(carte);
+    if(document.body.classList.contains('av-fond-img')){ const f=document.getElementById('avFond'); if(f) hs.push(f); }
+    if(!hs.length) return;
+    hs.forEach(avatarPulse); avatarBouche(hs,()=>!a.paused&&!a.ended);
+  }catch(e){}
+}
+// Joue les mp3 (base64) a la suite. S'arrete net si un WOD demarre.
+function _prenomJouer(liste){
+  return new Promise(fin=>{
+    let i=0;
+    const suivant=()=>{
+      if(i>=liste.length || wodEnCours()){ _prenomAudio=null; fin(); return; }
+      const b64=liste[i++]; if(!b64){ suivant(); return; }
+      try{ if(_prenomAudio) _prenomAudio.pause(); }catch(e){}
+      const a=new Audio('data:audio/mpeg;base64,'+b64); _prenomAudio=a;
+      try{ a.volume=gainVoix(); }catch(e){}
+      a.onended=()=>setTimeout(suivant,350);
+      a.onerror=()=>{ _prenomAudio=null; fin(); };
+      a.play().then(()=>_prenomBouche(a)).catch(()=>{ _prenomAudio=null; fin(); });
+    };
+    suivant();
+  });
+}
+function prenomCouper(){ try{ if(_prenomAudio){ _prenomAudio.pause(); _prenomAudio=null; } }catch(e){} }
+// Au lancement : « Welcome back, Léa ! » puis la question. Une seule fois par lancement.
+async function prenomAccueil(){
+  if(_prenomAccueilFait || !prenomDisponible() || !prenomLire() || wodEnCours()) return;
+  _prenomAccueilFait=true;
+  const c=S_voix, l=S.lang;
+  let o=prenomSons(c,l);
+  if(!o){ try{ o=await prenomGenerer(c,l); }catch(e){ DBG('prenom : accueil KO '+e.message); return; } }
+  if(wodEnCours()) return;
+  const premier=!o.vu;
+  await _prenomJouer([premier?o.bienvenue:o.retour, o.question]);
+  if(premier){ o.vu=true; _prenomGarder(c,l,o); }
+}
+function prenomMsg(t){
+  const m=document.getElementById('prenomMsg'); if(!m) return;
+  m.textContent=t||''; m.classList.toggle('show', !!t);
+}
+async function prenomEnregistrer(){
+  if(!_proPlugin()) return;
+  if(!proActif()){ ouvrirPro('prenom'); return; }
+  const inp=document.getElementById('prenomInput'); if(!inp || _prenomOccupe) return;
+  const p=prenomValide(inp.value);
+  if(!p){ prenomMsg(L3('Seulement des lettres, 20 maximum.','Letters only, 20 max.','Só letras, no máximo 20.')); return; }
+  if(wodEnCours()){ voixVerrouilleeMsg(); return; }
+  const ancien=prenomLire();
+  _prenomOccupe=true; prenomMajUI();
+  prenomMsg(L3('Ton coach apprend ton prénom…','Your coach is learning your name…','Seu coach está aprendendo seu nome…'));
+  try{ localStorage.setItem('reps_prenom',p); }catch(e){}
+  try{
+    const o=await prenomGenerer(S_voix,S.lang);
+    // Nouveau prenom confirme : les sons de l'ancien (autres coachs) ne servent plus.
+    if(p!==ancien){ _prenomViderSons(); _prenomGarder(S_voix,S.lang,o); }
+    prenomMsg(''); _prenomOccupe=false; prenomMajUI();
+    await _prenomJouer([o.bienvenue,o.question]);
+    o.vu=true; _prenomGarder(S_voix,S.lang,o);
+  }catch(e){
+    const err=String(e&&e.message||e);
+    DBG('prenom : KO '+err);
+    try{ if(ancien) localStorage.setItem('reps_prenom',ancien); else localStorage.removeItem('reps_prenom'); }catch(_){}
+    _prenomOccupe=false; prenomMajUI();
+    if(err.indexOf('prenom_')===0) prenomMsg(L3('Ce prénom n’est pas accepté.','This name isn’t accepted.','Esse nome não é aceito.'));
+    else if(err==='pro') prenomMsg(L3('Abonnement Pro non reconnu. Essaie « Restaurer mes achats ».','Pro subscription not recognised. Try “Restore purchases”.','Assinatura Pro não reconhecida. Tente “Restaurar compras”.'));
+    else prenomMsg(L3('Pas de connexion ? Réessaie dans un instant.','No connection? Try again in a moment.','Sem conexão? Tente de novo daqui a pouco.'));
+  }
+}
+function prenomEffacer(){
+  prenomCouper();
+  try{ localStorage.removeItem('reps_prenom'); }catch(e){}
+  _prenomViderSons(); prenomMsg('');
+  const inp=document.getElementById('prenomInput'); if(inp) inp.value='';
+  prenomMajUI();
+}
+function prenomMajUI(){
+  const r=document.getElementById('prenomRow'); if(!r) return;
+  r.style.display=_proPlugin()?'':'none';
+  const pro=proActif();
+  const lab=document.getElementById('prenomLabel');
+  if(lab) lab.textContent=L3('Ton prénom','Your first name','Seu nome');
+  const inp=document.getElementById('prenomInput');
+  if(inp){
+    inp.disabled=!pro || _prenomOccupe;
+    inp.placeholder=pro?L3('Ex. Léa','e.g. Léa','Ex. Léa'):L3('Réservé à REPS Pro','REPS Pro only','Só no REPS Pro');
+    if(document.activeElement!==inp && !_prenomOccupe) inp.value=pro?prenomLire():'';
+  }
+  const b=document.getElementById('prenomBtn');
+  if(b){ b.textContent=pro?'OK':'PRO'; b.classList.toggle('prenom-pro',!pro); b.disabled=_prenomOccupe; }
+  const x=document.getElementById('prenomEff'); if(x) x.style.display=(pro && prenomLire() && !_prenomOccupe)?'':'none';
+  const n=document.getElementById('prenomNote');
+  if(n) n.textContent=L3('Ton coach t’accueille par ton prénom à chaque ouverture.','Your coach greets you by name every time you open REPS.','Seu coach te recebe pelo nome toda vez que você abre o REPS.');
 }
 let _avPreview=null, _avVerrouTap={};
 function toucherVoix(k){
@@ -7883,6 +8061,7 @@ function _proEsc(t){ return String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&am
 function proAppliquer(actif, droits, source){
   const avant=_proAchete;
   _proAchete=!!actif;
+  _proDroitsListe=Array.isArray(droits)?droits:[];
   try{
     let exp=0; (droits||[]).forEach(d=>{ if(d && d.expire && d.expire>exp) exp=d.expire; });
     localStorage.setItem('reps_pro', JSON.stringify({actif:_proAchete, expire:exp||null, verifie:Date.now()}));
@@ -7899,6 +8078,8 @@ function proAppliquer(actif, droits, source){
   try{ majBadgeVoix(); }catch(e){}
   try{ majCameraPro(); }catch(e){}
   try{ majProUI(); }catch(e){}
+  // 19/09/2026 : « Welcome back, Léa ! » une fois par lancement, quand Apple a confirme le Pro.
+  if(source==='lancement' && _proAchete){ try{ setTimeout(prenomAccueil, 900); }catch(e){} }
 }
 async function proVerifier(){
   const P=_proPlugin();
@@ -7983,6 +8164,7 @@ function proCode(){ const P=_proPlugin(); if(P) P.proCodeOffre().catch(()=>{}); 
 function proGerer(){ const P=_proPlugin(); if(P) P.proGererAbonnement().catch(()=>{}); }
 
 function majProUI(){
+  try{ prenomMajUI(); }catch(e){}
   // Bouton des reglages : seulement dans l'app iOS.
   const bs=document.getElementById('btnReglagesPro');
   if(bs){

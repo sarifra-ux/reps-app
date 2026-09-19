@@ -25,7 +25,8 @@
 // 18/09/2026 (bis) : toujours v231, rien n'a ete pousse entre-temps. S'y ajoutent les
 // avatars des voix (SVG dans index.html, aucun fichier nouveau a precharger).
 // 19/09/2026 : v232. Web : le cache reps_pro n'est plus pris en compte (faille Pro).
-const CACHE_NAME = 'reps-v232';
+// 19/09/2026 (bis) : v233. Reglage « Ton prenom » (REPS Pro, masque sur le web).
+const CACHE_NAME = 'reps-v233';
 const ASSETS = [
   '/',
   '/index.html',
